@@ -1,0 +1,51 @@
+input:
+    job:
+        package-manager: go_modules
+        dependencies:
+          - none
+        security-updates-only: true
+        source:
+            provider: github
+            repo: dependabot/smoke-tests
+            directory: /
+            commit: 832e37c1a7a4ef89feb9dc7cfa06f62205191994
+        updating-a-pull-request: true
+output:
+  - type: update_dependency_list
+    expect:
+        data:
+            dependencies:
+              - name: github.com/fatih/color
+                requirements:
+                  - file: go.mod
+                    groups: []
+                    requirement: v1.7.0
+                    source:
+                        source: github.com/fatih/color
+                        type: default
+                version: 1.7.0
+              - name: rsc.io/qr
+                requirements: []
+                version: 0.1.0
+              - name: rsc.io/quote
+                requirements:
+                  - file: go.mod
+                    groups: []
+                    requirement: v1.4.0
+                    source:
+                        source: rsc.io/quote
+                        type: default
+                version: 1.4.0
+            dependency_files:
+              - /go.mod
+              - /go.sum
+  - type: close_pull_request
+    expect:
+        data:
+            dependency-names:
+              - none
+            reason: dependency_removed
+  - type: mark_as_processed
+    expect:
+        data:
+            base-commit-sha: 832e37c1a7a4ef89feb9dc7cfa06f62205191994

@@ -1,0 +1,22 @@
+{
+  "job": {
+    "package-manager": "bundler",
+    "allowed-updates": [
+      {
+        "update-type": "all"
+      }
+    ],
+    "source": {
+      "provider": "github",
+      "repo": "dsp-testing/ruby-bundler-private-registry",
+      "directory": "/"
+    }
+  },
+  "credentials": [
+    {
+      "type": "rubygems_server",
+      "host": "https://rubygems.pkg.github.com/dsp-testing",
+      "token": "$GPR_TOKEN"
+    }
+  ]
+}

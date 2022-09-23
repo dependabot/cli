@@ -1,0 +1,112 @@
+input:
+    job:
+        package-manager: go_modules
+        allowed-updates:
+          - dependency-name: github.com/fatih/color
+        source:
+            provider: github
+            repo: dependabot/smoke-tests
+            directory: /
+            commit: 832e37c1a7a4ef89feb9dc7cfa06f62205191994
+output:
+  - type: update_dependency_list
+    expect:
+        data:
+            dependencies:
+              - name: github.com/fatih/color
+                requirements:
+                  - file: go.mod
+                    groups: []
+                    requirement: v1.7.0
+                    source:
+                        source: github.com/fatih/color
+                        type: default
+                version: 1.7.0
+              - name: rsc.io/qr
+                requirements: []
+                version: 0.1.0
+              - name: rsc.io/quote
+                requirements:
+                  - file: go.mod
+                    groups: []
+                    requirement: v1.4.0
+                    source:
+                        source: rsc.io/quote
+                        type: default
+                version: 1.4.0
+            dependency_files:
+              - /go.mod
+              - /go.sum
+  - type: create_pull_request
+    expect:
+        data:
+            base-commit-sha: 832e37c1a7a4ef89feb9dc7cfa06f62205191994
+            dependencies:
+              - name: github.com/fatih/color
+                previous-requirements:
+                  - file: go.mod
+                    groups: []
+                    requirement: v1.7.0
+                    source:
+                        source: github.com/fatih/color
+                        type: default
+                previous-version: 1.7.0
+                requirements:
+                  - file: go.mod
+                    groups: []
+                    requirement: 1.13.0
+                    source:
+                        source: github.com/fatih/color
+                        type: default
+                version: 1.13.0
+            updated-dependency-files:
+              - content: |
+                    module github.com/dependabot/vgotest
+
+                    go 1.12
+
+                    require (
+                    	github.com/fatih/color v1.13.0
+                    	golang.org/x/sys v0.0.0-20220731174439-a90be440212d // indirect
+                    	rsc.io/qr v0.1.0
+                    	rsc.io/quote v1.4.0
+                    )
+
+                    replace rsc.io/qr => github.com/rsc/qr v0.2.0
+                content_encoding: utf-8
+                deleted: false
+                directory: /
+                name: go.mod
+                operation: update
+                support_file: false
+                type: file
+              - content: |
+                    github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
+                    github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
+                    github.com/mattn/go-colorable v0.1.9 h1:sqDoxXbdeALODt0DAeJCVp38ps9ZogZEAXjus69YV3U=
+                    github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
+                    github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
+                    github.com/mattn/go-isatty v0.0.14 h1:yVuAays6BHfxijgZPzw+3Zlu5yQgKGP2/hcQbHb7S9Y=
+                    github.com/mattn/go-isatty v0.0.14/go.mod h1:7GGIvUiUoEMVVmxf/4nioHXj79iQHKdU27kJ6hsGG94=
+                    github.com/rsc/qr v0.2.0 h1:tH61+huiZvu+hXL1VUovAu2AnhdG4eJQk2+on3XsDBQ=
+                    github.com/rsc/qr v0.2.0/go.mod h1:IF+uZjkb9fqyeF/4tlBoynqmQxUoPfWEKh921coOuXs=
+                    golang.org/x/sys v0.0.0-20200116001909-b77594299b42/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+                    golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+                    golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+                    golang.org/x/sys v0.0.0-20220731174439-a90be440212d h1:Sv5ogFZatcgIMMtBSTTAgMYsicp25MXBubjXNDKwm80=
+                    golang.org/x/sys v0.0.0-20220731174439-a90be440212d/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+                    rsc.io/quote v1.4.0 h1:tYuJspOzwTRMUOX6qmSDRTEKFVV80GM0/l89OLZuVNg=
+                    rsc.io/quote v1.4.0/go.mod h1:S2vMDfxMfk+OGQ7xf1uNqJCSuSPCW5QC127LHYfOJmQ=
+                    rsc.io/sampler v1.0.0 h1:CZX0Ury6np11Lwls9Jja2rFf3YrNPeUPAWiEVrJ0u/4=
+                    rsc.io/sampler v1.0.0/go.mod h1:cqxpM3ZVz9VtirqxZPmrWzkQ+UkiNiGtkrN+B+i8kx8=
+                content_encoding: utf-8
+                deleted: false
+                directory: /
+                name: go.sum
+                operation: update
+                support_file: false
+                type: file
+  - type: mark_as_processed
+    expect:
+        data:
+            base-commit-sha: 832e37c1a7a4ef89feb9dc7cfa06f62205191994

@@ -1,0 +1,12 @@
+job:
+  package-manager: npm_and_yarn
+  allowed-updates:
+    - update-type: all
+  source:
+    provider: github
+    repo: dsp-testing/npm-private-registry
+    directory: /consumer
+credentials:
+  - type: npm_registry
+    registry: https://npm.pkg.github.com
+    token: $GPR_TOKEN

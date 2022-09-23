@@ -1,0 +1,86 @@
+# Runs all ecosystems cached and concurrently.
+name: Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - actions
+          - bundler
+          - cargo
+          - composer
+          - docker
+          - elm
+          - go
+          - gradle
+          - hex
+          - maven
+          - npm
+          - nuget
+          - pip
+          - pip-compile
+          - pipenv
+          - poetry
+          - pub
+          - submodules
+          - terraform
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      # Download the Proxy cache. The job is ideally 100% cached so no real calls are made.
+      - name: Download artifacts
+        run: script/download-cache.sh ${{ matrix.suite }}
+
+      - name: ${{ matrix.suite }}
+        env:
+          LOCAL_GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          URL=https://api.github.com/repos/dependabot/smoke-tests/contents/tests/smoke-${{ matrix.suite }}.yaml
+          curl $(gh api $URL --jq .download_url) -o smoke.yaml
+          go run cmd/dependabot/dependabot.go test -f=smoke.yaml -o=result.yaml --timeout 20m --cache=cache 2>&1 | tee -a log.txt
+
+      - name: Diff
+        if: always()
+        continue-on-error: true
+        run: diff --ignore-space-change smoke.yaml result.yaml && echo "Contents are identical" || exit 0
+
+      - name: Create summary
+        run: tail -n100 log.txt | grep -P '\d+/\d+ calls cached \(\d+%\)' >> $GITHUB_STEP_SUMMARY
+
+    # No upload at the end:
+    # - If a test is uncachable in some regard, the cache would grow unbound.
+    # - We might want to consider erroring if the cache is changed.
+
+  # Allows us to add a check requirement on allsmoke which covers all in the matrix above
+  allsmoke:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    name: Smoke result
+    needs: smoke
+    steps:
+      - name: Echo needs
+        run: echo "${{ toJSON(needs) }}" # for debugging
+      - name: Check success
+        run: |
+          if [ "${{ needs.smoke.result }}" = "success" ]; then
+              exit 0
+          else
+              exit 1
+          fi
