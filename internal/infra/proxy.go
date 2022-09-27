@@ -49,15 +49,9 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 	}
 
 	// Generate and write configuration to disk:
-	username := "cli-user"
-	password := generatePassword()
 	proxyConfig := &Config{
 		Credentials: params.Creds,
-		ProxyAuth: BasicAuthCredentials{
-			Username: username,
-			Password: password,
-		},
-		CA: ca,
+		CA:          ca,
 	}
 	proxyConfigPath, err := StoreProxyConfig(params.TempDir, proxyConfig)
 	if err != nil {
@@ -111,7 +105,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 		cli:             cli,
 		containerID:     proxyContainer.ID,
 		containerName:   hostName,
-		url:             fmt.Sprintf("http://%s:%s@%s:1080", username, password, hostName),
+		url:             fmt.Sprintf("http://%s:1080", hostName),
 		CertPath:        certPath,
 		proxyConfigPath: proxyConfigPath,
 	}, nil
