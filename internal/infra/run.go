@@ -101,26 +101,8 @@ func Run(params RunParams) error {
 		// ignore conditions help make tests reproducible
 		// so they are generated if there aren't any yet
 		if len(api.Actual.Input.Job.IgnoreConditions) == 0 && api.Actual.Input.Job.PackageManager != "submodules" {
-			for _, out := range api.Actual.Output {
-				if out.Type == "create_pull_request" {
-					createPR, ok := out.Expect.Data.(model.CreatePullRequest)
-					if !ok {
-						return fmt.Errorf("failed to decode CreatePullRequest object")
-					}
-
-					for _, dep := range createPR.Dependencies {
-						if dep.Version == nil {
-							// dependency version nil due to it being removed
-							continue
-						}
-						ignore := model.Condition{
-							DependencyName:     dep.Name,
-							VersionRequirement: fmt.Sprintf(">%v", *dep.Version),
-							Source:             params.Output,
-						}
-						api.Actual.Input.Job.IgnoreConditions = append(api.Actual.Input.Job.IgnoreConditions, ignore)
-					}
-				}
+			if err := generateIgnoreConditions(&params, &api.Actual); err != nil {
+				return err
 			}
 		}
 		if err := yaml.NewEncoder(outFile).Encode(api.Actual); err != nil {
@@ -137,6 +119,31 @@ func Run(params RunParams) error {
 		return fmt.Errorf("update failed expectations")
 	}
 
+	return nil
+}
+
+func generateIgnoreConditions(params *RunParams, actual *model.Scenario) error {
+	for _, out := range actual.Output {
+		if out.Type == "create_pull_request" {
+			createPR, ok := out.Expect.Data.(model.CreatePullRequest)
+			if !ok {
+				return fmt.Errorf("failed to decode CreatePullRequest object")
+			}
+
+			for _, dep := range createPR.Dependencies {
+				if dep.Version == nil {
+					// dependency version nil due to it being removed
+					continue
+				}
+				ignore := model.Condition{
+					DependencyName:     dep.Name,
+					VersionRequirement: fmt.Sprintf(">%v", *dep.Version),
+					Source:             params.Output,
+				}
+				actual.Input.Job.IgnoreConditions = append(actual.Input.Job.IgnoreConditions, ignore)
+			}
+		}
+	}
 	return nil
 }
 
