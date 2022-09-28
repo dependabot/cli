@@ -1,14 +1,20 @@
-# Dependabot CLI
+<h1 align="center">
+    <picture>
+        <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/7659/174594540-5e29e523-396a-465b-9a6e-6cab5b15a568.svg">
+        <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/7659/174594559-0b3ddaa7-e75b-4f10-9dee-b51431a9fd4c.svg">
+        <img src="https://user-images.githubusercontent.com/7659/174594540-5e29e523-396a-465b-9a6e-6cab5b15a568.svg" alt="Dependabot" width="336">
+    </picture>
+</h1>
 
-A CLI that pulls in the [updater] and [proxy] containers and runs them.
+The `dependabot` CLI is a tool for testing and debugging Dependabot update jobs.
 
 ## Installation
 
-You can download a pre-built binary for your system from the [Releases] page.
+You can download a pre-built binary from the [releases] page.
 
-If you have the [`gh` CLI][gh] installed,
+If you have the [`gh`][gh] command available,
 you can install the latest release of `dependabot` using the following command
-([gist source](https://gist.github.com/mattt/e09e1ecd76d5573e0517a7622009f06f)): 
+([gist source](https://gist.github.com/mattt/e09e1ecd76d5573e0517a7622009f06f)):
 
 ```console
 $ gh gist view --raw e09e1ecd76d5573e0517a7622009f06f | bash
@@ -16,177 +22,47 @@ $ gh gist view --raw e09e1ecd76d5573e0517a7622009f06f | bash
 
 ## Requirements
 
-* Docker
+* [Docker]
 
-For development:
+## Contributing
 
-* Go 1.18+
+Check out our [contributing guidelines][contributing] for instructions on
+building the project locally, sharing feedback, and submitting pull requests.
 
 ## Usage
 
 ```console
+$ dependabot
+Run Dependabot jobs from the command line.
+
+Usage:
+  dependabot [command]
+
+Examples:
+  $ dependabot update go_modules rsc/quote --dry-run
+  $ dependabot test -f scenario.yaml
+
+Available Commands:
+  help        Help about any command
+  test        Test scenarios
+  update      Perform update job
+
+Flags:
+  -h, --help                   help for dependabot
+  -v, --version                version for dependabot
+
+Use "dependabot [command] --help" for more information about a command.
+```
+
+### `dependabot update`
+
+Run the `update` subcommand with the `--dry-run` flag to
+simulate a Dependabot update job for the provided ecosystem and repo
+(without actually creating any PRs).
+
+```console
 $ dependabot update go_modules rsc/quote --dry-run
-```
-
-<details>
-<summary>Output</summary>
-
-```
-time="2022-07-25T11:35:05Z" level=info msg="proxy starting" commit=8bc7edd876c7b566c70dcf22daa1c039912767f9
-time="2022-07-25T11:35:05Z" level=warning msg="initializing metrics client" error="No address passed and autodetection from environment failed"
-2022/07/25 11:35:05 Listening (:1080)
-I, [2022-07-25T11:35:06.684817 #9]  INFO -- sentry: ** [Raven] Raven 3.1.2 configured not to capture errors: DSN not set
-INFO <job_cli> Starting job processing
-2022/07/25 11:35:28 [002] GET https://api.github.com:443/repos/rsc/quote
-2022/07/25 11:35:28 [002] * authenticating github api request
-2022/07/25 11:35:28 [002] 200 https://api.github.com:443/repos/rsc/quote
-2022/07/25 11:35:28 [004] GET https://api.github.com:443/repos/rsc/quote/git/refs/heads/master
-2022/07/25 11:35:28 [004] * authenticating github api request
-2022/07/25 11:35:28 [004] 200 https://api.github.com:443/repos/rsc/quote/git/refs/heads/master
-2022/07/25 11:35:29 [006] GET https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:29 [006] * authenticating git server request (host: github.com)
-2022/07/25 11:35:29 [006] 200 https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:29 [008] POST https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:29 [008] * authenticating git server request (host: github.com)
-2022/07/25 11:35:29 [008] 200 https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:29 [010] POST https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:29 [010] * authenticating git server request (host: github.com)
-2022/07/25 11:35:29 [010] 200 https://github.com:443/rsc/quote/git-upload-pack
-INFO <job_cli> Finished job processing
-I, [2022-07-25T11:35:30.005259 #30]  INFO -- sentry: ** [Raven] Raven 3.1.2 configured not to capture errors: DSN not set
-INFO <job_cli> Starting job processing
-INFO <job_cli> Starting update job for rsc/quote
-2022/07/25 11:35:51 [011] POST http://host.docker.internal:8080/update_jobs/cli/update_dependency_list
-2022/07/25 11:35:51 [011] 200 http://host.docker.internal:8080/update_jobs/cli/update_dependency_list
-INFO <job_cli> Checking if rsc.io/quote/v3 3.0.0 needs updating
-2022/07/25 11:35:51 [013] GET https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:35:51 [013] 200 https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:35:51 [015] GET https://rsc.io:443/quote?go-get=1
-2022/07/25 11:35:51 [015] 200 https://rsc.io:443/quote?go-get=1
-2022/07/25 11:35:51 [017] GET https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:51 [017] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [017] 200 https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [019] GET https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [019] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [019] 200 https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [021] POST https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:52 [021] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [021] 200 https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:52 [023] POST https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:52 [023] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [023] 200 https://github.com:443/rsc/quote/git-upload-pack
-INFO <job_cli> Latest version is 3.1.0
-INFO <job_cli> Requirements to unlock own
-INFO <job_cli> Requirements update strategy 
-INFO <job_cli> Updating rsc.io/quote/v3 from 3.0.0 to 3.1.0
-2022/07/25 11:35:52 [026] GET https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:35:52 [027] GET https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:35:52 [026] 200 https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:35:52 [029] GET https://rsc.io:443/quote?go-get=1
-2022/07/25 11:35:52 [027] 200 https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:35:52 [029] 200 https://rsc.io:443/quote?go-get=1
-2022/07/25 11:35:52 [032] GET https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [032] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [033] GET https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [033] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [032] 200 https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [033] 200 https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [035] GET https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [035] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [037] GET https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [037] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [035] 200 https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [037] 200 https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:52 [039] POST https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:52 [039] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [041] POST https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:52 [041] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [039] 200 https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:52 [043] POST https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:52 [043] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [041] 200 https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:52 [045] POST https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:52 [045] * authenticating git server request (host: github.com)
-2022/07/25 11:35:52 [043] 200 https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:52 [045] 200 https://github.com:443/rsc/quote/git-upload-pack
-2022/07/25 11:35:53 [047] GET https://golang.org:443/x/text?go-get=1
-2022/07/25 11:35:53 [047] 200 https://golang.org:443/x/text?go-get=1
-2022/07/25 11:35:53 [049] GET https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:35:53 [049] 200 https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:35:53 [051] GET https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:35:53 [051] 200 https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:35:53 [053] POST https://go.googlesource.com:443/text/git-upload-pack
-2022/07/25 11:35:53 [053] 200 https://go.googlesource.com:443/text/git-upload-pack
-2022/07/25 11:35:57 [055] GET https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:35:57 [055] * authenticating git server request (host: github.com)
-2022/07/25 11:35:57 [055] 200 https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:35:57 [057] POST https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:57 [057] * authenticating git server request (host: github.com)
-2022/07/25 11:35:57 [057] 200 https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:57 [059] POST https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:57 [059] * authenticating git server request (host: github.com)
-2022/07/25 11:35:57 [059] 200 https://github.com:443/rsc/sampler/git-upload-pack
-2022/07/25 11:35:57 [062] GET https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:35:57 [063] GET https://golang.org:443/x/text?go-get=1
-2022/07/25 11:35:57 [062] 200 https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:35:57 [065] GET https://rsc.io:443/quote?go-get=1
-2022/07/25 11:35:57 [065] 200 https://rsc.io:443/quote?go-get=1
-2022/07/25 11:35:57 [063] 200 https://golang.org:443/x/text?go-get=1
-2022/07/25 11:35:58 [068] GET https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:58 [068] * authenticating git server request (host: github.com)
-2022/07/25 11:35:58 [069] GET https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:35:58 [069] 200 https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:35:58 [068] 200 https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:35:58 [071] GET https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:35:58 [071] 200 https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:35:58 [073] GET https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:35:58 [073] * authenticating git server request (host: github.com)
-2022/07/25 11:35:58 [073] 200 https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-INFO <job_cli> Submitting rsc.io/quote/v3 pull request for creation
-2022/07/25 11:36:18 [074] POST http://host.docker.internal:8080/update_jobs/cli/create_pull_request
-2022/07/25 11:36:18 [074] 200 http://host.docker.internal:8080/update_jobs/cli/create_pull_request
-INFO <job_cli> Checking if rsc.io/sampler 1.3.0 needs updating
-2022/07/25 11:36:18 [076] GET https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:36:18 [076] 200 https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:36:18 [078] GET https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:36:18 [078] * authenticating git server request (host: github.com)
-2022/07/25 11:36:18 [078] 200 https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-INFO <job_cli> Latest version is 1.99.99
-INFO <job_cli> Requirements to unlock own
-INFO <job_cli> Requirements update strategy 
-INFO <job_cli> Updating rsc.io/sampler from 1.3.0 to 1.99.99
-2022/07/25 11:36:18 [080] GET https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:36:18 [080] 200 https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:36:18 [082] GET https://golang.org:443/x/text?go-get=1
-2022/07/25 11:36:18 [084] GET https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:36:18 [084] * authenticating git server request (host: github.com)
-2022/07/25 11:36:18 [082] 200 https://golang.org:443/x/text?go-get=1
-2022/07/25 11:36:18 [086] GET https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:36:18 [084] 200 https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:36:18 [086] 200 https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:36:18 [088] GET https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:36:18 [088] 200 https://rsc.io:443/quote/v3?go-get=1
-2022/07/25 11:36:18 [090] GET https://rsc.io:443/quote?go-get=1
-2022/07/25 11:36:18 [090] 200 https://rsc.io:443/quote?go-get=1
-2022/07/25 11:36:18 [092] GET https://golang.org:443/x/text?go-get=1
-2022/07/25 11:36:18 [094] GET https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:36:18 [094] * authenticating git server request (host: github.com)
-2022/07/25 11:36:18 [092] 200 https://golang.org:443/x/text?go-get=1
-2022/07/25 11:36:18 [096] GET https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:36:18 [094] 200 https://github.com:443/rsc/quote/info/refs?service=git-upload-pack
-2022/07/25 11:36:19 [098] GET https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:36:19 [096] 200 https://go.googlesource.com:443/text/info/refs?service=git-upload-pack
-2022/07/25 11:36:19 [098] 200 https://rsc.io:443/sampler?go-get=1
-2022/07/25 11:36:19 [100] GET https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-2022/07/25 11:36:19 [100] * authenticating git server request (host: github.com)
-2022/07/25 11:36:19 [100] 200 https://github.com:443/rsc/sampler/info/refs?service=git-upload-pack
-INFO <job_cli> Submitting rsc.io/sampler pull request for creation
-2022/07/25 11:36:39 [101] POST http://host.docker.internal:8080/update_jobs/cli/create_pull_request
-2022/07/25 11:36:39 [101] 200 http://host.docker.internal:8080/update_jobs/cli/create_pull_request
-2022/07/25 11:36:59 [102] PATCH http://host.docker.internal:8080/update_jobs/cli/mark_as_processed
-2022/07/25 11:36:59 [102] 200 http://host.docker.internal:8080/update_jobs/cli/mark_as_processed
-INFO <job_cli> Finished job processing
-INFO Results:
+# ...
 +----------------------------------------------------+
 |        Changes to Dependabot Pull Requests         |
 +---------+------------------------------------------+
@@ -195,19 +71,236 @@ INFO Results:
 +---------+------------------------------------------+
 ```
 
-</details>
+The first argument specifies the _package manager_
+(e.g. `go_modules`, `bundler`, `npm_and_yarn`, or `python`).
+Available values are defined in [`dependabot-core`][dependabot-core];
+by convention, each ecosystem registers itself according to
+[the name of its top-level subdirectory][dependabot-omnibus] in the repo.
+
+The second argument is the _repository_ name with owner
+(e.g. `dependabot/cli` for this repo).
+
+By default, repositories are fetched from GitHub.com.
+To override this, set the `--provider` / `-p` option to
+`azure`, `bitbucket`, `codecommit`, or `gitlab`.
+
+To update dependencies in a subdirectory,
+specify a path with the `--directory` / `-d` option.
+
+Set the `LOCAL_GITHUB_ACCESS_TOKEN` environment variable
+to a [Personal Access Token (PAT)][PAT],
+and the CLI will pass that token to the proxy
+to authenticate API requests to GitHub
+(for example, to access private repositories or packages).
+
+### Job description file
+
+The command-line interface for the `update` subcommand
+provides only a subset of the available options for a Dependabot update job.
+To perform security updates or authenticate against a private registry,
+you can pass a job description to the `update` subcommand
+using the `--file` / `-f` option
+(this replaces the package manager and repository name arguments).
+
+```console
+$ dependabot update -f job.yaml --dry-run
+```
+
+```yaml
+# job.yaml
+job:
+    package_manager: npm_and_yarn
+    allowed_updates:
+      - update-type: all
+    security_advisories:
+      - dependency-name: express
+        affected-versions:
+          - <5.0.0
+        patched-versions: []
+        unaffected-versions: []
+    security_updates_only: true
+    source:
+        provider: github
+        repo: dependabot/smoke-tests
+        directory: /
+        commit: 66115359e6f6cc3af6a661c5d5ae803720b98cb8
+credentials:
+  - type: npm_registry
+    registry: https://npm.pkg.github.com
+    token: $LOCAL_GITHUB_ACCESS_TOKEN
+```
+
+This example describes an update job
+responsive to a hypothetical security advisory affecting
+`express` package releases earlier than version `5.0.0`.
+When performing this job,
+Dependabot will consult the private registry specified
+using the provided credentials
+instead of the default NPM registry.
+
+Before running an update job,
+the `dependabot` CLI replaces any `$`-prefixed values in the YAML file
+with values from the environment.
+(e.g. `$LOCAL_GITHUB_ACCESS_TOKEN`).
+
+> **Note**
+>
+> The job description file format isn't documented publicly,
+> but you can find examples in the [`testdata` directory](./testdata/)
+> and check out [the `Job` class in `dependabot-core`][dependabot-updater-job].
+
+### How it works
+
+When you run the `update` subcommand,
+the CLI does the following:
+
+1. Pulls the [updater] and [proxy] images from the container registry
+2. Creates and configures [container networks]
+   so the updater communicates exclusively through the proxy
+3. Starts the proxy
+4. Starts the updater, using the job description as input
+5. Records calls made by the updater to create and manage pull requests
+6. Writes recorded calls as YAML (if `--output` / `-o` option is specified)
+
+```mermaid
+sequenceDiagram
+    CLI->>Proxy: Starts the proxy
+    CLI->>Updater: Starts the updater
+    Updater->>GitHub: Fetches repo
+    loop
+    Updater->>Registry: Fetches package information
+    Updater->>CLI: Records calls to create or updates PRs
+    end
+    CLI->>YAML file: Writes recorded calls to output file (if specified)
+```
+
+All network requests made by the updater go through the proxy.
+The proxy injects credentials into outbound requests
+so that the updater doesn't have access to secrets.
+This isolation is especially important for
+package managers that run untrusted code during an update job,
+such as when evaluating manifest files or executing install scripts.
+
+### `dependabot test`
+
+Run the `test` subcommand
+with a scenario file specified by the `--file` / `-f` option
+to test the expected behavior for a Dependabot update job.
+
+```console
+$ dependabot test -f scenario.yaml
+# ...
++------------------------------------------+
+|   Changes to Dependabot Pull Requests    |
++---------+--------------------------------+
+| created | ubuntu ( from 17.04 to 22.04 ) |
++---------+--------------------------------+
+
+time="2022-09-28T08:15:26Z" level=info msg="15/15 calls cached (100%)"
+```
+
+<a href="scenario-file"></a>
+
+### Scenario file
+
+A scenario file describes the input and expected output of a Dependabot job.
+
+```yaml
+# scenario.yaml
+input:
+    job:
+        package-manager: docker
+        allowed-updates:
+          - update-type: all
+        ignore-conditions:
+          - dependency-name: ubuntu
+            source: tests/smoke-docker.yaml
+            version-requirement: '>22.04'
+        source:
+            provider: github
+            repo: dependabot/smoke-tests
+            directory: /
+            commit: 832e37c1a7a4ef89feb9dc7cfa06f62205191994
+output:
+  - type: create_pull_request
+    expect:
+        data:
+            base-commit-sha: 832e37c1a7a4ef89feb9dc7cfa06f62205191994
+            dependencies:
+              - name: ubuntu
+                previous-requirements:
+                  - file: Dockerfile
+                    groups: []
+                    requirement: null
+                    source:
+                        tag: "17.04"
+                previous-version: "17.04"
+                requirements:
+                  - file: Dockerfile
+                    groups: []
+                    requirement: null
+                    source:
+                        tag: "22.04"
+                version: "22.04"
+```
+
+This example scenario describes the expected behavior for Dependabot
+to update the base image of a Dockerfile from `ubuntu:17.04` to `ubuntu:22.04`.
+
+* The `input` field consists of a `job` and any `credentials`.
+  (this is equivalent a [job description file](#job-description-file)).
+* The `output` field comprises an array of expectation objects.
+  These correspond to requests made by the updater to the Dependabot API service
+  when performing an update job.
+
+> **Note**
+>
+> The scenario file format isn't documented publicly,
+> but you can find examples in the [`smoke-tests` repo][smoke-tests]
+> and check [the `Job` class in `dependabot-core`][dependabot-updater-job].
+
+### Producing a test
+
+To produce a scenario file that tests Dependabot behavior for a given repo,
+run the `update` subcommand and set the `--output` / `-o` option to a file path.
+
+```console
+$ dependabot update go_modules rsc/quote --dry-run -o go-scenario.yml
+```
+
+Run the `test` subcommand for the generated scenario file,
+specifying a cache directory with the `--cache` option.
+
+```console
+$ dependabot test -f go-scenario.yml --cache ./tmp/cache
+```
+
+While performing the update job,
+the CLI writes cached responses to requests in the specified directory.
+
+Run the above command a second time,
+and you should see a line that looks like this at the bottom of the output:
+
+> time="2022-09-28T08:14:01Z" level=info msg="117/117 calls cached (100%)"
+
+When the cache coverage for a scenario is 100%,
+subsequent runs of the `test` subcommand
+are most likely to be fast and deterministic.
+Any cache misses indicate an external request made by the updater,
+which may cause tests to fail unexpectedly
+(for example, when a new version of a package is released).
 
 ## Troubleshooting
 
-### Docker daemon not running
+### "Docker daemon not running"
 
 ```
-failed to pull ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest: 
+failed to pull ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest:
 Error response from daemon: dial unix docker.raw.sock: connect: no such file or directory
 ```
 
 The CLI requires Docker to be running on your machine.
-Follow the instructions on [Docker's website](https://docs.docker.com/get-started/)
+Follow the instructions on [Docker's website][Docker]
 to get the latest version of Docker installed and running.
 
 You can verify that Docker is running locally with the following command:
@@ -216,13 +309,13 @@ You can verify that Docker is running locally with the following command:
 $ docker --version
 ```
 
-### Network internet is ambiguous
+### "Network internet is ambiguous"
 
 ```
 failed to start container: Error response from daemon: network internet is ambiguous (2 matches found on name)
 ```
 
-This error can occur when the CLI exits before getting to clean up
+This error can occur when the CLI exits before having an opportunity to clean up
 (e.g. terminating with <kbd>^</kbd><kbd>C</kbd>).
 Run the following command to remove all unused networks:
 
@@ -230,7 +323,15 @@ Run the following command to remove all unused networks:
 $ docker network prune
 ```
 
+[Docker]: https://docs.docker.com/get-started/
+[contributing]: ./.github/CONTRIBUTING.md
 [updater]: https://github.com/dependabot/dependabot-core/pkgs/container/dependabot-updater
 [proxy]: https://github.com/github/dependabot-update-job-proxy/pkgs/container/dependabot-update-job-proxy%2Fdependabot-update-job-proxy
 [gh]: https://github.com/cli/cli
-[Releases]: https://github.com/dependabot/cli/releases
+[releases]: https://github.com/dependabot/cli/releases
+[dependabot-core]: https://github.com/dependabot/dependabot-core
+[dependabot-omnibus]: https://github.com/dependabot/dependabot-core/blob/main/omnibus/lib/dependabot/omnibus.rb
+[container networks]: https://docs.docker.com/config/containers/container-networking/
+[smoke-tests]: https://github.com/dependabot/smoke-tests/tree/main/tests
+[dependabot-updater-job]: https://github.com/dependabot/dependabot-core/blob/main/updater/lib/dependabot/job.rb
+[PAT]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
