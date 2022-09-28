@@ -5,12 +5,76 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"reflect"
 	"testing"
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
+
+func Test_generateIgnoreConditions(t *testing.T) {
+	const (
+		outputFileName = "test_output"
+		dependencyName = "dep1"
+		version        = "1.0.0"
+	)
+
+	t.Run("generates ignore conditions", func(t *testing.T) {
+		runParams := &RunParams{
+			Output: outputFileName,
+		}
+		v := "1.0.0"
+		actual := &model.Scenario{
+			Output: []model.Output{{
+				Type: "create_pull_request",
+				Expect: model.UpdateWrapper{Data: model.CreatePullRequest{
+					Dependencies: []model.Dependency{{
+						Name:    dependencyName,
+						Version: &v,
+					}},
+				}},
+			}},
+		}
+		if err := generateIgnoreConditions(runParams, actual); err != nil {
+			t.Fatal(err)
+		}
+		if len(actual.Input.Job.IgnoreConditions) != 1 {
+			t.Error("expected 1 ignore condition to be generated, got", len(actual.Input.Job.IgnoreConditions))
+		}
+		ignore := actual.Input.Job.IgnoreConditions[0]
+		if reflect.DeepEqual(ignore, &model.Condition{
+			DependencyName:     dependencyName,
+			Source:             outputFileName,
+			VersionRequirement: ">" + version,
+		}) {
+			t.Error("unexpected ignore condition", ignore)
+		}
+	})
+
+	t.Run("handles removed dependency", func(t *testing.T) {
+		runParams := &RunParams{
+			Output: outputFileName,
+		}
+		actual := &model.Scenario{
+			Output: []model.Output{{
+				Type: "create_pull_request",
+				Expect: model.UpdateWrapper{Data: model.CreatePullRequest{
+					Dependencies: []model.Dependency{{
+						Name:    dependencyName,
+						Removed: true,
+					}},
+				}},
+			}},
+		}
+		if err := generateIgnoreConditions(runParams, actual); err != nil {
+			t.Fatal(err)
+		}
+		if len(actual.Input.Job.IgnoreConditions) != 0 {
+			t.Error("expected 0 ignore condition to be generated, got", len(actual.Input.Job.IgnoreConditions))
+		}
+	})
+}
 
 func TestRun(t *testing.T) {
 	if testing.Short() {
