@@ -64,6 +64,7 @@ type Dependency struct {
 	PreviousVersion      string         `json:"previous-version,omitempty" yaml:"previous-version,omitempty"`
 	Requirements         []Requirement  `json:"requirements"`
 	Version              *string        `json:"version" yaml:"version"`
+	Removed              bool           `json:"removed,omitempty" yaml:"removed,omitempty"`
 }
 
 type Requirement struct {

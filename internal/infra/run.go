@@ -109,6 +109,10 @@ func Run(params RunParams) error {
 					}
 
 					for _, dep := range createPR.Dependencies {
+						if dep.Version == nil {
+							// dependency version nil due to it being removed
+							continue
+						}
 						ignore := model.Condition{
 							DependencyName:     dep.Name,
 							VersionRequirement: fmt.Sprintf(">%v", *dep.Version),
