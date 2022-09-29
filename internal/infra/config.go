@@ -13,7 +13,6 @@ const ConfigFilePath = "/config.json"
 type Config struct {
 	Credentials []map[string]string  `json:"all_credentials"`
 	CA          CertificateAuthority `json:"ca"`
-	ProxyAuth   BasicAuthCredentials `json:"proxy_auth"`
 }
 
 // CertificateAuthority includes the MITM CA certificate and private key
