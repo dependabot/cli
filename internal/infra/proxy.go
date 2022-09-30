@@ -106,7 +106,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 			"JOB_ID=" + jobID,
 			"PROXY_CACHE=true",
 		},
-		Entrypoint: []string{
+		Cmd: []string{
 			"sh", "-c", "/usr/sbin/update-ca-certificates && /update-job-proxy",
 		},
 	}
