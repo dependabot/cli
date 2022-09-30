@@ -107,7 +107,9 @@ func TestNewProxy_customCert(t *testing.T) {
 }
 
 const proxyTestDockerfile = `
-FROM alpine:3.16.2
-RUN apk add --no-cache ca-certificates curl
-RUN echo "curl -s https://host.docker.internal:8765" > /update-job-proxy && chmod +x /update-job-proxy
+FROM ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest
+RUN apk add --no-cache curl
+RUN echo "#!/bin/sh" > /update-job-proxy
+RUN echo "curl -s https://host.docker.internal:8765" >> /update-job-proxy
+RUN chmod +x /update-job-proxy
 `
