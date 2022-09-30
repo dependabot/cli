@@ -109,16 +109,16 @@ $ dependabot update -f job.yaml --dry-run
 ```yaml
 # job.yaml
 job:
-    package_manager: npm_and_yarn
-    allowed_updates:
+    package-manager: npm_and_yarn
+    allowed-updates:
       - update-type: all
-    security_advisories:
+    security-advisories:
       - dependency-name: express
         affected-versions:
           - <5.0.0
         patched-versions: []
         unaffected-versions: []
-    security_updates_only: true
+    security-updates-only: true
     source:
         provider: github
         repo: dependabot/smoke-tests
