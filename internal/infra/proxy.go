@@ -14,9 +14,9 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/namesgenerator"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/client"
+	"github.com/moby/moby/pkg/namesgenerator"
+	"github.com/moby/moby/pkg/stdcopy"
 )
 
 const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"

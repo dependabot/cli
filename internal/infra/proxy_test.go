@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/namesgenerator"
+	"github.com/moby/moby/client"
+	"github.com/moby/moby/pkg/namesgenerator"
 )
 
 func TestSeed(t *testing.T) {

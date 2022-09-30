@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/moby/sys/signal"
 )
 

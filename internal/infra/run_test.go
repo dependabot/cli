@@ -10,7 +10,7 @@ import (
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 )
 
 func Test_generateIgnoreConditions(t *testing.T) {
