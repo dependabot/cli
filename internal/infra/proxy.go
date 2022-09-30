@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -73,6 +75,14 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 		},
 	}
 	if params.ProxyCertPath != "" {
+		if !strings.HasPrefix(params.ProxyCertPath, "/") {
+			// needs to be absolute, assume it is relative to the working directory
+			dir, err := os.Getwd()
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get working directory: %w", err)
+			}
+			params.ProxyCertPath = path.Join(dir, params.ProxyCertPath)
+		}
 		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
 			Type:     mount.TypeBind,
 			Source:   params.ProxyCertPath,
