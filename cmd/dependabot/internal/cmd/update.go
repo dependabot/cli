@@ -111,17 +111,18 @@ var updateCmd = &cobra.Command{
 		processInput(input)
 
 		if err := infra.Run(infra.RunParams{
-			CacheDir:   cache,
-			Creds:      input.Credentials,
-			Debug:      debugging,
-			Expected:   nil, // update subcommand doesn't use expectations
-			ExtraHosts: extraHosts,
-			Job:        &input.Job,
-			Output:     output,
-			PullImages: pullImages,
-			TempDir:    tempDir,
-			Timeout:    timeout,
-			Volumes:    volumes,
+			CacheDir:      cache,
+			Creds:         input.Credentials,
+			Debug:         debugging,
+			Expected:      nil, // update subcommand doesn't use expectations
+			ExtraHosts:    extraHosts,
+			Job:           &input.Job,
+			Output:        output,
+			ProxyCertPath: proxyCertPath,
+			PullImages:    pullImages,
+			TempDir:       tempDir,
+			Timeout:       timeout,
+			Volumes:       volumes,
 		}); err != nil {
 			log.Fatalf("failed to run updater: %v", err)
 		}
@@ -190,6 +191,7 @@ func init() {
 
 	updateCmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	updateCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
+	updateCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
 	updateCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	updateCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
 	updateCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")

@@ -30,6 +30,8 @@ type RunParams struct {
 	CacheDir string
 	// write output to a file
 	Output string
+	// ProxyCertPath is the path to a cert for the proxy to trust
+	ProxyCertPath string
 	// attempt to pull images if they aren't local?
 	PullImages bool
 	// run an interactive shell?
