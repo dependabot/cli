@@ -41,6 +41,8 @@ type RunParams struct {
 	Timeout time.Duration
 	// TempDir is the path to use as the temporary directory.
 	TempDir string
+	// ExtraHosts adds /etc/hosts entries to the proxy for testing.
+	ExtraHosts []string
 }
 
 func Run(params RunParams) error {

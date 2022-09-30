@@ -70,6 +70,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 			"host.docker.internal:host-gateway",
 		},
 	}
+	hostCfg.ExtraHosts = append(hostCfg.ExtraHosts, params.ExtraHosts...)
 	if params.CacheDir != "" {
 		_ = os.MkdirAll(params.CacheDir, 0744)
 		cacheDir, _ := filepath.Abs(params.CacheDir)

@@ -115,6 +115,7 @@ var updateCmd = &cobra.Command{
 			Creds:      input.Credentials,
 			Debug:      debugging,
 			Expected:   nil, // update subcommand doesn't use expectations
+			ExtraHosts: extraHosts,
 			Job:        &input.Job,
 			Output:     output,
 			PullImages: pullImages,
@@ -192,6 +193,7 @@ func init() {
 	updateCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	updateCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
 	updateCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
+	updateCmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
 	updateCmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
 	updateCmd.Flags().IntVar(&inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
 }
