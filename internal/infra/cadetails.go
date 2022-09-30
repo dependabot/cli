@@ -15,7 +15,7 @@ const (
 	keyExpiryYears = 2
 )
 
-var certSubject = pkix.Name{
+var CertSubject = pkix.Name{
 	CommonName:         "Dependabot Internal CA",
 	OrganizationalUnit: []string{"Dependabot"},
 	Organization:       []string{"GitHub Inc."},
@@ -60,7 +60,7 @@ func generateCert(key *rsa.PrivateKey) (string, error) {
 
 	template := x509.Certificate{
 		SerialNumber:          big.NewInt(1),
-		Subject:               certSubject,
+		Subject:               CertSubject,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		SignatureAlgorithm:    x509.SHA256WithRSA,

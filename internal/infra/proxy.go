@@ -19,7 +19,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
-const proxyCertPath = "/usr/share/certificates/custom-ca-cert.crt"
+const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
 
 func init() {
 	// needed for namesgenerator.GetRandomName
@@ -107,7 +107,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 			"PROXY_CACHE=true",
 		},
 		Cmd: []string{
-			"sh", "-c", "/usr/sbin/update-ca-certificates && /update-job-proxy",
+			"sh", "-c", "update-ca-certificates && /update-job-proxy",
 		},
 	}
 	hostName := namesgenerator.GetRandomName(1)
