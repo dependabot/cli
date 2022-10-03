@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -16,6 +18,8 @@ import (
 	"github.com/docker/docker/pkg/namesgenerator"
 	"github.com/docker/docker/pkg/stdcopy"
 )
+
+const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
 
 func init() {
 	// needed for namesgenerator.GetRandomName
@@ -71,6 +75,24 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 		},
 	}
 	hostCfg.ExtraHosts = append(hostCfg.ExtraHosts, params.ExtraHosts...)
+	if params.ProxyCertPath != "" {
+		if !strings.HasPrefix(params.ProxyCertPath, "/") {
+			// needs to be absolute, assume it is relative to the working directory
+			var dir string
+			dir, err = os.Getwd()
+			if err != nil {
+				return nil, fmt.Errorf("couldn't get working directory: %w", err)
+			}
+			params.ProxyCertPath = path.Join(dir, params.ProxyCertPath)
+		}
+		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   params.ProxyCertPath,
+			Target:   proxyCertPath,
+			ReadOnly: true,
+		})
+	}
+	hostCfg.ExtraHosts = append(hostCfg.ExtraHosts, params.ExtraHosts...)
 	if params.CacheDir != "" {
 		_ = os.MkdirAll(params.CacheDir, 0744)
 		cacheDir, _ := filepath.Abs(params.CacheDir)
@@ -85,6 +107,9 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 		Env: []string{
 			"JOB_ID=" + jobID,
 			"PROXY_CACHE=true",
+		},
+		Entrypoint: []string{
+			"sh", "-c", "update-ca-certificates && /update-job-proxy",
 		},
 	}
 	hostName := namesgenerator.GetRandomName(1)

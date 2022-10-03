@@ -11,15 +11,16 @@ import (
 )
 
 var (
-	file       string
-	cache      string
-	debugging  bool
-	extraHosts []string
-	output     string
-	pullImages bool
-	volumes    []string
-	timeout    time.Duration
-	tempDir    string
+	file          string
+	cache         string
+	debugging     bool
+	proxyCertPath string
+	extraHosts    []string
+	output        string
+	pullImages    bool
+	volumes       []string
+	timeout       time.Duration
+	tempDir       string
 )
 
 // rootCmd represents the base command when called without any subcommands
