@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/namesgenerator"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"testing"
@@ -47,8 +48,13 @@ func TestNewProxy_customCert(t *testing.T) {
 	key.Close()
 
 	successChan := make(chan struct{})
+	addr := "127.0.0.1:8765"
+	if os.Getenv("GITHUB_TOKEN") != "" {
+		log.Println("YEAH")
+		addr = "0.0.0.0:8765"
+	}
 	testServer := &http.Server{
-		Addr: "127.0.0.1:8765",
+		Addr: addr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("SUCCESS"))
 			successChan <- struct{}{}
