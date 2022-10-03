@@ -117,6 +117,7 @@ var updateCmd = &cobra.Command{
 			Expected:      nil, // update subcommand doesn't use expectations
 			ExtraHosts:    extraHosts,
 			Job:           &input.Job,
+			LocalRepo:     localRepo,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
 			PullImages:    pullImages,
@@ -184,11 +185,12 @@ func init() {
 	updateCmd.Flags().StringVarP(&file, "file", "f", "", "path to scenario file")
 
 	updateCmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
-	updateCmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
+	updateCmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory in the repo to update")
 
 	updateCmd.Flags().BoolVar(&dryRun, "dry-run", true, "perform update as a dry run")
 	_ = updateCmd.MarkFlagRequired("dry-run")
 
+	updateCmd.Flags().StringVar(&localRepo, "local-repo", "", "local repo to update, skips fetch_files step")
 	updateCmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	updateCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
 	updateCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")

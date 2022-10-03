@@ -43,6 +43,7 @@ var testCmd = &cobra.Command{
 			Expected:      scenario.Output,
 			ExtraHosts:    extraHosts,
 			Job:           &scenario.Input.Job,
+			LocalRepo:     localRepo,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
 			PullImages:    pullImages,
@@ -80,6 +81,7 @@ func init() {
 	testCmd.Flags().IntVarP(&jobs, "jobs", "j", 1, "Number of jobs to run simultaneously")
 	testCmd.MarkFlagsMutuallyExclusive("jobs", "file")
 
+	testCmd.Flags().StringVar(&localRepo, "local-repo", "", "local repo to update, skips fetch_files step")
 	testCmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	testCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
 	testCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")

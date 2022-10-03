@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/dependabot/cli/internal/git"
 	"io"
 	"log"
 	"os"
@@ -28,6 +29,8 @@ type RunParams struct {
 	Creds []map[string]string
 	// local directory used for caching
 	CacheDir string
+	// LocalRepo is a path to a repo to do the update on
+	LocalRepo string
 	// write output to a file
 	Output string
 	// ProxyCertPath is the path to a cert for the proxy to trust
@@ -87,6 +90,14 @@ func Run(params RunParams) error {
 		defer outFile.Close()
 	}
 
+	// Doing some sanity checks when given a local git repo. The goal is to lower the frustration level
+	// of having to get the job inputs just right while developing and testing.
+	if params.LocalRepo != "" {
+		if err := checkLocalGitRepo(&params); err != nil {
+			return err
+		}
+	}
+
 	if err := runContainers(ctx, params, api); err != nil {
 		return err
 	}
@@ -123,6 +134,43 @@ func Run(params RunParams) error {
 		return fmt.Errorf("update failed expectations")
 	}
 
+	return nil
+}
+
+func checkLocalGitRepo(params *RunParams) error {
+	// Git might not be installed, we can still generate a fake commit to prevent
+	// the updater from trying to fetch things from the provider.
+	if !git.IsAvailable() {
+		if params.Job.Source.Commit == nil && params.Job.Source.Branch == nil {
+			commit := "local-no-git"
+			params.Job.Source.Commit = &commit
+		}
+		return nil
+	}
+
+	commit, err := git.Run(params.LocalRepo, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("could not execute rev-parse, is this a git repo with 1 commit? %w", err)
+	}
+
+	// ignoring error here, is this maybe a detached head situation?
+	branch, _ := git.Run(params.LocalRepo, "rev-parse", "--abbrev-ref", "HEAD")
+
+	// If no commit or branch is given we can fill them in as a convenience. This is important
+	// because core will reach out to the provider when not given commit or branch.
+	if params.Job.Source.Commit == nil && params.Job.Source.Branch == nil {
+		params.Job.Source.Commit = &commit
+		params.Job.Source.Branch = &branch
+		return nil
+	}
+
+	// when developing locally it's very easy to accidentally be testing the wrong commit/branch
+	if params.Job.Source.Commit != nil && commit != *params.Job.Source.Commit {
+		return fmt.Errorf("job commit does not match local repo's HEAD commit")
+	}
+	if params.Job.Source.Branch != nil && branch != "" && branch != *params.Job.Source.Branch {
+		return fmt.Errorf("job branch does not match local repo's HEAD branch")
+	}
 	return nil
 }
 

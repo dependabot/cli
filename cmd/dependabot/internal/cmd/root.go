@@ -16,6 +16,7 @@ var (
 	debugging     bool
 	proxyCertPath string
 	extraHosts    []string
+	localRepo     string
 	output        string
 	pullImages    bool
 	volumes       []string

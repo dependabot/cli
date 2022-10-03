@@ -76,6 +76,46 @@ func Test_generateIgnoreConditions(t *testing.T) {
 	})
 }
 
+func Test_checkLocalGitRepo(t *testing.T) {
+	t.Run("fills in the commit and branch when blank", func(t *testing.T) {
+		params := RunParams{
+			Job: &model.Job{},
+		}
+		if err := checkLocalGitRepo(&params); err != nil {
+			t.Fatal(err)
+		}
+		if params.Job.Source.Branch == nil || params.Job.Source.Commit == nil {
+			t.Error("Failed to get commit or branch")
+		}
+	})
+	t.Run("errors since the branch doesn't match", func(t *testing.T) {
+		branch := "branch"
+		params := RunParams{
+			Job: &model.Job{
+				Source: model.Source{
+					Branch: &branch,
+				},
+			},
+		}
+		if err := checkLocalGitRepo(&params); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+	t.Run("makes no change when commit is set", func(t *testing.T) {
+		commit := "commit"
+		params := RunParams{
+			Job: &model.Job{
+				Source: model.Source{
+					Commit: &commit,
+				},
+			},
+		}
+		if err := checkLocalGitRepo(&params); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+}
+
 func TestRun(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

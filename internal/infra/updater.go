@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -49,6 +50,10 @@ const (
 // NewUpdater starts the update container interactively running /bin/sh, so it does not stop.
 func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy) (*Updater, error) {
 	f := FileFetcherJobFile{Job: *params.Job}
+	if params.LocalRepo != "" {
+		// TODO not ideal, core won't honor the clone unless we're vendoring
+		f.Job.VendorDependencies = true
+	}
 	inputPath, err := WriteContainerInput(params.TempDir, f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write fetcher input: %w", err)
@@ -81,6 +86,21 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 			Target:   dbotCert,
 			ReadOnly: true,
 		}},
+	}
+	if params.LocalRepo != "" {
+		if !strings.HasPrefix(params.LocalRepo, "/") {
+			wd, err := os.Getwd()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get working directory: %w", err)
+			}
+			params.LocalRepo = path.Join(wd, params.LocalRepo)
+		}
+		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   params.LocalRepo,
+			Target:   guestRepoDir,
+			ReadOnly: true,
+		})
 	}
 	for _, v := range params.Volumes {
 		local, remote, _ := strings.Cut(v, ":")
