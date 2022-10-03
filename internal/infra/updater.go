@@ -89,7 +89,8 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	}
 	if params.LocalRepo != "" {
 		if !strings.HasPrefix(params.LocalRepo, "/") {
-			wd, err := os.Getwd()
+			var wd string
+			wd, err = os.Getwd()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get working directory: %w", err)
 			}
