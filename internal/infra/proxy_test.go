@@ -9,7 +9,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/namesgenerator"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"testing"
@@ -50,7 +49,7 @@ func TestNewProxy_customCert(t *testing.T) {
 	successChan := make(chan struct{})
 	addr := "127.0.0.1:8765"
 	if os.Getenv("GITHUB_TOKEN") != "" {
-		log.Println("YEAH")
+		t.Log("detected running in actions")
 		addr = "0.0.0.0:8765"
 	}
 	testServer := &http.Server{
@@ -62,6 +61,7 @@ func TestNewProxy_customCert(t *testing.T) {
 	}
 	defer testServer.Shutdown(ctx)
 	go func() {
+		t.Log("Starting HTTPS server")
 		if err := testServer.ListenAndServeTLS(cert.Name(), key.Name()); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
@@ -102,6 +102,8 @@ func TestNewProxy_customCert(t *testing.T) {
 	}
 	defer proxy.Close()
 
+	t.Log("Starting proxy")
+
 	go proxy.TailLogs(ctx, cli)
 
 	select {
@@ -116,6 +118,7 @@ const proxyTestDockerfile = `
 FROM ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest
 RUN apk add --no-cache curl
 RUN echo "#!/bin/sh" > /update-job-proxy
+RUN echo "CURLing host.docker.internal" >> /update-job-proxy
 RUN echo "curl -s https://host.docker.internal:8765" >> /update-job-proxy
 RUN chmod +x /update-job-proxy
 `
