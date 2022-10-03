@@ -4,7 +4,6 @@ name: Smoke
 on:
   workflow_dispatch:
   pull_request:
-    branches: ["main"]
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
