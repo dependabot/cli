@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/namesgenerator"
 	"io"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/namesgenerator"
 )
 
 func TestSeed(t *testing.T) {
@@ -41,22 +42,31 @@ func TestNewProxy_customCert(t *testing.T) {
 	if err != nil || err2 != nil {
 		t.Fatal(err, err2)
 	}
-	cert.Write([]byte(ca.Cert))
-	key.Write([]byte(ca.Key))
-	cert.Close()
-	key.Close()
+	_, _ = cert.WriteString(ca.Cert)
+	_, _ = key.WriteString(ca.Key)
+	_ = cert.Close()
+	_ = key.Close()
 
 	successChan := make(chan struct{})
+	addr := "127.0.0.1:8765"
+	if os.Getenv("CI") != "" {
+		t.Log("detected running in actions")
+		addr = "0.0.0.0:8765"
+	}
 	testServer := &http.Server{
-		Addr: "127.0.0.1:8765",
+		ReadHeaderTimeout: time.Second,
+		Addr:              addr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("SUCCESS"))
+			_, _ = w.Write([]byte("SUCCESS"))
 			successChan <- struct{}{}
 		}),
 	}
-	defer testServer.Shutdown(ctx)
+	defer func() {
+		_ = testServer.Shutdown(ctx)
+	}()
 	go func() {
-		if err := testServer.ListenAndServeTLS(cert.Name(), key.Name()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		t.Log("Starting HTTPS server")
+		if err = testServer.ListenAndServeTLS(cert.Name(), key.Name()); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
@@ -70,7 +80,7 @@ func TestNewProxy_customCert(t *testing.T) {
 	var buildContext bytes.Buffer
 	tw := tar.NewWriter(&buildContext)
 	addFileToArchive(tw, "/Dockerfile", 0644, proxyTestDockerfile)
-	tw.Close()
+	_ = tw.Close()
 
 	tmp := ProxyImageName
 	defer func() {
@@ -94,7 +104,11 @@ func TestNewProxy_customCert(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	defer proxy.Close()
+	defer func() {
+		_ = proxy.Close()
+	}()
+
+	t.Log("Starting proxy")
 
 	go proxy.TailLogs(ctx, cli)
 
@@ -110,6 +124,7 @@ const proxyTestDockerfile = `
 FROM ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest
 RUN apk add --no-cache curl
 RUN echo "#!/bin/sh" > /update-job-proxy
+RUN echo "CURLing host.docker.internal" >> /update-job-proxy
 RUN echo "curl -s https://host.docker.internal:8765" >> /update-job-proxy
 RUN chmod +x /update-job-proxy
 `

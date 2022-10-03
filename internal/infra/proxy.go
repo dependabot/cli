@@ -77,7 +77,8 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 	if params.ProxyCertPath != "" {
 		if !strings.HasPrefix(params.ProxyCertPath, "/") {
 			// needs to be absolute, assume it is relative to the working directory
-			dir, err := os.Getwd()
+			var dir string
+			dir, err = os.Getwd()
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get working directory: %w", err)
 			}
