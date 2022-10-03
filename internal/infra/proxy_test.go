@@ -49,7 +49,7 @@ func TestNewProxy_customCert(t *testing.T) {
 
 	successChan := make(chan struct{})
 	addr := "127.0.0.1:8765"
-	if os.Getenv("GITHUB_TOKEN") != "" {
+	if os.Getenv("CI") != "" {
 		t.Log("detected running in actions")
 		addr = "0.0.0.0:8765"
 	}
