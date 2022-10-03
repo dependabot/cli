@@ -14,6 +14,7 @@ var (
 	file       string
 	cache      string
 	debugging  bool
+	extraHosts []string
 	output     string
 	pullImages bool
 	volumes    []string

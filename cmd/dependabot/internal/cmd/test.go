@@ -41,6 +41,7 @@ var testCmd = &cobra.Command{
 			Creds:      scenario.Input.Credentials,
 			Debug:      debugging,
 			Expected:   scenario.Output,
+			ExtraHosts: extraHosts,
 			Job:        &scenario.Input.Job,
 			Output:     output,
 			PullImages: pullImages,
@@ -83,5 +84,6 @@ func init() {
 	testCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	testCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
 	testCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
+	testCmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
 	testCmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
 }
