@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -83,11 +84,18 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		}},
 	}
 	for _, v := range params.Volumes {
-		local, remote, _ := strings.Cut(v, ":")
+		var local, remote string
+		var readOnly bool
+		local, remote, readOnly, err = mountOptions(v)
+		if err != nil {
+			return nil, err
+		}
+
 		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
-			Type:   mount.TypeBind,
-			Source: local,
-			Target: remote,
+			Type:     mount.TypeBind,
+			Source:   local,
+			Target:   remote,
+			ReadOnly: readOnly,
 		})
 	}
 	netCfg := &network.NetworkingConfig{
@@ -116,6 +124,28 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	}
 
 	return updater, nil
+}
+
+var ErrInvalidVolume = fmt.Errorf("invalid volume syntax")
+
+func mountOptions(v string) (local, remote string, readOnly bool, err error) {
+	parts := strings.Split(v, ":")
+	if len(parts) < 2 || len(parts) > 3 {
+		return "", "", false, ErrInvalidVolume
+	}
+	local = parts[0]
+	remote = parts[1]
+	if len(parts) == 3 {
+		if parts[2] != "ro" {
+			return "", "", false, ErrInvalidVolume
+		}
+		readOnly = true
+	}
+	if !path.IsAbs(local) {
+		wd, _ := os.Getwd()
+		local = filepath.Clean(filepath.Join(wd, local))
+	}
+	return local, remote, readOnly, nil
 }
 
 // InstallCertificates runs update-ca-certificates as root, blocks until complete.
