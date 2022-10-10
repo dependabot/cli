@@ -178,7 +178,7 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiPort int) er
 		AttachStderr: true,
 		Tty:          true,
 		User:         dependabot,
-		Env:          userEnv(proxyURL, apiPort),
+		Env:          append(userEnv(proxyURL, apiPort), "DEBUG=1"),
 		Cmd:          []string{"/bin/bash"},
 	})
 	if err != nil {
