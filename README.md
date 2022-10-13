@@ -17,7 +17,7 @@ you can install the latest release of `dependabot` using the following command
 ([gist source](https://gist.github.com/mattt/e09e1ecd76d5573e0517a7622009f06f)):
 
 ```console
-$ gh gist view --raw e09e1ecd76d5573e0517a7622009f06f | bash
+gh gist view --raw e09e1ecd76d5573e0517a7622009f06f | bash
 ```
 
 ## Requirements
@@ -103,7 +103,7 @@ using the `--file` / `-f` option
 (this replaces the package manager and repository name arguments).
 
 ```console
-$ dependabot update -f job.yaml --dry-run
+dependabot update -f job.yaml --dry-run
 ```
 
 ```yaml
@@ -265,14 +265,14 @@ To produce a scenario file that tests Dependabot behavior for a given repo,
 run the `update` subcommand and set the `--output` / `-o` option to a file path.
 
 ```console
-$ dependabot update go_modules rsc/quote --dry-run -o go-scenario.yml
+dependabot update go_modules rsc/quote --dry-run -o go-scenario.yml
 ```
 
 Run the `test` subcommand for the generated scenario file,
 specifying a cache directory with the `--cache` option.
 
 ```console
-$ dependabot test -f go-scenario.yml --cache ./tmp/cache
+dependabot test -f go-scenario.yml --cache ./tmp/cache
 ```
 
 While performing the update job,
@@ -306,7 +306,7 @@ to get the latest version of Docker installed and running.
 You can verify that Docker is running locally with the following command:
 
 ```console
-$ docker --version
+docker --version
 ```
 
 ### "Network internet is ambiguous"
@@ -320,7 +320,7 @@ This error can occur when the CLI exits before having an opportunity to clean up
 Run the following command to remove all unused networks:
 
 ```console
-$ docker network prune
+docker network prune
 ```
 
 [Docker]: https://docs.docker.com/get-started/
