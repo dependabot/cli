@@ -46,9 +46,10 @@ type Allowed struct {
 }
 
 type Condition struct {
-	DependencyName     string `json:"dependency-name" yaml:"dependency-name"`
-	Source             string `json:"source,omitempty" yaml:"source,omitempty"`
-	VersionRequirement string `json:"version-requirement,omitempty" yaml:"version-requirement,omitempty"`
+	DependencyName     string   `json:"dependency-name" yaml:"dependency-name"`
+	Source             string   `json:"source,omitempty" yaml:"source,omitempty"`
+	UpdateTypes        []string `json:"update-types,omitempty" yaml:"update-types,omitempty"`
+	VersionRequirement string   `json:"version-requirement,omitempty" yaml:"version-requirement,omitempty"`
 }
 
 type Advisory struct {
