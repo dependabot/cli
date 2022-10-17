@@ -111,16 +111,17 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		return nil, fmt.Errorf("failed to create updater container: %w", err)
 	}
 
-	if err := cli.ContainerStart(ctx, updaterContainer.ID, types.ContainerStartOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to start updater container: %w", err)
-	}
-
 	updater := &Updater{
 		cli:         cli,
 		containerID: updaterContainer.ID,
 		outputDir:   outputDir,
 		RepoDir:     repoDir,
 		inputPath:   inputPath,
+	}
+
+	if err := cli.ContainerStart(ctx, updaterContainer.ID, types.ContainerStartOptions{}); err != nil {
+		updater.Close()
+		return nil, fmt.Errorf("failed to start updater container: %w", err)
 	}
 
 	return updater, nil
