@@ -117,24 +117,29 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 	if err != nil {
 		return nil, fmt.Errorf("failed to create proxy container: %w", err)
 	}
-	for _, n := range nets {
-		if err := cli.NetworkConnect(ctx, n.ID, proxyContainer.ID, &network.EndpointSettings{}); err != nil {
-			return nil, fmt.Errorf("failed to connect to network: %w", err)
-		}
-	}
 
-	if err := cli.ContainerStart(ctx, proxyContainer.ID, types.ContainerStartOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to start container: %w", err)
-	}
-
-	return &Proxy{
+	proxy := &Proxy{
 		cli:             cli,
 		containerID:     proxyContainer.ID,
 		containerName:   hostName,
 		url:             fmt.Sprintf("http://%s:1080", hostName),
 		CertPath:        certPath,
 		proxyConfigPath: proxyConfigPath,
-	}, nil
+	}
+
+	for _, n := range nets {
+		if err := cli.NetworkConnect(ctx, n.ID, proxyContainer.ID, &network.EndpointSettings{}); err != nil {
+			_ = proxy.Close()
+			return nil, fmt.Errorf("failed to connect to network: %w", err)
+		}
+	}
+
+	if err := cli.ContainerStart(ctx, proxyContainer.ID, types.ContainerStartOptions{}); err != nil {
+		_ = proxy.Close()
+		return nil, fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return proxy, nil
 }
 
 func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
