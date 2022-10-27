@@ -179,6 +179,7 @@ func (u *Updater) InstallCertificates(ctx context.Context) error {
 
 func userEnv(proxyURL string, apiPort int) []string {
 	return []string{
+		"GITHUB_ACTIONS=true", // sets exit code when fetch fails
 		fmt.Sprintf("http_proxy=%s", proxyURL),
 		fmt.Sprintf("HTTP_PROXY=%s", proxyURL),
 		fmt.Sprintf("https_proxy=%s", proxyURL),
