@@ -20,7 +20,6 @@ var (
 	pullImages    bool
 	volumes       []string
 	timeout       time.Duration
-	tempDir       string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -45,6 +44,4 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().StringVar(&infra.UpdaterImageName, "updater-image", infra.UpdaterImageName, "container image to use for the updater")
 	rootCmd.PersistentFlags().StringVar(&infra.ProxyImageName, "proxy-image", infra.ProxyImageName, "container image to use for the proxy")
-
-	rootCmd.PersistentFlags().StringVar(&tempDir, "temp-dir", "tmp", "path to the temporary directory for the job")
 }

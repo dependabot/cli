@@ -41,8 +41,6 @@ type RunParams struct {
 	// Timeout specifies an optional maximum duration the CLI will run an update.
 	// If Timeout is <= 0 it will never time out.
 	Timeout time.Duration
-	// TempDir is the path to use as the temporary directory.
-	TempDir string
 	// ExtraHosts adds /etc/hosts entries to the proxy for testing.
 	ExtraHosts []string
 }

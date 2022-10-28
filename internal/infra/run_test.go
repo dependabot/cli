@@ -90,9 +90,9 @@ func TestRun(t *testing.T) {
 
 	var buildContext bytes.Buffer
 	tw := tar.NewWriter(&buildContext)
-	addFileToArchive(tw, "/Dockerfile", 0644, dockerFile)
-	addFileToArchive(tw, "/test_main.go", 0644, testMain)
-	tw.Close()
+	_ = addFileToArchive(tw, "/Dockerfile", 0644, dockerFile)
+	_ = addFileToArchive(tw, "/test_main.go", 0644, testMain)
+	_ = tw.Close()
 
 	UpdaterImageName = "test-updater"
 	resp, err := cli.ImageBuild(ctx, &buildContext, types.ImageBuildOptions{Tags: []string{UpdaterImageName}})
@@ -115,28 +115,9 @@ func TestRun(t *testing.T) {
 				Repo: "org/name",
 			},
 		},
-		TempDir: "/tmp",
 	})
 	if err != nil {
 		t.Error(err)
-	}
-}
-
-func addFileToArchive(tw *tar.Writer, path string, mode int64, content string) {
-	header := &tar.Header{
-		Name: path,
-		Size: int64(len(content)),
-		Mode: mode,
-	}
-
-	err := tw.WriteHeader(header)
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = io.Copy(tw, bytes.NewReader([]byte(content)))
-	if err != nil {
-		panic(err)
 	}
 }
 
