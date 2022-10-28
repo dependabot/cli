@@ -79,7 +79,7 @@ func TestNewProxy_customCert(t *testing.T) {
 	// build the test image
 	var buildContext bytes.Buffer
 	tw := tar.NewWriter(&buildContext)
-	addFileToArchive(tw, "/Dockerfile", 0644, proxyTestDockerfile)
+	_ = addFileToArchive(tw, "/Dockerfile", 0644, proxyTestDockerfile)
 	_ = tw.Close()
 
 	tmp := ProxyImageName

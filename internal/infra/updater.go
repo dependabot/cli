@@ -1,6 +1,8 @@
 package infra
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -28,7 +30,6 @@ var UpdaterImageName = "ghcr.io/dependabot/dependabot-updater:latest"
 
 const (
 	fetcherOutputFile = "output.json"
-	fetcherRepoDir    = "repo"
 	guestInputDir     = "/home/dependabot/dependabot-updater/job.json"
 	guestOutputDir    = "/home/dependabot/dependabot-updater/output"
 	guestRepoDir      = "/home/dependabot/dependabot-updater/repo"
@@ -37,9 +38,6 @@ const (
 type Updater struct {
 	cli         *client.Client
 	containerID string
-	outputDir   string
-	RepoDir     string
-	inputPath   string
 }
 
 const (
@@ -49,40 +47,14 @@ const (
 
 // NewUpdater starts the update container interactively running /bin/sh, so it does not stop.
 func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy) (*Updater, error) {
-	f := FileFetcherJobFile{Job: *params.Job}
-	inputPath, err := WriteContainerInput(params.TempDir, f)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write fetcher input: %w", err)
-	}
-
 	containerCfg := &container.Config{
 		User:  dependabot,
 		Image: UpdaterImageName,
 		Cmd:   []string{"/bin/sh"},
 		Tty:   true, // prevent container from stopping
 	}
-	outputDir, err := SetupOutputDir(params.TempDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup fetcher output dir: %w", err)
-	}
-
-	repoDir := filepath.Join(outputDir, fetcherRepoDir)
-	hostCfg := &container.HostConfig{
-		Mounts: []mount.Mount{{
-			Type:   mount.TypeBind,
-			Source: inputPath,
-			Target: guestInputDir,
-		}, {
-			Type:   mount.TypeBind,
-			Source: outputDir,
-			Target: guestOutputDir,
-		}, {
-			Type:     mount.TypeBind,
-			Source:   prox.CertPath,
-			Target:   dbotCert,
-			ReadOnly: true,
-		}},
-	}
+	hostCfg := &container.HostConfig{}
+	var err error
 	for _, v := range params.Volumes {
 		var local, remote string
 		var readOnly bool
@@ -114,17 +86,39 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	updater := &Updater{
 		cli:         cli,
 		containerID: updaterContainer.ID,
-		outputDir:   outputDir,
-		RepoDir:     repoDir,
-		inputPath:   inputPath,
 	}
 
-	if err := cli.ContainerStart(ctx, updaterContainer.ID, types.ContainerStartOptions{}); err != nil {
+	if err = putUpdaterInputs(ctx, cli, prox.ca.Cert, updaterContainer.ID, params.Job); err != nil {
+		updater.Close()
+		return nil, err
+	}
+
+	if err = cli.ContainerStart(ctx, updaterContainer.ID, types.ContainerStartOptions{}); err != nil {
 		updater.Close()
 		return nil, fmt.Errorf("failed to start updater container: %w", err)
 	}
 
 	return updater, nil
+}
+
+func putUpdaterInputs(ctx context.Context, cli *client.Client, cert, id string, job *model.Job) error {
+	opt := types.CopyToContainerOptions{}
+	if t, err := tarball(dbotCert, cert); err != nil {
+		return fmt.Errorf("failed to create cert tarball: %w", err)
+	} else if err = cli.CopyToContainer(ctx, id, "/", t, opt); err != nil {
+		return fmt.Errorf("failed to copy cert to container: %w", err)
+	}
+
+	data, err := json.Marshal(FileFetcherJobFile{Job: job})
+	if err != nil {
+		return fmt.Errorf("failed to marshal job file: %w", err)
+	}
+	if t, err := tarball(guestInputDir, string(data)); err != nil {
+		return fmt.Errorf("failed create input tarball: %w", err)
+	} else if err = cli.CopyToContainer(ctx, id, "/", t, opt); err != nil {
+		return fmt.Errorf("failed to copy input to container: %w", err)
+	}
+	return nil
 }
 
 var ErrInvalidVolume = fmt.Errorf("invalid volume syntax")
@@ -265,7 +259,7 @@ func (u *Updater) RunUpdate(ctx context.Context, proxyURL string, apiPort int) e
 		AttachStderr: true,
 		User:         dependabot,
 		Env:          userEnv(proxyURL, apiPort),
-		Cmd:          []string{"/bin/sh", "-c", "bin/run fetch_files && bin/run update_files"},
+		Cmd:          []string{"/bin/sh", "-c", "mkdir output && bin/run fetch_files && bin/run update_files"},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create exec: %w", err)
@@ -307,9 +301,6 @@ func (u *Updater) Wait(ctx context.Context, condition container.WaitCondition) e
 
 // Close kills and deletes the container and deletes updater mount paths related to the run.
 func (u *Updater) Close() error {
-	defer os.Remove(u.inputPath)
-	defer os.RemoveAll(u.outputDir)
-
 	return u.cli.ContainerRemove(context.Background(), u.containerID, types.ContainerRemoveOptions{
 		Force: true,
 	})
@@ -317,39 +308,34 @@ func (u *Updater) Close() error {
 
 // FileFetcherJobFile  is the payload passed to file updater containers.
 type FileFetcherJobFile struct {
-	Job model.Job `json:"job"`
+	Job *model.Job `json:"job"`
 }
 
-func WriteContainerInput(tempDir string, input interface{}) (string, error) {
-	// create file:
-	out, err := os.CreateTemp(TempDir(tempDir), "containers-input-*.json")
-	if err != nil {
-		return "", fmt.Errorf("creating container input: %w", err)
+func tarball(name, contents string) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	t := tar.NewWriter(&buf)
+	if err := addFileToArchive(t, name, 0777, contents); err != nil {
+		return nil, fmt.Errorf("adding file to archive: %w", err)
 	}
-	defer out.Close()
-	fn := out.Name()
-
-	// TODO why does actions require this?
-	_ = os.Chmod(fn, 0777)
-
-	// fill with json:
-	if err := json.NewEncoder(out).Encode(input); err != nil {
-		_ = os.RemoveAll(fn)
-		return "", fmt.Errorf("writing container input: %w", err)
-	}
-	return fn, nil
+	return &buf, t.Flush()
 }
 
-func SetupOutputDir(tempDir string) (string, error) {
-	outputDir, err := os.MkdirTemp(TempDir(tempDir), "fetcher-output-")
-	if err != nil {
-		return "", fmt.Errorf("creating output tempdir: %w", err)
+func addFileToArchive(tw *tar.Writer, name string, mode int64, content string) error {
+	header := &tar.Header{
+		Name: name,
+		Size: int64(len(content)),
+		Mode: mode,
 	}
 
-	repoDir := filepath.Join(outputDir, fetcherRepoDir)
-	if err := os.Mkdir(repoDir, 0777); err != nil {
-		return "", fmt.Errorf("creating repo tempdir: %w", err)
+	err := tw.WriteHeader(header)
+	if err != nil {
+		return err
 	}
-	_ = os.Chmod(outputDir, 0777)
-	return outputDir, nil
+
+	_, err = tw.Write([]byte(content))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

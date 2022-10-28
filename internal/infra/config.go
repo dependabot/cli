@@ -1,11 +1,5 @@
 package infra
 
-import (
-	"encoding/json"
-	"fmt"
-	"os"
-)
-
 // ConfigFilePath is the path to proxy config file.
 const ConfigFilePath = "/config.json"
 
@@ -25,19 +19,4 @@ type CertificateAuthority struct {
 type BasicAuthCredentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-}
-
-// StoreProxyConfig saves the config to a temporary file, returning the path
-func StoreProxyConfig(tmpPath string, config *Config) (string, error) {
-	tmp, err := os.CreateTemp(TempDir(tmpPath), "config.json")
-	if err != nil {
-		return "", fmt.Errorf("creating proxy config: %w", err)
-	}
-	defer tmp.Close()
-
-	if err := json.NewEncoder(tmp).Encode(config); err != nil {
-		_ = os.RemoveAll(tmp.Name())
-		return "", fmt.Errorf("encoding proxy config: %w", err)
-	}
-	return tmp.Name(), nil
 }
