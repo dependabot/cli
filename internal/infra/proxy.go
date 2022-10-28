@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -30,12 +31,11 @@ func init() {
 var ProxyImageName = "ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest"
 
 type Proxy struct {
-	cli             *client.Client
-	containerID     string
-	CertPath        string
-	proxyConfigPath string
-	containerName   string
-	url             string
+	cli           *client.Client
+	containerID   string
+	containerName string
+	url           string
+	ca            CertificateAuthority
 }
 
 func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets ...types.NetworkCreateResponse) (*Proxy, error) {
@@ -44,32 +44,15 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate cert: %w", err)
 	}
-	certPath := filepath.Join(TempDir(params.TempDir), "cert.crt")
-	os.Remove(certPath)
-
-	err = os.WriteFile(certPath, []byte(ca.Cert), 0777)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write cert: %w", err)
-	}
 
 	// Generate and write configuration to disk:
 	proxyConfig := &Config{
 		Credentials: params.Creds,
 		CA:          ca,
 	}
-	proxyConfigPath, err := StoreProxyConfig(params.TempDir, proxyConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to store proxy config: %w", err)
-	}
 
 	hostCfg := &container.HostConfig{
 		AutoRemove: true,
-		Mounts: []mount.Mount{{
-			Type:     mount.TypeBind,
-			Source:   proxyConfigPath,
-			Target:   ConfigFilePath,
-			ReadOnly: true,
-		}},
 		ExtraHosts: []string{
 			"host.docker.internal:host-gateway",
 		},
@@ -119,27 +102,46 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 	}
 
 	proxy := &Proxy{
-		cli:             cli,
-		containerID:     proxyContainer.ID,
-		containerName:   hostName,
-		url:             fmt.Sprintf("http://%s:1080", hostName),
-		CertPath:        certPath,
-		proxyConfigPath: proxyConfigPath,
+		cli:           cli,
+		containerID:   proxyContainer.ID,
+		containerName: hostName,
+		url:           fmt.Sprintf("http://%s:1080", hostName),
+		ca:            ca,
+	}
+
+	if err = putProxyConfig(ctx, cli, proxyConfig, proxyContainer.ID); err != nil {
+		_ = proxy.Close()
+		return nil, fmt.Errorf("failed to connect to network: %w", err)
 	}
 
 	for _, n := range nets {
-		if err := cli.NetworkConnect(ctx, n.ID, proxyContainer.ID, &network.EndpointSettings{}); err != nil {
+		if err = cli.NetworkConnect(ctx, n.ID, proxyContainer.ID, &network.EndpointSettings{}); err != nil {
 			_ = proxy.Close()
 			return nil, fmt.Errorf("failed to connect to network: %w", err)
 		}
 	}
 
-	if err := cli.ContainerStart(ctx, proxyContainer.ID, types.ContainerStartOptions{}); err != nil {
+	if err = cli.ContainerStart(ctx, proxyContainer.ID, types.ContainerStartOptions{}); err != nil {
 		_ = proxy.Close()
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
 	return proxy, nil
+}
+
+func putProxyConfig(ctx context.Context, cli *client.Client, config *Config, id string) error {
+	opt := types.CopyToContainerOptions{}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+	if t, err := tarball(ConfigFilePath, string(data)); err != nil {
+		return fmt.Errorf("failed to create cert tarball: %w", err)
+	} else if err = cli.CopyToContainer(ctx, id, "/", t, opt); err != nil {
+		return fmt.Errorf("failed to copy cert to container: %w", err)
+	}
+	return nil
 }
 
 func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
@@ -156,9 +158,6 @@ func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
 }
 
 func (p *Proxy) Close() error {
-	defer os.Remove(p.CertPath)
-	defer os.Remove(p.proxyConfigPath)
-
 	timeout := 5 * time.Second
 	_ = p.cli.ContainerStop(context.Background(), p.containerID, &timeout)
 

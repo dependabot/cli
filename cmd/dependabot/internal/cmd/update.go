@@ -120,7 +120,6 @@ var updateCmd = &cobra.Command{
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
 			PullImages:    pullImages,
-			TempDir:       tempDir,
 			Timeout:       timeout,
 			Volumes:       volumes,
 		}); err != nil {
