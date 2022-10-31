@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/docker/cli v20.10.20+incompatible
-	github.com/docker/docker v20.10.20+incompatible
+	github.com/docker/docker v20.10.21+incompatible
 	github.com/moby/moby v20.10.20+incompatible
 	github.com/moby/sys/signal v0.7.0
 	github.com/sergi/go-diff v1.2.0
