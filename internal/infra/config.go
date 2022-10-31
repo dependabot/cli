@@ -1,11 +1,13 @@
 package infra
 
+import "github.com/dependabot/cli/internal/model"
+
 // ConfigFilePath is the path to proxy config file.
 const ConfigFilePath = "/config.json"
 
 // Config is the structure of the proxy's config file
 type Config struct {
-	Credentials []map[string]string  `json:"all_credentials"`
+	Credentials []model.Credential   `json:"all_credentials"`
 	CA          CertificateAuthority `json:"ca"`
 }
 

@@ -13,7 +13,7 @@ type Input struct {
 	// Job is the data given to the updater
 	Job Job `yaml:"job"`
 	// Credentials is the registry info and tokens to pass to the Proxy
-	Credentials []map[string]string `yaml:"credentials,omitempty"`
+	Credentials []Credential `yaml:"credentials,omitempty"`
 }
 
 // Output is the expected output given the inputs

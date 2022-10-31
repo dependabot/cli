@@ -25,7 +25,7 @@ type RunParams struct {
 	// expectations asserted at the end of a test
 	Expected []model.Output
 	// credentials passed to the proxy
-	Creds []map[string]string
+	Creds []model.Credential
 	// local directory used for caching
 	CacheDir string
 	// write output to a file
@@ -62,16 +62,6 @@ func Run(params RunParams) error {
 
 	api := server.NewAPI(params.Expected)
 	defer api.Stop()
-
-	token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
-	if token != "" {
-		params.Creds = append(params.Creds, map[string]string{
-			"type":     "git_source",
-			"host":     "github.com",
-			"username": "x-access-token",
-			"password": token,
-		})
-	}
 
 	var outFile *os.File
 	if params.Output != "" {
