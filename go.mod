@@ -9,7 +9,7 @@ require (
 	github.com/moby/moby v20.10.21+incompatible
 	github.com/moby/sys/signal v0.7.0
 	github.com/sergi/go-diff v1.2.0
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
