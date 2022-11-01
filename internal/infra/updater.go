@@ -29,10 +29,9 @@ const dependabot = "dependabot"
 var UpdaterImageName = "ghcr.io/dependabot/dependabot-updater:latest"
 
 const (
-	fetcherOutputFile = "output.json"
-	guestInputDir     = "/home/dependabot/dependabot-updater/job.json"
-	guestOutputDir    = "/home/dependabot/dependabot-updater/output"
-	guestRepoDir      = "/home/dependabot/dependabot-updater/repo"
+	guestInputDir = "/home/dependabot/dependabot-updater/job.json"
+	guestOutput   = "/home/dependabot/dependabot-updater/output.json"
+	guestRepoDir  = "/home/dependabot/dependabot-updater/repo"
 )
 
 type Updater struct {
@@ -187,7 +186,7 @@ func userEnv(proxyURL string, apiPort int) []string {
 		fmt.Sprintf("DEPENDABOT_JOB_ID=%v", jobID),
 		fmt.Sprintf("DEPENDABOT_JOB_TOKEN=%v", ""),
 		fmt.Sprintf("DEPENDABOT_JOB_PATH=%v", guestInputDir),
-		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", filepath.Join(guestOutputDir, fetcherOutputFile)),
+		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", guestOutput),
 		fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%v", guestRepoDir),
 		fmt.Sprintf("DEPENDABOT_API_URL=http://host.docker.internal:%v", apiPort),
 		fmt.Sprintf("SSL_CERT_FILE=%v/ca-certificates.crt", certsPath),
@@ -259,7 +258,7 @@ func (u *Updater) RunUpdate(ctx context.Context, proxyURL string, apiPort int) e
 		AttachStderr: true,
 		User:         dependabot,
 		Env:          userEnv(proxyURL, apiPort),
-		Cmd:          []string{"/bin/sh", "-c", "mkdir output && bin/run fetch_files && bin/run update_files"},
+		Cmd:          []string{"/bin/sh", "-c", "bin/run fetch_files && bin/run update_files"},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create exec: %w", err)
