@@ -4,11 +4,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"reflect"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types"

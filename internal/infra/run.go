@@ -121,7 +121,7 @@ func expandEnvironmentVariables(api *server.API, params RunParams) {
 
 	// Make a copy of the credentials, so we don't inject them into the output file.
 	params.Creds = make([]model.Credential, len(params.Creds))
-	copy(params.Creds, params.Creds)
+	copy(params.Creds, api.Actual.Input.Credentials)
 
 	// Add the actual credentials from the environment.
 	for _, cred := range params.Creds {
