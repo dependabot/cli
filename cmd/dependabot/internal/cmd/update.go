@@ -180,6 +180,7 @@ func processInput(input *model.Input) {
 		}
 	}
 	if token != "" && !isGitSourceInCreds {
+		log.Println("Inserting $LOCAL_GITHUB_ACCESS_TOKEN into credentials")
 		input.Credentials = append(input.Credentials, model.Credential{
 			"type":     "git_source",
 			"host":     "github.com",
@@ -199,6 +200,7 @@ func processInput(input *model.Input) {
 	// which is what happens in production. This way the user doesn't have to
 	// specify credentials-metadata in the scenario file unless they want to.
 	if len(input.Job.CredentialsMetadata) == 0 {
+		log.Println("Adding missing credentials-metadata into job definition")
 		for _, credential := range input.Credentials {
 			entry := map[string]any{
 				"type": credential["type"],

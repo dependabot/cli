@@ -4,7 +4,9 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"gopkg.in/yaml.v3"
 	"io"
+	"os"
 	"reflect"
 	"testing"
 
@@ -115,9 +117,33 @@ func TestRun(t *testing.T) {
 				Repo: "org/name",
 			},
 		},
+		Creds: []model.Credential{{
+			"type":     "git_source",
+			"host":     "github.com",
+			"username": "x-access-token",
+			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
+		}},
+		Output: "out.yaml",
 	})
 	if err != nil {
 		t.Error(err)
+	}
+
+	f, err := os.Open("out.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	var output model.Scenario
+	if err = yaml.NewDecoder(f).Decode(&output); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(output.Input.Credentials) == 0 {
+		t.Error("expected credentials to be populated")
+	} else if output.Input.Credentials[0]["password"] != "$LOCAL_GITHUB_ACCESS_TOKEN" {
+		t.Error("got unexpected credentials", output.Input.Credentials)
 	}
 }
 

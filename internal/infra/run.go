@@ -75,6 +75,8 @@ func Run(params RunParams) error {
 		defer outFile.Close()
 	}
 
+	expandEnvironmentVariables(api, params)
+
 	if err := runContainers(ctx, params, api); err != nil {
 		return err
 	}
@@ -112,6 +114,23 @@ func Run(params RunParams) error {
 	}
 
 	return nil
+}
+
+func expandEnvironmentVariables(api *server.API, params RunParams) {
+	api.Actual.Input.Credentials = params.Creds
+
+	// Make a copy of the credentials, so we don't inject them into the output file.
+	params.Creds = make([]model.Credential, len(params.Creds))
+	copy(params.Creds, params.Creds)
+
+	// Add the actual credentials from the environment.
+	for _, cred := range params.Creds {
+		for key, value := range cred {
+			if valueString, ok := value.(string); ok {
+				cred[key] = os.ExpandEnv(valueString)
+			}
+		}
+	}
 }
 
 func generateIgnoreConditions(params *RunParams, actual *model.Scenario) error {
