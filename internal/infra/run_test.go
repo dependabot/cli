@@ -147,6 +147,9 @@ func TestRun(t *testing.T) {
 	if !reflect.DeepEqual(output.Input.Credentials, []model.Credential{cred}) {
 		t.Error("unexpected credentials", output.Input.Credentials)
 	}
+	if output.Input.Credentials[0]["password"] != "$LOCAL_GITHUB_ACCESS_TOKEN" {
+		t.Error("expected password to be masked")
+	}
 }
 
 const dockerFile = `
