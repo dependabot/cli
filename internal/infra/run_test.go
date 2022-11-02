@@ -110,6 +110,14 @@ func TestRun(t *testing.T) {
 		_, _ = cli.ImageRemove(ctx, UpdaterImageName, types.ImageRemoveOptions{})
 	}()
 
+	cred := model.Credential{
+		"type":     "git_source",
+		"host":     "github.com",
+		"username": "x-access-token",
+		"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
+	}
+
+	os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "test-token")
 	err = Run(RunParams{
 		PullImages: true,
 		Job: &model.Job{
@@ -118,12 +126,7 @@ func TestRun(t *testing.T) {
 				Repo: "org/name",
 			},
 		},
-		Creds: []model.Credential{{
-			"type":     "git_source",
-			"host":     "github.com",
-			"username": "x-access-token",
-			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
-		}},
+		Creds:  []model.Credential{cred},
 		Output: "out.yaml",
 	})
 	if err != nil {
@@ -141,10 +144,8 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(output.Input.Credentials) == 0 {
-		t.Error("expected credentials to be populated")
-	} else if output.Input.Credentials[0]["password"] != "$LOCAL_GITHUB_ACCESS_TOKEN" {
-		t.Error("got unexpected credentials", output.Input.Credentials)
+	if !reflect.DeepEqual(output.Input.Credentials, []model.Credential{cred}) {
+		t.Error("unexpected credentials", output.Input.Credentials)
 	}
 }
 
