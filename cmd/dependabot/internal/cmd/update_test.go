@@ -10,6 +10,8 @@ import (
 
 func Test_processInput(t *testing.T) {
 	t.Run("initializes some fields", func(t *testing.T) {
+		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "")
+
 		var input model.Input
 		processInput(&input)
 
@@ -22,39 +24,12 @@ func Test_processInput(t *testing.T) {
 		if input.Job.SecurityAdvisories == nil {
 			t.Error("expected security advisories to be initialized")
 		}
-	})
-
-	t.Run("injects environment variables", func(t *testing.T) {
-		var input model.Input
-		input.Credentials = []model.Credential{{
-			"type":     "any",
-			"host":     "host",
-			"url":      "url",
-			"username": "$ENV1",
-			"pass":     "$ENV2",
-		}}
-		os.Setenv("ENV1", "value1")
-		os.Setenv("ENV2", "value2")
-		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "") // fixes test while running locally
-
-		processInput(&input)
-
-		if input.Credentials[0]["username"] != "value1" {
-			t.Error("expected username to be injected")
-		}
-		if input.Credentials[0]["pass"] != "value2" {
-			t.Error("expected pass to be injected")
-		}
-		if !reflect.DeepEqual(input.Job.CredentialsMetadata, []model.Credential{{
-			"type": "any",
-			"host": "host",
-			"url":  "url",
-		}}) {
-			t.Error("expected credentials metadata to be to", input.Job.CredentialsMetadata)
+		if len(input.Credentials) != 0 {
+			t.Fatal("expected NO credentials to be added")
 		}
 	})
 
-	t.Run("adds git_source to credentials", func(t *testing.T) {
+	t.Run("adds git_source to credentials when local token is present", func(t *testing.T) {
 		var input model.Input
 		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "token")
 		// Adding a dummy metadata to test the inner if
@@ -69,7 +44,7 @@ func Test_processInput(t *testing.T) {
 			"type":     "git_source",
 			"host":     "github.com",
 			"username": "x-access-token",
-			"password": "token",
+			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
 		}) {
 			t.Error("expected credentials to be added")
 		}

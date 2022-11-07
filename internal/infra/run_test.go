@@ -9,12 +9,45 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/dependabot/cli/internal/server"
+
 	"gopkg.in/yaml.v3"
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types"
 	"github.com/moby/moby/client"
 )
+
+func Test_expandEnvironmentVariables(t *testing.T) {
+	t.Run("injects environment variables", func(t *testing.T) {
+		os.Setenv("ENV1", "value1")
+		os.Setenv("ENV2", "value2")
+		api := &server.API{}
+		params := &RunParams{
+			Creds: []model.Credential{{
+				"type":     "test",
+				"url":      "url",
+				"username": "$ENV1",
+				"pass":     "$ENV2",
+			}},
+		}
+
+		expandEnvironmentVariables(api, params)
+
+		if params.Creds[0]["username"] != "value1" {
+			t.Error("expected username to be injected", params.Creds[0]["username"])
+		}
+		if params.Creds[0]["pass"] != "value2" {
+			t.Error("expected pass to be injected", params.Creds[0]["pass"])
+		}
+		if api.Actual.Input.Credentials[0]["username"] != "$ENV1" {
+			t.Error("expected username NOT to be injected", api.Actual.Input.Credentials[0]["username"])
+		}
+		if api.Actual.Input.Credentials[0]["pass"] != "$ENV2" {
+			t.Error("expected pass NOT to be injected", api.Actual.Input.Credentials[0]["pass"])
+		}
+	})
+}
 
 func Test_generateIgnoreConditions(t *testing.T) {
 	const (

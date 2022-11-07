@@ -75,7 +75,7 @@ func Run(params RunParams) error {
 		defer outFile.Close()
 	}
 
-	expandEnvironmentVariables(api, params)
+	expandEnvironmentVariables(api, &params)
 
 	if err := runContainers(ctx, params, api); err != nil {
 		return err
@@ -116,7 +116,7 @@ func Run(params RunParams) error {
 	return nil
 }
 
-func expandEnvironmentVariables(api *server.API, params RunParams) {
+func expandEnvironmentVariables(api *server.API, params *RunParams) {
 	api.Actual.Input.Credentials = params.Creds
 
 	// Make a copy of the credentials, so we don't inject them into the output file.

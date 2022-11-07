@@ -160,18 +160,9 @@ func processInput(input *model.Input) {
 		job.SecurityAdvisories = []model.Advisory{}
 	}
 
-	// Process environment variables in the scenario file
-	for _, cred := range input.Credentials {
-		for key, value := range cred {
-			if valueString, ok := value.(string); ok {
-				cred[key] = os.ExpandEnv(valueString)
-			}
-		}
-	}
-
 	// As a convenience, fill in a git_source if credentials are in the environment and a git_source
 	// doesn't already exist. This way the user doesn't run out of calls from being anonymous.
-	token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
+	hasLocalToken := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN") != ""
 	var isGitSourceInCreds bool
 	for _, cred := range input.Credentials {
 		if cred["type"] == "git_source" {
@@ -179,13 +170,13 @@ func processInput(input *model.Input) {
 			break
 		}
 	}
-	if token != "" && !isGitSourceInCreds {
+	if hasLocalToken && !isGitSourceInCreds {
 		log.Println("Inserting $LOCAL_GITHUB_ACCESS_TOKEN into credentials")
 		input.Credentials = append(input.Credentials, model.Credential{
 			"type":     "git_source",
 			"host":     "github.com",
 			"username": "x-access-token",
-			"password": token,
+			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
 		})
 		if len(input.Job.CredentialsMetadata) > 0 {
 			// Add the metadata since the next section will be skipped.
