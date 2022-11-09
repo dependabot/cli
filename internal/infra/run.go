@@ -25,7 +25,7 @@ type RunParams struct {
 	// expectations asserted at the end of a test
 	Expected []model.Output
 	// credentials passed to the proxy
-	Creds []map[string]string
+	Creds []model.Credential
 	// local directory used for caching
 	CacheDir string
 	// write output to a file
@@ -63,16 +63,6 @@ func Run(params RunParams) error {
 	api := server.NewAPI(params.Expected)
 	defer api.Stop()
 
-	token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
-	if token != "" {
-		params.Creds = append(params.Creds, map[string]string{
-			"type":     "git_source",
-			"host":     "github.com",
-			"username": "x-access-token",
-			"password": token,
-		})
-	}
-
 	var outFile *os.File
 	if params.Output != "" {
 		var err error
@@ -84,6 +74,8 @@ func Run(params RunParams) error {
 		}
 		defer outFile.Close()
 	}
+
+	expandEnvironmentVariables(api, &params)
 
 	if err := runContainers(ctx, params, api); err != nil {
 		return err
@@ -122,6 +114,29 @@ func Run(params RunParams) error {
 	}
 
 	return nil
+}
+
+func expandEnvironmentVariables(api *server.API, params *RunParams) {
+	api.Actual.Input.Credentials = params.Creds
+
+	// Make a copy of the credentials, so we don't inject them into the output file.
+	params.Creds = []model.Credential{}
+	for _, cred := range api.Actual.Input.Credentials {
+		newCred := model.Credential{}
+		for k, v := range cred {
+			newCred[k] = v
+		}
+		params.Creds = append(params.Creds, newCred)
+	}
+
+	// Add the actual credentials from the environment.
+	for _, cred := range params.Creds {
+		for key, value := range cred {
+			if valueString, ok := value.(string); ok {
+				cred[key] = os.ExpandEnv(valueString)
+			}
+		}
+	}
 }
 
 func generateIgnoreConditions(params *RunParams, actual *model.Scenario) error {

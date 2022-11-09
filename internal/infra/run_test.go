@@ -5,13 +5,49 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"reflect"
 	"testing"
+
+	"github.com/dependabot/cli/internal/server"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types"
 	"github.com/moby/moby/client"
 )
+
+func Test_expandEnvironmentVariables(t *testing.T) {
+	t.Run("injects environment variables", func(t *testing.T) {
+		os.Setenv("ENV1", "value1")
+		os.Setenv("ENV2", "value2")
+		api := &server.API{}
+		params := &RunParams{
+			Creds: []model.Credential{{
+				"type":     "test",
+				"url":      "url",
+				"username": "$ENV1",
+				"pass":     "$ENV2",
+			}},
+		}
+
+		expandEnvironmentVariables(api, params)
+
+		if params.Creds[0]["username"] != "value1" {
+			t.Error("expected username to be injected", params.Creds[0]["username"])
+		}
+		if params.Creds[0]["pass"] != "value2" {
+			t.Error("expected pass to be injected", params.Creds[0]["pass"])
+		}
+		if api.Actual.Input.Credentials[0]["username"] != "$ENV1" {
+			t.Error("expected username NOT to be injected", api.Actual.Input.Credentials[0]["username"])
+		}
+		if api.Actual.Input.Credentials[0]["pass"] != "$ENV2" {
+			t.Error("expected pass NOT to be injected", api.Actual.Input.Credentials[0]["pass"])
+		}
+	})
+}
 
 func Test_generateIgnoreConditions(t *testing.T) {
 	const (
@@ -107,6 +143,14 @@ func TestRun(t *testing.T) {
 		_, _ = cli.ImageRemove(ctx, UpdaterImageName, types.ImageRemoveOptions{})
 	}()
 
+	cred := model.Credential{
+		"type":     "git_source",
+		"host":     "github.com",
+		"username": "x-access-token",
+		"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
+	}
+
+	os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "test-token")
 	err = Run(RunParams{
 		PullImages: true,
 		Job: &model.Job{
@@ -115,9 +159,29 @@ func TestRun(t *testing.T) {
 				Repo: "org/name",
 			},
 		},
+		Creds:  []model.Credential{cred},
+		Output: "out.yaml",
 	})
 	if err != nil {
 		t.Error(err)
+	}
+
+	f, err := os.Open("out.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	var output model.Scenario
+	if err = yaml.NewDecoder(f).Decode(&output); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(output.Input.Credentials, []model.Credential{cred}) {
+		t.Error("unexpected credentials", output.Input.Credentials)
+	}
+	if output.Input.Credentials[0]["password"] != "$LOCAL_GITHUB_ACCESS_TOKEN" {
+		t.Error("expected password to be masked")
 	}
 }
 

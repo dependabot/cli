@@ -160,10 +160,52 @@ func processInput(input *model.Input) {
 		job.SecurityAdvisories = []model.Advisory{}
 	}
 
-	// Process environment variables in the scenario file
+	// As a convenience, fill in a git_source if credentials are in the environment and a git_source
+	// doesn't already exist. This way the user doesn't run out of calls from being anonymous.
+	hasLocalToken := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN") != ""
+	var isGitSourceInCreds bool
 	for _, cred := range input.Credentials {
-		for key, value := range cred {
-			cred[key] = os.ExpandEnv(value)
+		if cred["type"] == "git_source" {
+			isGitSourceInCreds = true
+			break
+		}
+	}
+	if hasLocalToken && !isGitSourceInCreds {
+		log.Println("Inserting $LOCAL_GITHUB_ACCESS_TOKEN into credentials")
+		input.Credentials = append(input.Credentials, model.Credential{
+			"type":     "git_source",
+			"host":     "github.com",
+			"username": "x-access-token",
+			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
+		})
+		if len(input.Job.CredentialsMetadata) > 0 {
+			// Add the metadata since the next section will be skipped.
+			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
+				"type": "git_source",
+				"host": "github.com",
+			})
+		}
+	}
+
+	// As a convenience, fill credentials-metadata if credentials are provided
+	// which is what happens in production. This way the user doesn't have to
+	// specify credentials-metadata in the scenario file unless they want to.
+	if len(input.Job.CredentialsMetadata) == 0 {
+		log.Println("Adding missing credentials-metadata into job definition")
+		for _, credential := range input.Credentials {
+			entry := map[string]any{
+				"type": credential["type"],
+			}
+			if credential["host"] != nil {
+				entry["host"] = credential["host"]
+			}
+			if credential["url"] != nil {
+				entry["url"] = credential["url"]
+			}
+			if credential["replaces-base"] != nil {
+				entry["replaces-base"] = credential["replaces-base"]
+			}
+			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, entry)
 		}
 	}
 }
