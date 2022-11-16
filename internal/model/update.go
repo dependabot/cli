@@ -51,3 +51,8 @@ type RecordPackageManagerVersion struct {
 	Ecosystem       string         `json:"ecosystem" yaml:"ecosystem"`
 	PackageManagers map[string]any `json:"package-managers" yaml:"package-managers"`
 }
+
+type RecordUpdateJobError struct {
+	ErrorType    string         `json:"error-type" yaml:"error-type"`
+	ErrorDetails map[string]any `json:"error-details" yaml:"error-details"`
+}
