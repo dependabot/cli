@@ -192,7 +192,7 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 	case "record_package_manager_version":
 		actual.Data, err = decode[model.RecordPackageManagerVersion](data)
 	case "record_update_job_error":
-		actual.Data, err = decode[map[string]any](data)
+		actual.Data, err = decode[model.RecordUpdateJobError](data)
 	default:
 		return nil, fmt.Errorf("unexpected output type: %s", kind)
 	}
@@ -226,6 +226,8 @@ func compare(expect, actual *model.UpdateWrapper) error {
 		return compareRecordPackageManagerVersion(v, actual.Data.(model.RecordPackageManagerVersion))
 	case model.MarkAsProcessed:
 		return compareMarkAsProcessed(v, actual.Data.(model.MarkAsProcessed))
+	case model.RecordUpdateJobError:
+		return compareRecordUpdateJobError(v, actual.Data.(model.RecordUpdateJobError))
 	default:
 		return fmt.Errorf("unexpected type: %s", reflect.TypeOf(v))
 	}
@@ -271,4 +273,11 @@ func compareMarkAsProcessed(expect, actual model.MarkAsProcessed) error {
 		return nil
 	}
 	return fmt.Errorf("mark as processed was unexpected")
+}
+
+func compareRecordUpdateJobError(expect, actual model.RecordUpdateJobError) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return fmt.Errorf("record update job error was unexpected")
 }
