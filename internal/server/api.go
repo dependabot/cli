@@ -6,19 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dependabot/cli/internal/model"
+	"gopkg.in/yaml.v3"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/sergi/go-diff/diffmatchpatch"
-
-	"github.com/dependabot/cli/internal/model"
-	"gopkg.in/yaml.v3"
 )
 
 // API intercepts calls to the Dependabot API
@@ -110,8 +108,12 @@ func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(r.URL.String(), "/")
 	kind := parts[len(parts)-1]
+	actual, err := decodeWrapper(kind, data)
+	if err != nil {
+		a.pushError(err)
+	}
 
-	if err := a.pushResult(kind, data); err != nil {
+	if err := a.pushResult(kind, actual); err != nil {
 		a.pushError(err)
 		return
 	}
@@ -120,10 +122,10 @@ func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.assertExpectation(kind, data)
+	a.assertExpectation(kind, actual)
 }
 
-func (a *API) assertExpectation(kind string, actualData []byte) {
+func (a *API) assertExpectation(kind string, actual *model.UpdateWrapper) {
 	if len(a.Expectations) <= a.cursor {
 		err := fmt.Errorf("missing expectation")
 		a.pushError(err)
@@ -134,24 +136,19 @@ func (a *API) assertExpectation(kind string, actualData []byte) {
 	if kind != expect.Type {
 		err := fmt.Errorf("type was unexpected: expected %v got %v", expect.Type, kind)
 		a.pushError(err)
+		return
 	}
-	expectJSON, _ := json.Marshal(expect.Expect)
-	// pretty both for sorting and can use simple comparison
-	prettyData, _ := pretty(string(expectJSON))
-	actual, _ := pretty(string(actualData))
-	if actual != prettyData {
-		err := fmt.Errorf("expected output doesn't match actual data received")
+	// need to use decodeWrapper to get the right type to match the actual type
+	data, err := json.Marshal(expect.Expect)
+	if err != nil {
+		panic(err)
+	}
+	expected, err := decodeWrapper(expect.Type, data)
+	if err != nil {
+		panic(err)
+	}
+	if err = compare(expected, actual); err != nil {
 		a.pushError(err)
-
-		// print diff to stdout
-		dmp := diffmatchpatch.New()
-
-		const checklines = false
-		diffs := dmp.DiffMain(prettyData, actual, checklines)
-
-		diffs = dmp.DiffCleanupSemantic(diffs)
-
-		fmt.Println(dmp.DiffPrettyText(diffs))
 	}
 }
 
@@ -162,11 +159,7 @@ func (a *API) pushError(err error) {
 	a.Errors = append(a.Errors, err)
 }
 
-func (a *API) pushResult(kind string, data []byte) error {
-	actual, err := decodeWrapper(kind, data)
-	if err != nil {
-		return err
-	}
+func (a *API) pushResult(kind string, actual *model.UpdateWrapper) error {
 	// TODO validate required data
 	output := model.Output{
 		Type:   kind,
@@ -182,66 +175,99 @@ func (a *API) pushResult(kind string, data []byte) error {
 	return nil
 }
 
-// pretty indents and sorts the keys for a consistent comparison
-func pretty(jsonString string) (string, error) {
-	var v map[string]any
-	if err := json.Unmarshal([]byte(jsonString), &v); err != nil {
-		return "", err
-	}
-	removeNullsFromObjects(v)
-	// shouldn't be possible to error
-	b, _ := json.MarshalIndent(v, "", "  ")
-	return string(b), nil
-}
-
-func removeNullsFromObjects(m map[string]any) {
-	for k, v := range m {
-		switch assertedVal := v.(type) {
-		case nil:
-			delete(m, k)
-		case map[string]any:
-			removeNullsFromObjects(assertedVal)
-		case []any:
-			for _, item := range assertedVal {
-				switch assertedItem := item.(type) {
-				case map[string]any:
-					removeNullsFromObjects(assertedItem)
-				}
-			}
-		}
-	}
-}
-
-func decodeWrapper(kind string, data []byte) (*model.UpdateWrapper, error) {
-	var actual model.UpdateWrapper
+func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err error) {
+	actual = &model.UpdateWrapper{}
 	switch kind {
 	case "update_dependency_list":
-		actual.Data = decode[model.UpdateDependencyList](data)
+		actual.Data, err = decode[model.UpdateDependencyList](data)
 	case "create_pull_request":
-		actual.Data = decode[model.CreatePullRequest](data)
+		actual.Data, err = decode[model.CreatePullRequest](data)
 	case "update_pull_request":
-		actual.Data = decode[model.UpdatePullRequest](data)
+		actual.Data, err = decode[model.UpdatePullRequest](data)
 	case "close_pull_request":
-		actual.Data = decode[model.ClosePullRequest](data)
+		actual.Data, err = decode[model.ClosePullRequest](data)
 	case "mark_as_processed":
-		actual.Data = decode[model.MarkAsProcessed](data)
+		actual.Data, err = decode[model.MarkAsProcessed](data)
 	case "record_package_manager_version":
-		actual.Data = decode[model.RecordPackageManagerVersion](data)
+		actual.Data, err = decode[model.RecordPackageManagerVersion](data)
 	case "record_update_job_error":
-		actual.Data = decode[map[string]any](data)
+		actual.Data, err = decode[map[string]any](data)
 	default:
 		return nil, fmt.Errorf("unexpected output type: %s", kind)
 	}
-	return &actual, nil
+	return actual, err
 }
 
-func decode[T any](data []byte) any {
+func decode[T any](data []byte) (any, error) {
 	var wrapper struct {
 		Data T `json:"data" yaml:"data"`
 	}
-	err := yaml.NewDecoder(bytes.NewBuffer(data)).Decode(&wrapper)
+	decoder := yaml.NewDecoder(bytes.NewBuffer(data))
+	decoder.KnownFields(true)
+	err := decoder.Decode(&wrapper)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return wrapper.Data
+	return wrapper.Data, nil
+}
+
+func compare(expect, actual *model.UpdateWrapper) error {
+	switch v := expect.Data.(type) {
+	case model.UpdateDependencyList:
+		return compareUpdateDependencyList(v, actual.Data.(model.UpdateDependencyList))
+	case model.CreatePullRequest:
+		return compareCreatePullRequest(v, actual.Data.(model.CreatePullRequest))
+	case model.UpdatePullRequest:
+		return compareUpdatePullRequest(v, actual.Data.(model.UpdatePullRequest))
+	case model.ClosePullRequest:
+		return compareClosePullRequest(v, actual.Data.(model.ClosePullRequest))
+	case model.RecordPackageManagerVersion:
+		return compareRecordPackageManagerVersion(v, actual.Data.(model.RecordPackageManagerVersion))
+	case model.MarkAsProcessed:
+		return compareMarkAsProcessed(v, actual.Data.(model.MarkAsProcessed))
+	default:
+		return fmt.Errorf("unexpected type: %s", reflect.TypeOf(v))
+	}
+}
+
+func compareUpdateDependencyList(expect, actual model.UpdateDependencyList) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return fmt.Errorf("dependency list was unexpected")
+}
+
+func compareCreatePullRequest(expect, actual model.CreatePullRequest) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return fmt.Errorf("create pull request was unexpected")
+}
+
+func compareUpdatePullRequest(expect, actual model.UpdatePullRequest) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return fmt.Errorf("update pull request was unexpected")
+}
+
+func compareClosePullRequest(expect, actual model.ClosePullRequest) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return fmt.Errorf("close pull request was unexpected")
+}
+
+func compareRecordPackageManagerVersion(expect, actual model.RecordPackageManagerVersion) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return fmt.Errorf("record package manager version was unexpected")
+}
+
+func compareMarkAsProcessed(expect, actual model.MarkAsProcessed) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return fmt.Errorf("mark as processed was unexpected")
 }
