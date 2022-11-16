@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dependabot/cli/internal/model"
-	"gopkg.in/yaml.v3"
 	"io"
 	"log"
 	"net"
@@ -17,6 +15,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/dependabot/cli/internal/model"
+	"gopkg.in/yaml.v3"
 )
 
 // API intercepts calls to the Dependabot API
