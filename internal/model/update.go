@@ -53,6 +53,6 @@ type RecordPackageManagerVersion struct {
 }
 
 type RecordUpdateJobError struct {
-	ErrorType    string `json:"error-type" yaml:"error-type"`
-	ErrorDetails string `json:"error-details" yaml:"error-details"`
+	ErrorType    string         `json:"error-type" yaml:"error-type"`
+	ErrorDetails map[string]any `json:"error-details" yaml:"error-details"`
 }
