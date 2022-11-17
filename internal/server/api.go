@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kylelemons/godebug/diff"
 	"io"
 	"log"
 	"net"
@@ -135,7 +136,7 @@ func (a *API) assertExpectation(kind string, actual *model.UpdateWrapper) {
 	expect := &a.Expectations[a.cursor]
 	a.cursor++
 	if kind != expect.Type {
-		err := fmt.Errorf("type was unexpected: expected %v got %v", expect.Type, kind)
+		err := fmt.Errorf("type has differences: expected %v got %v", expect.Type, kind)
 		a.pushError(err)
 		return
 	}
@@ -215,69 +216,126 @@ func decode[T any](data []byte) (any, error) {
 func compare(expect, actual *model.UpdateWrapper) error {
 	switch v := expect.Data.(type) {
 	case model.UpdateDependencyList:
-		return compareUpdateDependencyList(v, actual.Data.(model.UpdateDependencyList))
+		if !simpleCompare(v, actual.Data.(model.UpdateDependencyList)) {
+			return fmt.Errorf("update_dependency_list has differences")
+		}
 	case model.CreatePullRequest:
-		return compareCreatePullRequest(v, actual.Data.(model.CreatePullRequest))
+		if !compareCreatePR(v, actual.Data.(model.CreatePullRequest)) {
+			return fmt.Errorf("create_pull_request has differences")
+		}
 	case model.UpdatePullRequest:
-		return compareUpdatePullRequest(v, actual.Data.(model.UpdatePullRequest))
+		if !compareUpdatePR(v, actual.Data.(model.UpdatePullRequest)) {
+			return fmt.Errorf("update_pull_request has differences")
+		}
 	case model.ClosePullRequest:
-		return compareClosePullRequest(v, actual.Data.(model.ClosePullRequest))
+		if !simpleCompare(v, actual.Data.(model.ClosePullRequest)) {
+			return fmt.Errorf("close_pull_request has differences")
+		}
 	case model.RecordPackageManagerVersion:
-		return compareRecordPackageManagerVersion(v, actual.Data.(model.RecordPackageManagerVersion))
+		if !simpleCompare(v, actual.Data.(model.RecordPackageManagerVersion)) {
+			return fmt.Errorf("record_package_manager_version has differences")
+		}
 	case model.MarkAsProcessed:
-		return compareMarkAsProcessed(v, actual.Data.(model.MarkAsProcessed))
+		if !simpleCompare(v, actual.Data.(model.MarkAsProcessed)) {
+			return fmt.Errorf("mark_as_processed has differences")
+		}
 	case model.RecordUpdateJobError:
-		return compareRecordUpdateJobError(v, actual.Data.(model.RecordUpdateJobError))
+		if !simpleCompare(v, actual.Data.(model.RecordUpdateJobError)) {
+			return fmt.Errorf("record_update_job_error has differences")
+		}
 	default:
 		return fmt.Errorf("unexpected type: %s", reflect.TypeOf(v))
 	}
+
+	return nil
 }
 
-func compareUpdateDependencyList(expect, actual model.UpdateDependencyList) error {
+func simpleCompare(expect, actual any) bool {
 	if reflect.DeepEqual(expect, actual) {
-		return nil
+		return true
 	}
-	return fmt.Errorf("dependency list was unexpected")
+	actualBytes, err := yaml.Marshal(actual)
+	if err != nil {
+		panic(err)
+	}
+	expectBytes, err := yaml.Marshal(expect)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(diff.Diff(string(expectBytes), string(actualBytes)))
+
+	return false
 }
 
-func compareCreatePullRequest(expect, actual model.CreatePullRequest) error {
+const maxLines = 10
+
+func compareCreatePR(expect, actual model.CreatePullRequest) bool {
 	if reflect.DeepEqual(expect, actual) {
-		return nil
+		return true
 	}
-	return fmt.Errorf("create pull request was unexpected")
+	if expect.PRBody != actual.PRBody {
+		if num := strings.Count(diff.Diff(expect.PRBody, actual.PRBody), "\n"); num > maxLines {
+			fmt.Printf("pr-body has too many differences to display (%d)\n", num)
+			expect.PRBody = ""
+			actual.PRBody = ""
+		}
+	}
+	for i := range expect.UpdatedDependencyFiles {
+		expectedFile := &expect.UpdatedDependencyFiles[i]
+		actualFile := &actual.UpdatedDependencyFiles[i]
+		if num := strings.Count(diff.Diff(expectedFile.Content, actualFile.Content), "\n"); num > maxLines {
+			fmt.Printf("file %s has too many differences to display (%d)\n", expectedFile.Name, num)
+		}
+	}
+	expect.UpdatedDependencyFiles = nil
+	actual.UpdatedDependencyFiles = nil
+
+	actualBytes, err := yaml.Marshal(actual)
+	if err != nil {
+		panic(err)
+	}
+	expectBytes, err := yaml.Marshal(expect)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(diff.Diff(string(expectBytes), string(actualBytes)))
+
+	return false
 }
 
-func compareUpdatePullRequest(expect, actual model.UpdatePullRequest) error {
+func compareUpdatePR(expect, actual model.UpdatePullRequest) bool {
 	if reflect.DeepEqual(expect, actual) {
-		return nil
+		return true
 	}
-	return fmt.Errorf("update pull request was unexpected")
-}
 
-func compareClosePullRequest(expect, actual model.ClosePullRequest) error {
-	if reflect.DeepEqual(expect, actual) {
-		return nil
+	if expect.PRBody != actual.PRBody {
+		if num := strings.Count(diff.Diff(expect.PRBody, actual.PRBody), "\n"); num > maxLines {
+			fmt.Printf("pr-body has too many differences to display (%d)\n", num)
+			expect.PRBody = ""
+			actual.PRBody = ""
+		}
 	}
-	return fmt.Errorf("close pull request was unexpected")
-}
+	for i := range expect.UpdatedDependencyFiles {
+		expectedFile := &expect.UpdatedDependencyFiles[i]
+		actualFile := &actual.UpdatedDependencyFiles[i]
+		if num := strings.Count(diff.Diff(expectedFile.Content, actualFile.Content), "\n"); num > maxLines {
+			fmt.Printf("file %s has too many differences to display (%d)\n", expectedFile.Name, num)
+		}
+	}
+	expect.UpdatedDependencyFiles = nil
+	actual.UpdatedDependencyFiles = nil
 
-func compareRecordPackageManagerVersion(expect, actual model.RecordPackageManagerVersion) error {
-	if reflect.DeepEqual(expect, actual) {
-		return nil
+	actualBytes, err := yaml.Marshal(actual)
+	if err != nil {
+		panic(err)
 	}
-	return fmt.Errorf("record package manager version was unexpected")
-}
+	expectBytes, err := yaml.Marshal(expect)
+	if err != nil {
+		panic(err)
+	}
 
-func compareMarkAsProcessed(expect, actual model.MarkAsProcessed) error {
-	if reflect.DeepEqual(expect, actual) {
-		return nil
-	}
-	return fmt.Errorf("mark as processed was unexpected")
-}
+	fmt.Println(diff.Diff(string(expectBytes), string(actualBytes)))
 
-func compareRecordUpdateJobError(expect, actual model.RecordUpdateJobError) error {
-	if reflect.DeepEqual(expect, actual) {
-		return nil
-	}
-	return fmt.Errorf("record update job error was unexpected")
+	return false
 }
