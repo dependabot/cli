@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kylelemons/godebug/diff"
 	"io"
 	"log"
 	"net"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dependabot/cli/internal/model"
+	"github.com/kylelemons/godebug/diff"
 	"gopkg.in/yaml.v3"
 )
 
