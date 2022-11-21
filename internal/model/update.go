@@ -36,6 +36,7 @@ type DependencyFile struct {
 	Operation       string `json:"operation" yaml:"operation"`
 	SupportFile     bool   `json:"support_file" yaml:"support_file"`
 	Type            string `json:"type" yaml:"type"`
+	Mode		string `json:"mode" yaml:"mode,omitempty"`
 }
 
 type ClosePullRequest struct {
