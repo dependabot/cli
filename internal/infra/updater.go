@@ -143,6 +143,21 @@ func mountOptions(v string) (local, remote string, readOnly bool, err error) {
 }
 
 func userEnv(proxyURL string, apiPort int) []string {
+	inputDir := os.Getenv("DEPENDABOT_JOB_PATH")
+	if inputDir == "" {
+		inputDir = guestInputDir
+	}
+
+	output := os.Getenv("DEPENDABOT_OUTPUT_PATH")
+	if output == "" {
+		output = guestOutput
+	}
+
+	repoDir := os.Getenv("DEPENDABOT_REPO_CONTENTS_PATH")
+	if repoDir == "" {
+		repoDir = guestRepoDir
+	}
+
 	return []string{
 		"GITHUB_ACTIONS=true", // sets exit code when fetch fails
 		fmt.Sprintf("http_proxy=%s", proxyURL),
@@ -151,9 +166,9 @@ func userEnv(proxyURL string, apiPort int) []string {
 		fmt.Sprintf("HTTPS_PROXY=%s", proxyURL),
 		fmt.Sprintf("DEPENDABOT_JOB_ID=%v", jobID),
 		fmt.Sprintf("DEPENDABOT_JOB_TOKEN=%v", ""),
-		fmt.Sprintf("DEPENDABOT_JOB_PATH=%v", guestInputDir),
-		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", guestOutput),
-		fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%v", guestRepoDir),
+		fmt.Sprintf("DEPENDABOT_JOB_PATH=%v", inputDir),
+		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", output),
+		fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%v", repoDir),
 		fmt.Sprintf("DEPENDABOT_API_URL=http://host.docker.internal:%v", apiPort),
 		fmt.Sprintf("SSL_CERT_FILE=%v/ca-certificates.crt", certsPath),
 		"UPDATER_ONE_CONTAINER=true",
