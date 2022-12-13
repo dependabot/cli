@@ -205,10 +205,6 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 	}
 	defer updater.Close()
 
-	if err := updater.InstallCertificates(ctx); err != nil {
-		return err
-	}
-
 	if params.Debug {
 		if err := updater.RunShell(ctx, prox.url, api.Port()); err != nil {
 			return err
