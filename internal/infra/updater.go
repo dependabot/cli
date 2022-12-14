@@ -142,40 +142,6 @@ func mountOptions(v string) (local, remote string, readOnly bool, err error) {
 	return local, remote, readOnly, nil
 }
 
-// InstallCertificates runs update-ca-certificates as root, blocks until complete.
-func (u *Updater) InstallCertificates(ctx context.Context) error {
-	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, types.ExecConfig{
-		AttachStdout: true,
-		AttachStderr: true,
-		User:         "root",
-		Cmd:          []string{"update-ca-certificates"},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create exec: %w", err)
-	}
-
-	execResp, err := u.cli.ContainerExecAttach(ctx, execCreate.ID, types.ExecStartCheck{})
-	if err != nil {
-		return fmt.Errorf("failed to start exec: %w", err)
-	}
-	defer execResp.Close()
-
-	// block until certs are installed or ctl-c
-	ch := make(chan struct{})
-	go func() {
-		_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, execResp.Reader)
-		ch <- struct{}{}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-ch:
-	}
-
-	return nil
-}
-
 func userEnv(proxyURL string, apiPort int) []string {
 	return []string{
 		"GITHUB_ACTIONS=true", // sets exit code when fetch fails
@@ -258,7 +224,7 @@ func (u *Updater) RunUpdate(ctx context.Context, proxyURL string, apiPort int) e
 		AttachStderr: true,
 		User:         dependabot,
 		Env:          userEnv(proxyURL, apiPort),
-		Cmd:          []string{"/bin/sh", "-c", "bin/run fetch_files && bin/run update_files"},
+		Cmd:          []string{"/bin/sh", "-c", "update-ca-certificates && bin/run fetch_files && bin/run update_files"},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create exec: %w", err)
