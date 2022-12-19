@@ -170,7 +170,7 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiPort int) er
 		Tty:          true,
 		User:         dependabot,
 		Env:          append(userEnv(proxyURL, apiPort), "DEBUG=1"),
-		Cmd:          []string{"/bin/bash"},
+		Cmd:          []string{"/bin/bash", "-c", "update-ca-certificates && /bin/bash"},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create exec: %w", err)
