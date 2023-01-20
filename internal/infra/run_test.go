@@ -130,7 +130,7 @@ func TestRun(t *testing.T) {
 	_ = addFileToArchive(tw, "/test_main.go", 0644, testMain)
 	_ = tw.Close()
 
-	UpdaterImageName = "test-updater"
+	UpdaterImageName := "test-updater"
 	resp, err := cli.ImageBuild(ctx, &buildContext, types.ImageBuildOptions{Tags: []string{UpdaterImageName}})
 	if err != nil {
 		t.Fatal(err)
@@ -159,8 +159,9 @@ func TestRun(t *testing.T) {
 				Repo: "org/name",
 			},
 		},
-		Creds:  []model.Credential{cred},
-		Output: "out.yaml",
+		Creds:        []model.Credential{cred},
+		UpdaterImage: UpdaterImageName,
+		Output:       "out.yaml",
 	})
 	if err != nil {
 		t.Error(err)
