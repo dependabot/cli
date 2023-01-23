@@ -45,8 +45,10 @@ var testCmd = &cobra.Command{
 			Job:           &scenario.Input.Job,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
+			ProxyImage:    proxyImage,
 			PullImages:    pullImages,
 			Timeout:       timeout,
+			UpdaterImage:  updaterImage,
 			Volumes:       volumes,
 		}); err != nil {
 			log.Fatal(err)

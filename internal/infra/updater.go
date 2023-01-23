@@ -25,9 +25,6 @@ import (
 const jobID = "cli"
 const dependabot = "dependabot"
 
-// UpdaterImageName is the docker image used by the updater
-var UpdaterImageName = "ghcr.io/dependabot/dependabot-updater:latest"
-
 const (
 	guestInputDir = "/home/dependabot/dependabot-updater/job.json"
 	guestOutput   = "/home/dependabot/dependabot-updater/output.json"
@@ -48,7 +45,7 @@ const (
 func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy) (*Updater, error) {
 	containerCfg := &container.Config{
 		User:  dependabot,
-		Image: UpdaterImageName,
+		Image: params.UpdaterImage,
 		Cmd:   []string{"/bin/sh"},
 		Tty:   true, // prevent container from stopping
 	}

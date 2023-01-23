@@ -119,8 +119,10 @@ var updateCmd = &cobra.Command{
 			Job:           &input.Job,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
+			ProxyImage:    proxyImage,
 			PullImages:    pullImages,
 			Timeout:       timeout,
+			UpdaterImage:  updaterImage,
 			Volumes:       volumes,
 		}); err != nil {
 			log.Fatalf("failed to run updater: %v", err)

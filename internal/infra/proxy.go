@@ -27,8 +27,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// ProxyImageName is the docker image used by the proxy
-var ProxyImageName = "ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest"
+// ProxyImageName is the default Docker image used by the proxy
+const ProxyImageName = "ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest"
 
 type Proxy struct {
 	cli           *client.Client
@@ -86,7 +86,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 		})
 	}
 	config := &container.Config{
-		Image: ProxyImageName,
+		Image: params.ProxyImage,
 		Env: []string{
 			"JOB_ID=" + jobID,
 			"PROXY_CACHE=true",

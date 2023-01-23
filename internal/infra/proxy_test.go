@@ -82,12 +82,8 @@ func TestNewProxy_customCert(t *testing.T) {
 	_ = addFileToArchive(tw, "/Dockerfile", 0644, proxyTestDockerfile)
 	_ = tw.Close()
 
-	tmp := ProxyImageName
-	defer func() {
-		ProxyImageName = tmp
-	}()
-	ProxyImageName = "curl-test"
-	resp, err := cli.ImageBuild(ctx, &buildContext, types.ImageBuildOptions{Tags: []string{ProxyImageName}})
+	proxyImageName := "curl-test"
+	resp, err := cli.ImageBuild(ctx, &buildContext, types.ImageBuildOptions{Tags: []string{proxyImageName}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,11 +91,12 @@ func TestNewProxy_customCert(t *testing.T) {
 	_ = resp.Body.Close()
 
 	defer func() {
-		_, _ = cli.ImageRemove(ctx, ProxyImageName, types.ImageRemoveOptions{})
+		_, _ = cli.ImageRemove(ctx, proxyImageName, types.ImageRemoveOptions{})
 	}()
 
 	proxy, err := NewProxy(ctx, cli, &RunParams{
 		ProxyCertPath: cert.Name(),
+		ProxyImage:    proxyImageName,
 	})
 	if err != nil {
 		panic(err)

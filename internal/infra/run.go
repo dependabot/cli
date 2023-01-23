@@ -43,6 +43,10 @@ type RunParams struct {
 	Timeout time.Duration
 	// ExtraHosts adds /etc/hosts entries to the proxy for testing.
 	ExtraHosts []string
+	// UpdaterImage is the image to use for the updater
+	UpdaterImage string
+	// ProxyImage is the image to use for the proxy
+	ProxyImage string
 }
 
 func Run(params RunParams) error {
@@ -76,6 +80,9 @@ func Run(params RunParams) error {
 	}
 
 	expandEnvironmentVariables(api, &params)
+	if err := setImageNames(&params); err != nil {
+		return err
+	}
 
 	if err := runContainers(ctx, params, api); err != nil {
 		return err
@@ -113,6 +120,39 @@ func Run(params RunParams) error {
 		return fmt.Errorf("update failed expectations")
 	}
 
+	return nil
+}
+
+var packageManagerLookup = map[string]string{
+	"bundler":        "bundler",
+	"cargo":          "cargo",
+	"composer":       "composer",
+	"pub":            "pub",
+	"docker":         "docker",
+	"elm":            "elm",
+	"github_actions": "github-actions",
+	"submodules":     "gitsubmodule",
+	"go_modules":     "gomod",
+	"gradle":         "gradle",
+	"maven":          "maven",
+	"hex":            "mix",
+	"nuget":          "nuget",
+	"npm_and_yarn":   "npm",
+	"pip":            "pip",
+	"terraform":      "terraform",
+}
+
+func setImageNames(params *RunParams) error {
+	if params.ProxyImage == "" {
+		params.ProxyImage = ProxyImageName
+	}
+	if params.UpdaterImage == "" {
+		pm, ok := packageManagerLookup[params.Job.PackageManager]
+		if !ok {
+			return fmt.Errorf("unknown package manager: %s", params.Job.PackageManager)
+		}
+		params.UpdaterImage = "ghcr.io/dependabot/dependabot-updater-" + pm
+	}
 	return nil
 }
 
@@ -176,7 +216,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 			return err
 		}
 
-		err = pullImage(ctx, cli, UpdaterImageName)
+		err = pullImage(ctx, cli, params.UpdaterImage)
 		if err != nil {
 			return err
 		}
