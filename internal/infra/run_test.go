@@ -22,7 +22,7 @@ import (
 
 func Test_checkCredAccess(t *testing.T) {
 	t.Run("returns error if the credential has write access", func(t *testing.T) {
-		credAuthEndpoint = "http://127.0.0.1:3000"
+		authEndpoint = "http://127.0.0.1:3000"
 		addr := "127.0.0.1:3000"
 		if os.Getenv("CI") != "" {
 			t.Log("detected running in actions")

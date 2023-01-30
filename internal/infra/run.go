@@ -128,7 +128,7 @@ func Run(params RunParams) error {
 	return nil
 }
 
-var credAuthEndpoint = "https://api.github.com"
+var authEndpoint = "https://api.github.com"
 
 // checkCredAccess returns an error if any of the tokens in the job definition have write access.
 // Some package managers can execute arbitrary code during an update. The credentials are not accessible to the updater,
@@ -138,15 +138,15 @@ func checkCredAccess(ctx context.Context, creds []model.Credential) error {
 	for _, cred := range creds {
 		var credential string
 		if password, ok := cred["password"]; ok && password != "" {
-			credential = password.(string)
+			credential, _ = password.(string)
 		}
 		if token, ok := cred["token"]; ok && token != "" {
-			credential = token.(string)
+			credential, _ = token.(string)
 		}
 		if !strings.HasPrefix(credential, "ghp_") {
 			continue
 		}
-		r, err := http.NewRequestWithContext(ctx, "GET", credAuthEndpoint, nil)
+		r, err := http.NewRequestWithContext(ctx, "GET", authEndpoint, http.NoBody)
 		if err != nil {
 			return fmt.Errorf("failed creating request: %w", err)
 		}
