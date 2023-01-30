@@ -128,7 +128,10 @@ func Run(params RunParams) error {
 	return nil
 }
 
-var authEndpoint = "https://api.github.com"
+var (
+	authEndpoint   = "https://api.github.com"
+	ErrWriteAccess = fmt.Errorf("for security, credentials used in update are not allowed to have write access to GitHub API")
+)
 
 // checkCredAccess returns an error if any of the tokens in the job definition have write access.
 // Some package managers can execute arbitrary code during an update. The credentials are not accessible to the updater,
@@ -161,7 +164,7 @@ func checkCredAccess(ctx context.Context, creds []model.Credential) error {
 		}
 		scopes := resp.Header.Get("X-OAuth-Scopes")
 		if strings.Contains(scopes, "write") {
-			return fmt.Errorf("for security, credentials used in update are not allowed to have write access to GitHub API")
+			return ErrWriteAccess
 		}
 	}
 	return nil

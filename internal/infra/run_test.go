@@ -50,7 +50,7 @@ func Test_checkCredAccess(t *testing.T) {
 			"token": "ghp_fake",
 		}}
 		err := checkCredAccess(ctx, credentials)
-		if err.Error() != "credentials used in update may not have write access to GitHub API" {
+		if err != ErrWriteAccess {
 			t.Error("unexpected error", err)
 		}
 	})
