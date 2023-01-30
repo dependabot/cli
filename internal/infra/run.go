@@ -161,7 +161,7 @@ func checkCredAccess(ctx context.Context, creds []model.Credential) error {
 		}
 		scopes := resp.Header.Get("X-OAuth-Scopes")
 		if strings.Contains(scopes, "write") {
-			return fmt.Errorf("credentials used in update may not have write access to GitHub API")
+			return fmt.Errorf("for security, credentials used in update are not allowed to have write access to GitHub API")
 		}
 	}
 	return nil
