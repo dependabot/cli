@@ -23,9 +23,14 @@ import (
 func Test_checkCredAccess(t *testing.T) {
 	t.Run("returns error if the credential has write access", func(t *testing.T) {
 		credAuthEndpoint = "http://127.0.0.1:3000"
+		addr := "127.0.0.1:3000"
+		if os.Getenv("CI") != "" {
+			t.Log("detected running in actions")
+			addr = "0.0.0.0:3000"
+		}
 		testServer := &http.Server{
 			ReadHeaderTimeout: time.Second,
-			Addr:              "127.0.0.1:3000",
+			Addr:              addr,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("X-OAuth-Scopes", "repo, write:packages")
 				_, _ = w.Write([]byte("SUCCESS"))
