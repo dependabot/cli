@@ -44,6 +44,7 @@ func Test_checkCredAccess(t *testing.T) {
 		go func() {
 			_ = testServer.ListenAndServe()
 		}()
+		time.Sleep(1 * time.Millisecond) // allow time for the server to start
 
 		credentials := []model.Credential{{
 			"token": "ghp_fake",
