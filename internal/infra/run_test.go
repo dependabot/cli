@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/http"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/dependabot/cli/internal/server"
 
@@ -17,6 +19,42 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/moby/moby/client"
 )
+
+func Test_checkCredAccess(t *testing.T) {
+	t.Run("returns error if the credential has write access", func(t *testing.T) {
+		authEndpoint = "http://127.0.0.1:3000"
+		addr := "127.0.0.1:3000"
+		if os.Getenv("CI") != "" {
+			t.Log("detected running in actions")
+			addr = "0.0.0.0:3000"
+		}
+		testServer := &http.Server{
+			ReadHeaderTimeout: time.Second,
+			Addr:              addr,
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("X-OAuth-Scopes", "repo, write:packages")
+				_, _ = w.Write([]byte("SUCCESS"))
+			}),
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		defer func() {
+			_ = testServer.Shutdown(ctx)
+		}()
+		go func() {
+			_ = testServer.ListenAndServe()
+		}()
+		time.Sleep(1 * time.Millisecond) // allow time for the server to start
+
+		credentials := []model.Credential{{
+			"token": "ghp_fake",
+		}}
+		err := checkCredAccess(ctx, credentials)
+		if err != ErrWriteAccess {
+			t.Error("unexpected error", err)
+		}
+	})
+}
 
 func Test_expandEnvironmentVariables(t *testing.T) {
 	t.Run("injects environment variables", func(t *testing.T) {

@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/dependabot/cli/internal/server"
-
 	"github.com/dependabot/cli/internal/model"
+	"github.com/dependabot/cli/internal/server"
 	"github.com/docker/docker/api/types"
 	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
@@ -80,6 +81,10 @@ func Run(params RunParams) error {
 	}
 
 	expandEnvironmentVariables(api, &params)
+	if err := checkCredAccess(ctx, params.Creds); err != nil {
+		return err
+	}
+
 	if err := setImageNames(&params); err != nil {
 		return err
 	}
@@ -120,6 +125,48 @@ func Run(params RunParams) error {
 		return fmt.Errorf("update failed expectations")
 	}
 
+	return nil
+}
+
+var (
+	authEndpoint   = "https://api.github.com"
+	ErrWriteAccess = fmt.Errorf("for security, credentials used in update are not allowed to have write access to GitHub API")
+)
+
+// checkCredAccess returns an error if any of the tokens in the job definition have write access.
+// Some package managers can execute arbitrary code during an update. The credentials are not accessible to the updater,
+// but the proxy injects them in requests, and the updater could execute arbitrary requests. So to be safe, disallow
+// write access on these tokens.
+func checkCredAccess(ctx context.Context, creds []model.Credential) error {
+	for _, cred := range creds {
+		var credential string
+		if password, ok := cred["password"]; ok && password != "" {
+			credential, _ = password.(string)
+		}
+		if token, ok := cred["token"]; ok && token != "" {
+			credential, _ = token.(string)
+		}
+		if !strings.HasPrefix(credential, "ghp_") {
+			continue
+		}
+		r, err := http.NewRequestWithContext(ctx, "GET", authEndpoint, http.NoBody)
+		if err != nil {
+			return fmt.Errorf("failed creating request: %w", err)
+		}
+		r.Header.Set("Authorization", fmt.Sprintf("token %s", credential))
+		r.Header.Set("User-Agent", "dependabot-cli")
+		resp, err := http.DefaultClient.Do(r)
+		if err != nil {
+			return fmt.Errorf("failed making request: %w", err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed request to GitHub API: %s", resp.Status)
+		}
+		scopes := resp.Header.Get("X-OAuth-Scopes")
+		if strings.Contains(scopes, "write") || strings.Contains(scopes, "delete") {
+			return ErrWriteAccess
+		}
+	}
 	return nil
 }
 
