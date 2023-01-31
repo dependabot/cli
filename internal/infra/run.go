@@ -163,7 +163,7 @@ func checkCredAccess(ctx context.Context, creds []model.Credential) error {
 			return fmt.Errorf("failed request to GitHub API: %s", resp.Status)
 		}
 		scopes := resp.Header.Get("X-OAuth-Scopes")
-		if strings.Contains(scopes, "write") {
+		if strings.Contains(scopes, "write") || strings.Contains(scopes, "delete") {
 			return ErrWriteAccess
 		}
 	}
