@@ -120,6 +120,11 @@ func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 	}
 
 	if !a.hasExpectations {
+		// When running an update, there's no way to see the error in the record_update_job_error,
+		// but it's handy to see it in the logs for debugging.
+		if kind == "record_update_job_error" {
+			log.Println("update-job error:", actual.Data)
+		}
 		return
 	}
 
