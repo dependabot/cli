@@ -158,8 +158,8 @@ func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
 }
 
 func (p *Proxy) Close() error {
-	timeout := 5 * time.Second
-	_ = p.cli.ContainerStop(context.Background(), p.containerID, &timeout)
+	timeout := 5
+	_ = p.cli.ContainerStop(context.Background(), p.containerID, container.StopOptions{Timeout: &timeout})
 
 	err := p.cli.ContainerRemove(context.Background(), p.containerID, types.ContainerRemoveOptions{Force: true})
 	if err != nil {
