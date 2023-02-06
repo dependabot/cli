@@ -238,51 +238,55 @@ func compare(expect, actual *model.UpdateWrapper) error {
 	}
 }
 
+func unexpectedBody(kind string) error {
+	return fmt.Errorf("unexpected body for %s", kind)
+}
+
 func compareUpdateDependencyList(expect, actual model.UpdateDependencyList) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return fmt.Errorf("dependency list was unexpected")
+	return unexpectedBody("update_dependency_list")
 }
 
 func compareCreatePullRequest(expect, actual model.CreatePullRequest) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return fmt.Errorf("create pull request was unexpected")
+	return unexpectedBody("create_pull_request")
 }
 
 func compareUpdatePullRequest(expect, actual model.UpdatePullRequest) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return fmt.Errorf("update pull request was unexpected")
+	return unexpectedBody("update_pull_request")
 }
 
 func compareClosePullRequest(expect, actual model.ClosePullRequest) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return fmt.Errorf("close pull request was unexpected")
+	return unexpectedBody("close_pull_request")
 }
 
 func compareRecordPackageManagerVersion(expect, actual model.RecordPackageManagerVersion) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return fmt.Errorf("record package manager version was unexpected")
+	return unexpectedBody("record_package_manager_version")
 }
 
 func compareMarkAsProcessed(expect, actual model.MarkAsProcessed) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return fmt.Errorf("mark as processed was unexpected")
+	return unexpectedBody("mark_as_processed")
 }
 
 func compareRecordUpdateJobError(expect, actual model.RecordUpdateJobError) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return fmt.Errorf("record update job error was unexpected")
+	return unexpectedBody("record_update_job_error")
 }
