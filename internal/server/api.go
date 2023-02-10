@@ -3,6 +3,8 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -187,9 +189,15 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 	case "update_dependency_list":
 		actual.Data, err = decode[model.UpdateDependencyList](data)
 	case "create_pull_request":
-		actual.Data, err = decode[model.CreatePullRequest](data)
+		var createPR model.CreatePullRequest
+		createPR, err = decode[model.CreatePullRequest](data)
+		createPR.UpdatedDependencyFiles = replaceBinaryWithHash(createPR.UpdatedDependencyFiles)
+		actual.Data = createPR
 	case "update_pull_request":
-		actual.Data, err = decode[model.UpdatePullRequest](data)
+		var updatePR model.UpdatePullRequest
+		updatePR, err = decode[model.UpdatePullRequest](data)
+		updatePR.UpdatedDependencyFiles = replaceBinaryWithHash(updatePR.UpdatedDependencyFiles)
+		actual.Data = updatePR
 	case "close_pull_request":
 		actual.Data, err = decode[model.ClosePullRequest](data)
 	case "mark_as_processed":
@@ -204,7 +212,22 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 	return actual, err
 }
 
-func decode[T any](data []byte) (any, error) {
+// to avoid having massive base64 encoded strings in the test fixtures, replace the content with a hash
+func replaceBinaryWithHash(files []model.DependencyFile) []model.DependencyFile {
+	for i := range files {
+		file := &files[i]
+		if file.ContentEncoding == "base64" {
+			// since this is also called for the expected value, this needs to not be base64
+			// otherwise it will calculate the checksum of the checksum
+			file.ContentEncoding = "sha256"
+			hash := sha256.Sum256([]byte(file.Content))
+			file.Content = hex.EncodeToString(hash[:])
+		}
+	}
+	return files
+}
+
+func decode[T any](data []byte) (T, error) {
 	var wrapper struct {
 		Data T `json:"data" yaml:"data"`
 	}
@@ -212,7 +235,7 @@ func decode[T any](data []byte) (any, error) {
 	decoder.KnownFields(true)
 	err := decoder.Decode(&wrapper)
 	if err != nil {
-		return nil, err
+		return *new(T), err
 	}
 	return wrapper.Data, nil
 }
