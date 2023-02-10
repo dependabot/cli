@@ -217,6 +217,9 @@ func replaceBinaryWithHash(files []model.DependencyFile) []model.DependencyFile 
 	for i := range files {
 		file := &files[i]
 		if file.ContentEncoding == "base64" {
+			// since this is also called for the expected value, this needs to not be base64
+			// otherwise it will calculate the checksum of the checksum
+			file.ContentEncoding = "sha256"
 			hash := sha256.Sum256([]byte(file.Content))
 			file.Content = hex.EncodeToString(hash[:])
 		}
