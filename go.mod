@@ -6,7 +6,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/docker/cli v23.0.0+incompatible
 	github.com/docker/docker v23.0.0+incompatible
-	github.com/moby/moby v23.0.0+incompatible
+	github.com/moby/moby v23.0.1+incompatible
 	github.com/moby/sys/signal v0.7.0
 	github.com/spf13/cobra v1.6.1
 	gopkg.in/yaml.v3 v3.0.1
