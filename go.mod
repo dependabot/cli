@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/docker/cli v23.0.0+incompatible
+	github.com/docker/cli v23.0.1+incompatible
 	github.com/docker/docker v23.0.0+incompatible
 	github.com/moby/moby v23.0.0+incompatible
 	github.com/moby/sys/signal v0.7.0
