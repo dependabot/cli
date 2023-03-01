@@ -290,6 +290,10 @@ Any cache misses indicate an external request made by the updater,
 which may cause tests to fail unexpectedly
 (for example, when a new version of a package is released).
 
+## Debugging with the CLI
+
+See the [debugging doc](/docs/debugging.md) for details.
+
 ## Troubleshooting
 
 ### "Docker daemon not running"
