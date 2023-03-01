@@ -60,7 +60,7 @@ At this prompt, you can run [debugger commands](https://github.com/ruby/debug) t
 
 If your Dependabot job is hanging and would like to figure out why, the CLI is the perfect tool for the job. 
 
-Start by running the update that recreates the hang with `dependabot update --dry-run <ecosystem> <org/name>`. Once the hang is reproducible, run with the `--debug` flag and the run the `fetch_files` and `update_files` commands and wait until the job hangs.
+Start by running the update that recreates the hang with `dependabot update --dry-run <ecosystem> <org/repo>`. Once the hang is reproducible, run with the `--debug` flag and the run the `fetch_files` and `update_files` commands and wait until the job hangs.
 
 Once it does hang, hit CTL-C, and you'll get a stack trace leading you to the problematic code.
 
