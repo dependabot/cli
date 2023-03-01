@@ -21,7 +21,7 @@ If the problem is after the fetch step, you can repeatedly run update_files whil
 
 In the example `script/dependabot` command above, try running an update in the container. 
 
-Next, let's try adding a `debugger` statement. Open the `dependabot-core` project in your favorite editor. Open the file `go_modules/lib/dependabot/go_modules/update_checker.rb`. In `latest_resolvable_version` add a `debugger` statement like this:
+Next, let's try adding a `debugger` statement. Open the `dependabot-core` project in your favorite editor. For example, we can open the file `go_modules/lib/dependabot/go_modules/update_checker.rb`. Then in `latest_resolvable_version` we can add a `debugger` statement like this:
 
 ```ruby
       def latest_resolvable_version
