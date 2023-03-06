@@ -17,7 +17,7 @@ you can install the latest release of `dependabot` using the following command
 ([gist source](https://gist.github.com/mattt/e09e1ecd76d5573e0517a7622009f06f)):
 
 ```console
-$ gh gist view --raw e09e1ecd76d5573e0517a7622009f06f | bash
+gh gist view --raw e09e1ecd76d5573e0517a7622009f06f | bash
 ```
 
 ## Requirements
