@@ -45,10 +45,11 @@ var updateCmd = &cobra.Command{
 		}
 
 		input := &model.Input{}
+		var inputRaw []byte
 
 		if file != "" {
 			var err error
-			input, err = readInputFile(file)
+			input, inputRaw, err = readInputFile(file)
 			if err != nil {
 				return err
 			}
@@ -116,6 +117,8 @@ var updateCmd = &cobra.Command{
 			Debug:         debugging,
 			Expected:      nil, // update subcommand doesn't use expectations
 			ExtraHosts:    extraHosts,
+			InputName:     file,
+			InputRaw:      inputRaw,
 			Job:           &input.Job,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
@@ -132,20 +135,20 @@ var updateCmd = &cobra.Command{
 	},
 }
 
-func readInputFile(file string) (*model.Input, error) {
+func readInputFile(file string) (*model.Input, []byte, error) {
 	var input model.Input
 
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open input file: %w", err)
+		return nil, nil, fmt.Errorf("failed to open input file: %w", err)
 	}
 	if err = json.Unmarshal(data, &input); err != nil {
 		if err = yaml.Unmarshal(data, &input); err != nil {
-			return nil, fmt.Errorf("failed to decode input file: %w", err)
+			return nil, nil, fmt.Errorf("failed to decode input file: %w", err)
 		}
 	}
 
-	return &input, nil
+	return &input, nil, nil
 }
 
 func processInput(input *model.Input) {

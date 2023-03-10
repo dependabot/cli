@@ -1,9 +1,13 @@
 package infra
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"io"
 	"log"
 	"net/http"
@@ -21,6 +25,8 @@ import (
 )
 
 type RunParams struct {
+	// Input file
+	Input string
 	// job definition passed to the updater
 	Job *model.Job
 	// expectations asserted at the end of a test
@@ -48,6 +54,8 @@ type RunParams struct {
 	UpdaterImage string
 	// ProxyImage is the image to use for the proxy
 	ProxyImage string
+	InputName  string
+	InputRaw   []byte
 }
 
 func Run(params RunParams) error {
@@ -94,33 +102,50 @@ func Run(params RunParams) error {
 	}
 
 	api.Complete()
+	var output bytes.Buffer
+
+	if params.Job.Source.Commit == nil {
+		// store the SHA we worked with for reproducible tests
+		params.Job.Source.Commit = api.Actual.Input.Job.Source.Commit
+	}
+	api.Actual.Input.Job = *params.Job
+
+	// ignore conditions help make tests reproducible, so they are generated if there aren't any yet
+	if len(api.Actual.Input.Job.IgnoreConditions) == 0 && api.Actual.Input.Job.PackageManager != "submodules" {
+		if err := generateIgnoreConditions(&params, &api.Actual); err != nil {
+			return err
+		}
+	}
+	if err := yaml.NewEncoder(&output).Encode(api.Actual); err != nil {
+		return fmt.Errorf("failed to write output: %v", err)
+	}
+
 	if outFile != nil {
 		if err := outFile.Truncate(0); err != nil {
 			return fmt.Errorf("failed to truncate output file: %w", err)
 		}
-		if params.Job.Source.Commit == nil {
-			// store the SHA we worked with for reproducible tests
-			params.Job.Source.Commit = api.Actual.Input.Job.Source.Commit
-		}
-		api.Actual.Input.Job = *params.Job
-
-		// ignore conditions help make tests reproducible
-		// so they are generated if there aren't any yet
-		if len(api.Actual.Input.Job.IgnoreConditions) == 0 && api.Actual.Input.Job.PackageManager != "submodules" {
-			if err := generateIgnoreConditions(&params, &api.Actual); err != nil {
-				return err
-			}
-		}
-		if err := yaml.NewEncoder(outFile).Encode(api.Actual); err != nil {
-			return fmt.Errorf("failed to write output: %v", err)
+		_, err := io.Copy(outFile, &output)
+		if err != nil {
+			return fmt.Errorf("failed to write output: %w", err)
 		}
 	}
-	if len(api.Errors) > 0 {
-		log.Println("The following errors occurred:")
 
-		for _, e := range api.Errors {
-			log.Println(e)
+	if len(api.Errors) > 0 {
+		inName := "input.yml"
+		outName := "output.yml"
+		if params.InputName != "" {
+			inName = params.InputName
 		}
+		if outFile != nil {
+			outName = outFile.Name()
+		}
+		aString := string(params.InputRaw)
+		bString := output.String()
+		edits := myers.ComputeEdits(span.URIFromPath(inName), string(params.InputRaw), bString)
+		if outFile != nil {
+			outName = outFile.Name()
+		}
+		_, _ = fmt.Fprintln(os.Stderr, gotextdiff.ToUnified(params.InputName, outName, aString, edits))
 
 		return fmt.Errorf("update failed expectations")
 	}
