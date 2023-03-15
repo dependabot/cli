@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/goware/prefixer"
 	"io"
 	"os"
 	"path"
@@ -231,10 +232,16 @@ func (u *Updater) RunUpdate(ctx context.Context, proxyURL string, apiPort int) e
 	if err != nil {
 		return fmt.Errorf("failed to start exec: %w", err)
 	}
+
+	r, w := io.Pipe()
+	go func() {
+		_, _ = io.Copy(os.Stderr, prefixer.New(r, "updater | "))
+	}()
+
 	// blocks until update is complete or ctl-c
 	ch := make(chan struct{})
 	go func() {
-		_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, execResp.Reader)
+		_, _ = stdcopy.StdCopy(w, w, execResp.Reader)
 		ch <- struct{}{}
 	}()
 
