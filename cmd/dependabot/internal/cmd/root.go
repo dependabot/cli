@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -44,6 +45,9 @@ func Execute() {
 }
 
 func init() {
+	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+	log.SetPrefix("cli | ")
+
 	rootCmd.PersistentFlags().StringVar(&updaterImage, "updater-image", "", "container image to use for the updater")
 	rootCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", infra.ProxyImageName, "container image to use for the proxy")
 }

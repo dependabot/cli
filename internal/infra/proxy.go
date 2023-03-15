@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/goware/prefixer"
+	"io"
 	"math/rand"
 	"os"
 	"path"
@@ -154,7 +156,11 @@ func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
 		return
 	}
 
-	_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	r, w := io.Pipe()
+	go func() {
+		_, _ = io.Copy(os.Stderr, prefixer.New(r, "proxy | "))
+	}()
+	_, _ = stdcopy.StdCopy(w, w, out)
 }
 
 func (p *Proxy) Close() error {
