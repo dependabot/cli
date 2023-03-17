@@ -31,7 +31,7 @@ var rootCmd = &cobra.Command{
 	Short: "Dependabot end-to-end runner",
 	Long:  `Run Dependabot jobs from the command line.`,
 	Example: heredoc.Doc(`
-        $ dependabot update go_modules rsc/quote --dry-run
+        $ dependabot update go_modules rsc/quote
         $ dependabot test -f input.yml
 	`),
 	Version: Version(),
