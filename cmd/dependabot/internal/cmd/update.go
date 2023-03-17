@@ -23,13 +23,12 @@ var (
 	repo           string
 	directory      string
 
-	dryRun          bool
 	inputServerPort int
 )
 
 var updateCmd = &cobra.Command{
 	Use:   "update <package_manager> <repo> [flags]",
-	Short: "Perform update job",
+	Short: "Perform an update job",
 	Example: heredoc.Doc(`
 		    $ dependabot update go_modules rsc/quote
 	    `),
