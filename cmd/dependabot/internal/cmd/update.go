@@ -126,6 +126,7 @@ var updateCmd = &cobra.Command{
 			PullImages:    pullImages,
 			Timeout:       timeout,
 			UpdaterImage:  updaterImage,
+			UseStdout:     !debugging,
 			Volumes:       volumes,
 		}); err != nil {
 			log.Fatalf("failed to run updater: %v", err)

@@ -49,6 +49,7 @@ var testCmd = &cobra.Command{
 			PullImages:    pullImages,
 			Timeout:       timeout,
 			UpdaterImage:  updaterImage,
+			UseStdout:     false,
 			Volumes:       volumes,
 		}); err != nil {
 			log.Fatal(err)
