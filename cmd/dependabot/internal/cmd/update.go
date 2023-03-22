@@ -27,10 +27,11 @@ var (
 )
 
 var updateCmd = &cobra.Command{
-	Use:   "update <package_manager> <repo> [flags]",
+	Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
 	Short: "Perform an update job",
 	Example: heredoc.Doc(`
 		    $ dependabot update go_modules rsc/quote
+		    $ dependabot update -f input.yml
 	    `),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var outFile *os.File
@@ -46,6 +47,9 @@ var updateCmd = &cobra.Command{
 		input := &model.Input{}
 
 		if file != "" {
+			if len(cmd.Flags().Args()) > 0 {
+				return errors.New("cannot use file and arguments together")
+			}
 			var err error
 			input, err = readInputFile(file)
 			if err != nil {
