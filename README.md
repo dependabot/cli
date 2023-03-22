@@ -39,7 +39,7 @@ Usage:
   dependabot [command]
 
 Examples:
-  $ dependabot update go_modules rsc/quote --dry-run
+  $ dependabot update go_modules rsc/quote
   $ dependabot test -f scenario.yaml
 
 Available Commands:
@@ -56,12 +56,11 @@ Use "dependabot [command] --help" for more information about a command.
 
 ### `dependabot update`
 
-Run the `update` subcommand with the `--dry-run` flag to
-simulate a Dependabot update job for the provided ecosystem and repo
-(without actually creating any PRs).
+Run the `update` subcommand to run a Dependabot update job for the provided ecosystem and repo.
+This does not create PRs, but outputs data that could be used to create PRs.
 
 ```console
-$ dependabot update go_modules rsc/quote --dry-run
+$ dependabot update go_modules rsc/quote
 # ...
 +----------------------------------------------------+
 |        Changes to Dependabot Pull Requests         |
@@ -103,7 +102,7 @@ using the `--file` / `-f` option
 (this replaces the package manager and repository name arguments).
 
 ```console
-$ dependabot update -f job.yaml --dry-run
+dependabot update -f job.yaml
 ```
 
 ```yaml
@@ -265,14 +264,14 @@ To produce a scenario file that tests Dependabot behavior for a given repo,
 run the `update` subcommand and set the `--output` / `-o` option to a file path.
 
 ```console
-$ dependabot update go_modules rsc/quote --dry-run -o go-scenario.yml
+dependabot update go_modules rsc/quote -o go-scenario.yml
 ```
 
 Run the `test` subcommand for the generated scenario file,
 specifying a cache directory with the `--cache` option.
 
 ```console
-$ dependabot test -f go-scenario.yml --cache ./tmp/cache
+dependabot test -f go-scenario.yml --cache ./tmp/cache
 ```
 
 While performing the update job,
@@ -310,7 +309,7 @@ to get the latest version of Docker installed and running.
 You can verify that Docker is running locally with the following command:
 
 ```console
-$ docker --version
+docker --version
 ```
 
 ### "Network internet is ambiguous"
@@ -324,7 +323,7 @@ This error can occur when the CLI exits before having an opportunity to clean up
 Run the following command to remove all unused networks:
 
 ```console
-$ docker network prune
+docker network prune
 ```
 
 [Docker]: https://docs.docker.com/get-started/

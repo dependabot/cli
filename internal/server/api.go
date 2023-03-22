@@ -122,10 +122,13 @@ func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 	}
 
 	if !a.hasExpectations {
-		// When running an update, there's no way to see the error in the record_update_job_error,
-		// but it's handy to see it in the logs for debugging.
-		if kind == "record_update_job_error" {
-			log.Println("update-job error:", actual.Data)
+		// output the data received to stdout
+		if err = json.NewEncoder(os.Stdout).Encode(map[string]any{
+			"type": kind,
+			"data": actual.Data,
+		}); err != nil {
+			// Fail so the user knows stdout is not working
+			log.Panicln("Failed to write to stdout: ", err)
 		}
 		return
 	}

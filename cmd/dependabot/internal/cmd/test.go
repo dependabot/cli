@@ -18,7 +18,7 @@ var (
 )
 
 var testCmd = &cobra.Command{
-	Use:   "test [-f file]",
+	Use:   "test -f <scenario.yml>",
 	Short: "Test scenarios",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if jobs < 1 {

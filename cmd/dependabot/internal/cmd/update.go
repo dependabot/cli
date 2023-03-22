@@ -23,15 +23,15 @@ var (
 	repo           string
 	directory      string
 
-	dryRun          bool
 	inputServerPort int
 )
 
 var updateCmd = &cobra.Command{
-	Use:   "update <package_manager> <repo> [flags]",
-	Short: "Perform update job",
+	Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
+	Short: "Perform an update job",
 	Example: heredoc.Doc(`
-		    $ dependabot update go_modules rsc/quote --dry-run
+		    $ dependabot update go_modules rsc/quote
+		    $ dependabot update -f input.yml
 	    `),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var outFile *os.File
@@ -48,6 +48,9 @@ var updateCmd = &cobra.Command{
 		var inputRaw []byte
 
 		if file != "" {
+			if len(cmd.Flags().Args()) > 0 {
+				return errors.New("cannot use file and arguments together")
+			}
 			var err error
 			input, inputRaw, err = readInputFile(file)
 			if err != nil {
@@ -216,10 +219,9 @@ func processInput(input *model.Input) {
 }
 
 func doesStdinHaveData() bool {
-	file := os.Stdin
-	fi, err := file.Stat()
+	fi, err := os.Stdin.Stat()
 	if err != nil {
-		fmt.Println("file.Stat()", err)
+		log.Println("file.Stat()", err)
 	}
 	return fi.Size() > 0
 }
@@ -231,9 +233,6 @@ func init() {
 
 	updateCmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
 	updateCmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
-
-	updateCmd.Flags().BoolVar(&dryRun, "dry-run", true, "perform update as a dry run")
-	_ = updateCmd.MarkFlagRequired("dry-run")
 
 	updateCmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	updateCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
