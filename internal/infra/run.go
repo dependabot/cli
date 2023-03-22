@@ -102,8 +102,20 @@ func Run(params RunParams) error {
 	}
 
 	api.Complete()
-	var output bytes.Buffer
 
+	output, err := generateOutput(params, api, outFile)
+	if err != nil {
+		return err
+	}
+
+	if len(api.Errors) > 0 {
+		return diff(params, outFile, output)
+	}
+
+	return nil
+}
+
+func generateOutput(params RunParams, api *server.API, outFile *os.File) (*bytes.Buffer, error) {
 	if params.Job.Source.Commit == nil {
 		// store the SHA we worked with for reproducible tests
 		params.Job.Source.Commit = api.Actual.Input.Job.Source.Commit
@@ -113,44 +125,42 @@ func Run(params RunParams) error {
 	// ignore conditions help make tests reproducible, so they are generated if there aren't any yet
 	if len(api.Actual.Input.Job.IgnoreConditions) == 0 && api.Actual.Input.Job.PackageManager != "submodules" {
 		if err := generateIgnoreConditions(&params, &api.Actual); err != nil {
-			return err
+			return nil, err
 		}
 	}
+
+	var output bytes.Buffer
 	if err := yaml.NewEncoder(&output).Encode(api.Actual); err != nil {
-		return fmt.Errorf("failed to write output: %v", err)
+		return nil, fmt.Errorf("failed to write output: %v", err)
 	}
 
 	if outFile != nil {
 		if err := outFile.Truncate(0); err != nil {
-			return fmt.Errorf("failed to truncate output file: %w", err)
+			return nil, fmt.Errorf("failed to truncate output file: %w", err)
 		}
 		_, err := io.Copy(outFile, &output)
 		if err != nil {
-			return fmt.Errorf("failed to write output: %w", err)
+			return nil, fmt.Errorf("failed to write output: %w", err)
 		}
 	}
+	return &output, nil
+}
 
-	if len(api.Errors) > 0 {
-		inName := "input.yml"
-		outName := "output.yml"
-		if params.InputName != "" {
-			inName = params.InputName
-		}
-		if outFile != nil {
-			outName = outFile.Name()
-		}
-		aString := string(params.InputRaw)
-		bString := output.String()
-		edits := myers.ComputeEdits(span.URIFromPath(inName), string(params.InputRaw), bString)
-		if outFile != nil {
-			outName = outFile.Name()
-		}
-		_, _ = fmt.Fprintln(os.Stderr, gotextdiff.ToUnified(params.InputName, outName, aString, edits))
-
-		return fmt.Errorf("update failed expectations")
+func diff(params RunParams, outFile *os.File, output *bytes.Buffer) error {
+	inName := "input.yml"
+	outName := "output.yml"
+	if params.InputName != "" {
+		inName = params.InputName
 	}
+	if outFile != nil {
+		outName = outFile.Name()
+	}
+	aString := string(params.InputRaw)
+	bString := output.String()
+	edits := myers.ComputeEdits(span.URIFromPath(inName), string(params.InputRaw), bString)
+	_, _ = fmt.Fprintln(os.Stderr, gotextdiff.ToUnified(params.InputName, outName, aString, edits))
 
-	return nil
+	return fmt.Errorf("update failed expectations")
 }
 
 var (
