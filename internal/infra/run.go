@@ -157,7 +157,7 @@ func diff(params RunParams, outFile *os.File, output *bytes.Buffer) error {
 	}
 	aString := string(params.InputRaw)
 	bString := output.String()
-	edits := myers.ComputeEdits(span.URIFromPath(inName), string(params.InputRaw), bString)
+	edits := myers.ComputeEdits(span.URIFromPath(inName), aString, bString)
 	_, _ = fmt.Fprintln(os.Stderr, gotextdiff.ToUnified(params.InputName, outName, aString, edits))
 
 	return fmt.Errorf("update failed expectations")
