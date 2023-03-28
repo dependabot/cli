@@ -114,6 +114,11 @@ var updateCmd = &cobra.Command{
 
 		processInput(input)
 
+		var writer io.Writer
+		if !debugging {
+			writer = os.Stdout
+		}
+
 		if err := infra.Run(infra.RunParams{
 			CacheDir:      cache,
 			Creds:         input.Credentials,
@@ -129,6 +134,7 @@ var updateCmd = &cobra.Command{
 			PullImages:    pullImages,
 			Timeout:       timeout,
 			UpdaterImage:  updaterImage,
+			Writer:        writer,
 			Volumes:       volumes,
 		}); err != nil {
 			log.Fatalf("failed to run updater: %v", err)

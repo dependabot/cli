@@ -54,8 +54,10 @@ type RunParams struct {
 	UpdaterImage string
 	// ProxyImage is the image to use for the proxy
 	ProxyImage string
-	InputName  string
-	InputRaw   []byte
+	// Writer is where API calls will be written to
+	Writer    io.Writer
+	InputName string
+	InputRaw  []byte
 }
 
 func Run(params RunParams) error {
@@ -73,7 +75,7 @@ func Run(params RunParams) error {
 		cancel()
 	}()
 
-	api := server.NewAPI(params.Expected)
+	api := server.NewAPI(params.Expected, params.Writer)
 	defer api.Stop()
 
 	var outFile *os.File
