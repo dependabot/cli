@@ -29,7 +29,7 @@ var testCmd = &cobra.Command{
 			return fmt.Errorf("requires a scenario file")
 		}
 
-		scenario, err := readScenarioFile(file)
+		scenario, inputRaw, err := readScenarioFile(file)
 		if err != nil {
 			return err
 		}
@@ -42,6 +42,8 @@ var testCmd = &cobra.Command{
 			Debug:         debugging,
 			Expected:      scenario.Output,
 			ExtraHosts:    extraHosts,
+			InputName:     file,
+			InputRaw:      inputRaw,
 			Job:           &scenario.Input.Job,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
@@ -59,20 +61,20 @@ var testCmd = &cobra.Command{
 	},
 }
 
-func readScenarioFile(file string) (*model.Scenario, error) {
+func readScenarioFile(file string) (*model.Scenario, []byte, error) {
 	var scenario model.Scenario
 
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open scenario file: %w", err)
+		return nil, nil, fmt.Errorf("failed to open scenario file: %w", err)
 	}
 	if err = json.Unmarshal(data, &scenario); err != nil {
 		if err = yaml.Unmarshal(data, &scenario); err != nil {
-			return nil, fmt.Errorf("failed to decode scenario file: %w", err)
+			return nil, nil, fmt.Errorf("failed to decode scenario file: %w", err)
 		}
 	}
 
-	return &scenario, nil
+	return &scenario, data, nil
 }
 
 func init() {
