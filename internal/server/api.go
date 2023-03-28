@@ -35,11 +35,11 @@ type API struct {
 	cursor          int
 	hasExpectations bool
 	port            int
-	useStdout       bool
+	writer          io.Writer
 }
 
 // NewAPI creates a new API instance and starts the server
-func NewAPI(expected []model.Output, useStdout bool) *API {
+func NewAPI(expected []model.Output, writer io.Writer) *API {
 	fakeAPIHost := "127.0.0.1"
 	if runtime.GOOS == "linux" {
 		fakeAPIHost = "0.0.0.0"
@@ -61,7 +61,7 @@ func NewAPI(expected []model.Output, useStdout bool) *API {
 	api := &API{
 		server:          server,
 		Expectations:    expected,
-		useStdout:       useStdout,
+		writer:          writer,
 		cursor:          0,
 		hasExpectations: len(expected) > 0,
 		port:            l.Addr().(*net.TCPAddr).Port,
@@ -124,9 +124,9 @@ func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 	}
 
 	if !a.hasExpectations {
-		if a.useStdout {
+		if a.writer != nil {
 			// output the data received to stdout
-			if err = json.NewEncoder(os.Stdout).Encode(map[string]any{
+			if err = json.NewEncoder(a.writer).Encode(map[string]any{
 				"type": kind,
 				"data": actual.Data,
 			}); err != nil {
