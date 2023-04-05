@@ -1,7 +1,6 @@
 package infra
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -117,7 +116,7 @@ func Run(params RunParams) error {
 	return nil
 }
 
-func generateOutput(params RunParams, api *server.API, outFile *os.File) (*bytes.Buffer, error) {
+func generateOutput(params RunParams, api *server.API, outFile *os.File) ([]byte, error) {
 	if params.Job.Source.Commit == nil {
 		// store the SHA we worked with for reproducible tests
 		params.Job.Source.Commit = api.Actual.Input.Job.Source.Commit
@@ -131,8 +130,8 @@ func generateOutput(params RunParams, api *server.API, outFile *os.File) (*bytes
 		}
 	}
 
-	var output bytes.Buffer
-	if err := yaml.NewEncoder(&output).Encode(api.Actual); err != nil {
+	output, err := yaml.Marshal(api.Actual)
+	if err != nil {
 		return nil, fmt.Errorf("failed to write output: %v", err)
 	}
 
@@ -140,15 +139,18 @@ func generateOutput(params RunParams, api *server.API, outFile *os.File) (*bytes
 		if err := outFile.Truncate(0); err != nil {
 			return nil, fmt.Errorf("failed to truncate output file: %w", err)
 		}
-		_, err := io.Copy(outFile, &output)
+		n, err := outFile.Write(output)
 		if err != nil {
 			return nil, fmt.Errorf("failed to write output: %w", err)
 		}
+		if n != len(output) {
+			return nil, fmt.Errorf("failed to write complete output: %w", io.ErrShortWrite)
+		}
 	}
-	return &output, nil
+	return output, nil
 }
 
-func diff(params RunParams, outFile *os.File, output *bytes.Buffer) error {
+func diff(params RunParams, outFile *os.File, output []byte) error {
 	inName := "input.yml"
 	outName := "output.yml"
 	if params.InputName != "" {
@@ -158,9 +160,8 @@ func diff(params RunParams, outFile *os.File, output *bytes.Buffer) error {
 		outName = outFile.Name()
 	}
 	aString := string(params.InputRaw)
-	bString := output.String()
-	edits := myers.ComputeEdits(span.URIFromPath(inName), aString, bString)
-	_, _ = fmt.Fprintln(os.Stderr, gotextdiff.ToUnified(params.InputName, outName, aString, edits))
+	edits := myers.ComputeEdits(span.URIFromPath(inName), aString, string(output))
+	_, _ = fmt.Fprintln(os.Stderr, gotextdiff.ToUnified(inName, outName, aString, edits))
 
 	return fmt.Errorf("update failed expectations")
 }
