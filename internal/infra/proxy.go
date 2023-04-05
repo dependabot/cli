@@ -158,7 +158,7 @@ func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
 
 	r, w := io.Pipe()
 	go func() {
-		_, _ = io.Copy(os.Stderr, prefixer.New(r, "proxy | "))
+		_, _ = io.Copy(os.Stderr, prefixer.New(r, "  proxy | "))
 	}()
 	_, _ = stdcopy.StdCopy(w, w, out)
 }
