@@ -113,6 +113,10 @@ func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(r.URL.String(), "/")
 	kind := parts[len(parts)-1]
+	if kind == "increment_metric" {
+		// ignore metrics
+		return
+	}
 	actual, err := decodeWrapper(kind, data)
 	if err != nil {
 		a.pushError(err)
