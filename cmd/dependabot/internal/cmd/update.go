@@ -74,6 +74,7 @@ var updateCmd = &cobra.Command{
 				AllowedUpdates: []model.Allowed{{
 					UpdateType: "all",
 				}},
+				DependencyGroups:           nil,
 				Dependencies:               nil,
 				ExistingPullRequests:       [][]model.ExistingPR{},
 				IgnoreConditions:           []model.Condition{},

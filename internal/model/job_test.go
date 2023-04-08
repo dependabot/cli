@@ -335,6 +335,9 @@ job:
   allowed-updates:
   - dependency-type: direct
     update-type: all
+  dependency-groups:
+  - name: npm
+    rules: ["npm", "@npmcli*"]
   credentials-metadata:
   - type: git_source
     host: github.com
