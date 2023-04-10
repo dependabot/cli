@@ -4,6 +4,7 @@ package model
 type Job struct {
 	PackageManager             string         `json:"package-manager" yaml:"package-manager"`
 	AllowedUpdates             []Allowed      `json:"allowed-updates" yaml:"allowed-updates,omitempty"`
+	DependencyGroups           []Group        `json:"dependency-groups" yaml:"dependency-groups,omitempty"`
 	Dependencies               []string       `json:"dependencies" yaml:"dependencies,omitempty"`
 	ExistingPullRequests       [][]ExistingPR `json:"existing-pull-requests" yaml:"existing-pull-requests,omitempty"`
 	Experiments                Experiment     `json:"experiments" yaml:"experiments,omitempty"`
@@ -43,6 +44,11 @@ type Allowed struct {
 	DependencyType string `json:"dependency-type,omitempty" yaml:"dependency-type,omitempty"`
 	DependencyName string `json:"dependency-name,omitempty" yaml:"dependency-name,omitempty"`
 	UpdateType     string `json:"update-type,omitempty" yaml:"update-type,omitempty"`
+}
+
+type Group struct {
+	GroupName string   `json:"name,omitempty" yaml:"name,omitempty"`
+	Rules     []string `json:"rules,omitempty" yaml:"rules,omitempty"`
 }
 
 type Condition struct {
