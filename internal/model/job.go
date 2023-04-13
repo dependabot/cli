@@ -47,8 +47,8 @@ type Allowed struct {
 }
 
 type Group struct {
-	GroupName string   `json:"name,omitempty" yaml:"name,omitempty"`
-	Rules     []string `json:"rules,omitempty" yaml:"rules,omitempty"`
+	GroupName string         `json:"name,omitempty" yaml:"name,omitempty"`
+	Rules     map[string]any `json:"rules,omitempty" yaml:"rules,omitempty"`
 }
 
 type Condition struct {
