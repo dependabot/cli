@@ -337,7 +337,8 @@ job:
     update-type: all
   dependency-groups:
   - name: npm
-    rules: ["npm", "@npmcli*"]
+    rules: 
+      patterns: ["npm", "@npmcli*"]
   credentials-metadata:
   - type: git_source
     host: github.com
