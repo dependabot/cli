@@ -44,7 +44,7 @@ var updateCmd = &cobra.Command{
 			defer outFile.Close()
 		}
 
-		input := &model.Input{}
+		var input *model.Input
 		var inputRaw []byte
 
 		if file != "" {
@@ -59,6 +59,10 @@ var updateCmd = &cobra.Command{
 		}
 
 		if len(cmd.Flags().Args()) > 0 {
+			if len(cmd.Flags().Args()) != 2 {
+				return errors.New("requires a package manager and repo argument")
+			}
+
 			packageManager = cmd.Flags().Args()[0]
 			if packageManager == "" {
 				return errors.New("requires a package manager argument")
@@ -69,29 +73,31 @@ var updateCmd = &cobra.Command{
 				return errors.New("requires a repo argument")
 			}
 
-			input.Job = model.Job{
-				PackageManager: packageManager,
-				AllowedUpdates: []model.Allowed{{
-					UpdateType: "all",
-				}},
-				DependencyGroups:           nil,
-				Dependencies:               nil,
-				ExistingPullRequests:       [][]model.ExistingPR{},
-				IgnoreConditions:           []model.Condition{},
-				LockfileOnly:               false,
-				RequirementsUpdateStrategy: nil,
-				SecurityAdvisories:         []model.Advisory{},
-				SecurityUpdatesOnly:        false,
-				Source: model.Source{
-					Provider:    provider,
-					Repo:        repo,
-					Directory:   directory,
-					Branch:      nil,
-					Hostname:    nil,
-					APIEndpoint: nil,
+			input = &model.Input{
+				Job: model.Job{
+					PackageManager: packageManager,
+					AllowedUpdates: []model.Allowed{{
+						UpdateType: "all",
+					}},
+					DependencyGroups:           nil,
+					Dependencies:               nil,
+					ExistingPullRequests:       [][]model.ExistingPR{},
+					IgnoreConditions:           []model.Condition{},
+					LockfileOnly:               false,
+					RequirementsUpdateStrategy: nil,
+					SecurityAdvisories:         []model.Advisory{},
+					SecurityUpdatesOnly:        false,
+					Source: model.Source{
+						Provider:    provider,
+						Repo:        repo,
+						Directory:   directory,
+						Branch:      nil,
+						Hostname:    nil,
+						APIEndpoint: nil,
+					},
+					UpdateSubdependencies: false,
+					UpdatingAPullRequest:  false,
 				},
-				UpdateSubdependencies: false,
-				UpdatingAPullRequest:  false,
 			}
 		}
 
@@ -106,11 +112,16 @@ var updateCmd = &cobra.Command{
 				return err
 			}
 			data := in.Bytes()
+			input = &model.Input{}
 			if err = json.Unmarshal(data, &input); err != nil {
 				if err = yaml.Unmarshal(data, &input); err != nil {
 					return fmt.Errorf("failed to decode input file: %w", err)
 				}
 			}
+		}
+
+		if input == nil {
+			return errors.New("requires parameters or input file")
 		}
 
 		processInput(input)
