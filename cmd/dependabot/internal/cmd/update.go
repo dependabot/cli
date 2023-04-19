@@ -44,13 +44,9 @@ var updateCmd = &cobra.Command{
 			defer outFile.Close()
 		}
 
-		input, inputRaw, err := extractInput(cmd)
+		input, err := extractInput(cmd)
 		if err != nil {
 			return err
-		}
-
-		if input == nil {
-			return errors.New("requires parameters or input file")
 		}
 
 		processInput(input)
@@ -67,7 +63,6 @@ var updateCmd = &cobra.Command{
 			Expected:      nil, // update subcommand doesn't use expectations
 			ExtraHosts:    extraHosts,
 			InputName:     file,
-			InputRaw:      inputRaw,
 			Job:           &input.Job,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
@@ -85,100 +80,117 @@ var updateCmd = &cobra.Command{
 	},
 }
 
-func extractInput(cmd *cobra.Command) (*model.Input, []byte, error) {
-	var input *model.Input
-	var inputRaw []byte
+func extractInput(cmd *cobra.Command) (*model.Input, error) {
+	hasFile := file != ""
+	hasArguments := len(cmd.Flags().Args()) > 0
+	hasServer := inputServerPort != 0
+	hasStdin := doesStdinHaveData()
 
-	if file != "" {
-		if len(cmd.Flags().Args()) > 0 {
-			return nil, nil, errors.New("cannot use file and arguments together")
-		}
-		var err error
-		input, inputRaw, err = readInputFile(file)
-		if err != nil {
-			return nil, nil, err
+	var count int
+	for _, b := range []bool{hasFile, hasArguments, hasServer, hasStdin} {
+		if b {
+			count++
 		}
 	}
-
-	if len(cmd.Flags().Args()) > 0 {
-		if len(cmd.Flags().Args()) != 2 {
-			return nil, nil, errors.New("requires a package manager and repo argument")
-		}
-
-		packageManager = cmd.Flags().Args()[0]
-		if packageManager == "" {
-			return nil, nil, errors.New("requires a package manager argument")
-		}
-
-		repo = cmd.Flags().Args()[1]
-		if repo == "" {
-			return nil, nil, errors.New("requires a repo argument")
-		}
-
-		input = &model.Input{
-			Job: model.Job{
-				PackageManager: packageManager,
-				AllowedUpdates: []model.Allowed{{
-					UpdateType: "all",
-				}},
-				DependencyGroups:           nil,
-				Dependencies:               nil,
-				ExistingPullRequests:       [][]model.ExistingPR{},
-				IgnoreConditions:           []model.Condition{},
-				LockfileOnly:               false,
-				RequirementsUpdateStrategy: nil,
-				SecurityAdvisories:         []model.Advisory{},
-				SecurityUpdatesOnly:        false,
-				Source: model.Source{
-					Provider:    provider,
-					Repo:        repo,
-					Directory:   directory,
-					Branch:      nil,
-					Hostname:    nil,
-					APIEndpoint: nil,
-				},
-				UpdateSubdependencies: false,
-				UpdatingAPullRequest:  false,
-			},
-		}
+	if count > 1 {
+		return nil, errors.New("can only use one of: input file, arguments, server, or stdin")
 	}
 
-	if inputServerPort != 0 {
-		input = server.Input(inputServerPort)
+	if hasFile {
+		return readInputFile(file)
 	}
 
-	if doesStdinHaveData() {
-		in := &bytes.Buffer{}
-		_, err := io.Copy(in, os.Stdin)
-		if err != nil {
-			return nil, nil, err
-		}
-		data := in.Bytes()
-		input = &model.Input{}
-		if err = json.Unmarshal(data, &input); err != nil {
-			if err = yaml.Unmarshal(data, &input); err != nil {
-				return nil, nil, fmt.Errorf("failed to decode input file: %w", err)
-			}
-		}
+	if hasArguments {
+		input, err := readArguments(cmd)
+		return input, err
 	}
 
-	return input, inputRaw, nil
+	if hasServer {
+		return server.Input(inputServerPort), nil
+	}
+
+	if hasStdin {
+		input, err := readStdin()
+		return input, err
+	}
+
+	return nil, fmt.Errorf("requires input as arguments, input file, or stdin")
 }
 
-func readInputFile(file string) (*model.Input, []byte, error) {
+func readStdin() (*model.Input, error) {
+	in := &bytes.Buffer{}
+	_, err := io.Copy(in, os.Stdin)
+	if err != nil {
+		return nil, err
+	}
+	data := in.Bytes()
+	input := &model.Input{}
+	if err = json.Unmarshal(data, &input); err != nil {
+		if err = yaml.Unmarshal(data, &input); err != nil {
+			return nil, fmt.Errorf("failed to decode input file: %w", err)
+		}
+	}
+	return nil, nil
+}
+
+func readArguments(cmd *cobra.Command) (*model.Input, error) {
+	if len(cmd.Flags().Args()) != 2 {
+		return nil, errors.New("requires a package manager and repo argument")
+	}
+
+	packageManager = cmd.Flags().Args()[0]
+	if packageManager == "" {
+		return nil, errors.New("requires a package manager argument")
+	}
+
+	repo = cmd.Flags().Args()[1]
+	if repo == "" {
+		return nil, errors.New("requires a repo argument")
+	}
+
+	input := &model.Input{
+		Job: model.Job{
+			PackageManager: packageManager,
+			AllowedUpdates: []model.Allowed{{
+				UpdateType: "all",
+			}},
+			DependencyGroups:           nil,
+			Dependencies:               nil,
+			ExistingPullRequests:       [][]model.ExistingPR{},
+			IgnoreConditions:           []model.Condition{},
+			LockfileOnly:               false,
+			RequirementsUpdateStrategy: nil,
+			SecurityAdvisories:         []model.Advisory{},
+			SecurityUpdatesOnly:        false,
+			Source: model.Source{
+				Provider:    provider,
+				Repo:        repo,
+				Directory:   directory,
+				Branch:      nil,
+				Hostname:    nil,
+				APIEndpoint: nil,
+			},
+			UpdateSubdependencies: false,
+			UpdatingAPullRequest:  false,
+		},
+	}
+	return input, nil
+}
+
+func readInputFile(file string) (*model.Input, error) {
 	var input model.Input
 
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open input file: %w", err)
+		return nil, fmt.Errorf("failed to open input file: %w", err)
 	}
 	if err = json.Unmarshal(data, &input); err != nil {
 		if err = yaml.Unmarshal(data, &input); err != nil {
-			return nil, nil, fmt.Errorf("failed to decode input file: %w", err)
+			return nil, fmt.Errorf("failed to decode input file: %w", err)
 		}
 	}
 
-	return &input, nil, nil
+	return &input, nil
 }
 
 func processInput(input *model.Input) {
