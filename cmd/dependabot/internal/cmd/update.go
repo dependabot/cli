@@ -26,59 +26,80 @@ var (
 	inputServerPort int
 )
 
-var updateCmd = &cobra.Command{
-	Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
-	Short: "Perform an update job",
-	Example: heredoc.Doc(`
+func NewUpdateCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
+		Short: "Perform an update job",
+		Example: heredoc.Doc(`
 		    $ dependabot update go_modules rsc/quote
 		    $ dependabot update -f input.yml
 	    `),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var outFile *os.File
-		if output != "" {
-			var err error
-			outFile, err = os.Create(output)
-			if err != nil {
-				return fmt.Errorf("failed to create output file: %w", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var outFile *os.File
+			if output != "" {
+				var err error
+				outFile, err = os.Create(output)
+				if err != nil {
+					return fmt.Errorf("failed to create output file: %w", err)
+				}
+				defer outFile.Close()
 			}
-			defer outFile.Close()
-		}
 
-		input, err := extractInput(cmd)
-		if err != nil {
-			return err
-		}
+			input, err := extractInput(cmd)
+			if err != nil {
+				return err
+			}
 
-		processInput(input)
+			processInput(input)
 
-		var writer io.Writer
-		if !debugging {
-			writer = os.Stdout
-		}
+			var writer io.Writer
+			if !debugging {
+				writer = os.Stdout
+			}
 
-		if err := infra.Run(infra.RunParams{
-			CacheDir:      cache,
-			Creds:         input.Credentials,
-			Debug:         debugging,
-			Expected:      nil, // update subcommand doesn't use expectations
-			ExtraHosts:    extraHosts,
-			InputName:     file,
-			Job:           &input.Job,
-			Output:        output,
-			ProxyCertPath: proxyCertPath,
-			ProxyImage:    proxyImage,
-			PullImages:    pullImages,
-			Timeout:       timeout,
-			UpdaterImage:  updaterImage,
-			Writer:        writer,
-			Volumes:       volumes,
-		}); err != nil {
-			log.Fatalf("failed to run updater: %v", err)
-		}
+			if err := infra.Run(infra.RunParams{
+				CacheDir:      cache,
+				Creds:         input.Credentials,
+				Debug:         debugging,
+				Expected:      nil, // update subcommand doesn't use expectations
+				ExtraHosts:    extraHosts,
+				InputName:     file,
+				Job:           &input.Job,
+				Output:        output,
+				ProxyCertPath: proxyCertPath,
+				ProxyImage:    proxyImage,
+				PullImages:    pullImages,
+				Timeout:       timeout,
+				UpdaterImage:  updaterImage,
+				Writer:        writer,
+				Volumes:       volumes,
+			}); err != nil {
+				log.Fatalf("failed to run updater: %v", err)
+			}
 
-		return nil
-	},
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&file, "file", "f", "", "path to scenario file")
+
+	cmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
+	cmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
+
+	cmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
+	cmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
+	cmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
+	cmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
+	cmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
+	cmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
+	cmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
+	cmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
+	cmd.Flags().IntVar(&inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
+
+	return cmd
 }
+
+var updateCmd = NewUpdateCommand()
 
 func extractInput(cmd *cobra.Command) (*model.Input, error) {
 	hasFile := file != ""
@@ -106,7 +127,7 @@ func extractInput(cmd *cobra.Command) (*model.Input, error) {
 	}
 
 	if hasServer {
-		return server.Input(inputServerPort), nil
+		return server.Input(inputServerPort)
 	}
 
 	if hasStdin {
@@ -130,7 +151,7 @@ func readStdin() (*model.Input, error) {
 			return nil, fmt.Errorf("failed to decode input file: %w", err)
 		}
 	}
-	return nil, nil
+	return input, nil
 }
 
 func readArguments(cmd *cobra.Command) (*model.Input, error) {
@@ -267,19 +288,4 @@ func doesStdinHaveData() bool {
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
-
-	updateCmd.Flags().StringVarP(&file, "file", "f", "", "path to scenario file")
-
-	updateCmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
-	updateCmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
-
-	updateCmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
-	updateCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
-	updateCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
-	updateCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
-	updateCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
-	updateCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
-	updateCmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
-	updateCmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
-	updateCmd.Flags().IntVar(&inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
 }
