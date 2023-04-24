@@ -130,8 +130,7 @@ func extractInput(cmd *cobra.Command) (*model.Input, error) {
 	}
 
 	if hasStdin {
-		input, err := readStdin()
-		return input, err
+		return readStdin()
 	}
 
 	return nil, fmt.Errorf("requires input as arguments, input file, or stdin")
