@@ -8,7 +8,7 @@ require (
 	github.com/docker/docker v23.0.4+incompatible
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/moby/moby v23.0.3+incompatible
+	github.com/moby/moby v23.0.4+incompatible
 	github.com/moby/sys/signal v0.7.0
 	github.com/spf13/cobra v1.6.1
 	gopkg.in/yaml.v3 v3.0.1
