@@ -91,7 +91,7 @@ func Test_extractInput(t *testing.T) {
 		go func() {
 			for i := 0; i < 10; i++ {
 				body := strings.NewReader(`{"job":{"package-manager":"go_modules"}}`)
-				_, err := http.Post("http://localhost:8080", "application/json", body)
+				_, err := http.Post("http://127.0.0.1:8080", "application/json", body)
 				if err != nil {
 					time.Sleep(10 * time.Millisecond)
 				} else {
