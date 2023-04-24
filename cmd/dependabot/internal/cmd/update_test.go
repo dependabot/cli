@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func Test_processInput(t *testing.T) {
@@ -88,8 +89,15 @@ func Test_extractInput(t *testing.T) {
 	})
 	t.Run("test server", func(t *testing.T) {
 		go func() {
-			body := strings.NewReader(`{"job":{"package-manager":"go_modules"}}`)
-			_, _ = http.Post("http://localhost:8080", "application/json", body)
+			for i := 0; i < 10; i++ {
+				body := strings.NewReader(`{"job":{"package-manager":"go_modules"}}`)
+				_, err := http.Post("http://localhost:8080", "application/json", body)
+				if err != nil {
+					time.Sleep(10 * time.Millisecond)
+				} else {
+					return
+				}
+			}
 		}()
 
 		cmd := NewUpdateCommand()
