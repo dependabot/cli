@@ -122,8 +122,7 @@ func extractInput(cmd *cobra.Command) (*model.Input, error) {
 	}
 
 	if hasArguments {
-		input, err := readArguments(cmd)
-		return input, err
+		return readArguments(cmd)
 	}
 
 	if hasServer {
