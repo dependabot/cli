@@ -16,7 +16,7 @@ type CreatePullRequest struct {
 	PRTitle                string           `json:"pr-title" yaml:"pr-title,omitempty"`
 	PRBody                 string           `json:"pr-body" yaml:"pr-body,omitempty"`
 	CommitMessage          string           `json:"commit-message" yaml:"commit-message,omitempty"`
-	GroupedUpdate          bool             `json:"grouped-update" yaml:"grouped-update"`
+	DependencyGroup        map[string]any   `json:"dependency-group" yaml:"dependency-group"`
 }
 
 type UpdatePullRequest struct {
