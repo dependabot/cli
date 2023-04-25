@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/docker/docker/pkg/archive"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
@@ -30,6 +31,8 @@ type RunParams struct {
 	Job *model.Job
 	// expectations asserted at the end of a test
 	Expected []model.Output
+	// directory to copy into the updater container as the repo
+	LocalDir string
 	// credentials passed to the proxy
 	Creds []model.Credential
 	// local directory used for caching
@@ -330,14 +333,58 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 	}
 	defer updater.Close()
 
+	// put the clone dir in the updater container to be used by during the update
+	if params.LocalDir != "" {
+		if err = putCloneDir(ctx, cli, updater, params.LocalDir); err != nil {
+			return err
+		}
+	}
+
 	if params.Debug {
 		if err := updater.RunShell(ctx, prox.url, api.Port()); err != nil {
 			return err
 		}
 	} else {
-		if err := updater.RunUpdate(ctx, prox.url, api.Port()); err != nil {
+		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
+		if err := updater.RunCmd(ctx, cmd, userEnv(prox.url, api.Port())...); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir string) error {
+	// Docker won't create the directory, so we have to do it first.
+	const cmd = "mkdir -p " + guestRepoDir
+	err := updater.RunCmd(ctx, cmd)
+	if err != nil {
+		return fmt.Errorf("failed to create clone dir: %w", err)
+	}
+
+	r, err := archive.TarWithOptions(dir, &archive.TarOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to tar clone dir: %w", err)
+	}
+
+	opt := types.CopyToContainerOptions{}
+	err = cli.CopyToContainer(ctx, updater.containerID, guestRepoDir, r, opt)
+	if err != nil {
+		return fmt.Errorf("failed to copy clone dir to container: %w", err)
+	}
+
+	// The directory needs to be a git repo, so we need to initialize it.
+	commands := []string{
+		"cd " + guestRepoDir,
+		"git init",
+		"git config user.email 'dependabot@github.com'",
+		"git config user.name 'dependabot'",
+		"git add .",
+		"git commit -m 'initial commit'",
+	}
+	err = updater.RunCmd(ctx, strings.Join(commands, " && "))
+	if err != nil {
+		return fmt.Errorf("failed to initialize clone dir: %w", err)
 	}
 
 	return nil

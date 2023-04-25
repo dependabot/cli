@@ -45,6 +45,7 @@ var testCmd = &cobra.Command{
 			InputName:     file,
 			InputRaw:      inputRaw,
 			Job:           &scenario.Input.Job,
+			LocalDir:      local,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
 			ProxyImage:    proxyImage,
@@ -85,6 +86,7 @@ func init() {
 
 	testCmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	testCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
+	testCmd.Flags().StringVar(&local, "local", "", "local directory to use as fetched source")
 	testCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
 	testCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	testCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
