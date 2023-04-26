@@ -16,7 +16,7 @@ type CreatePullRequest struct {
 	PRTitle                string           `json:"pr-title" yaml:"pr-title,omitempty"`
 	PRBody                 string           `json:"pr-body" yaml:"pr-body,omitempty"`
 	CommitMessage          string           `json:"commit-message" yaml:"commit-message,omitempty"`
-	DependencyGroup        map[string]any   `json:"dependency-group" yaml:"dependency-group"`
+	DependencyGroup        map[string]any   `json:"dependency-group" yaml:"dependency-group,omitempty"`
 }
 
 type UpdatePullRequest struct {
@@ -26,6 +26,7 @@ type UpdatePullRequest struct {
 	PRTitle                string           `json:"pr-title" yaml:"pr-title,omitempty"`
 	PRBody                 string           `json:"pr-body" yaml:"pr-body,omitempty"`
 	CommitMessage          string           `json:"commit-message" yaml:"commit-message,omitempty"`
+	DependencyGroup        map[string]any   `json:"dependency-group" yaml:"dependency-group,omitempty"`
 }
 
 type DependencyFile struct {
