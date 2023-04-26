@@ -3,7 +3,7 @@ package model
 /*
 Updating Models
 
-If you are adding a new attribute to any of the models, a good rule of thumb is to add it was `yaml:my-attribute,omitempty`
+If you are adding a new attribute to any of the models, a good rule of thumb is to add it was `yaml:"my-attribute,omitempty"`
 initially _before_ you make any changes to core.
 
 That will allow the CLI and our smoke tests to work with version of core before and after the change. Once you've released
