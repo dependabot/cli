@@ -29,7 +29,7 @@ func (s *credServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Input receives configuration via HTTP on the port and returns it decoded
-func Input(port int) *model.Input {
+func Input(port int) (*model.Input, error) {
 	server := &http.Server{
 		Addr:              fmt.Sprintf("127.0.0.1:%d", port),
 		ReadHeaderTimeout: time.Second,
@@ -39,7 +39,7 @@ func Input(port int) *model.Input {
 	// printing so the user doesn't think the cli is hanging
 	log.Println("waiting for input on port", port)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		panic(err)
+		return nil, err
 	}
-	return s.data
+	return s.data, nil
 }

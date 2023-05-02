@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"github.com/dependabot/cli/internal/model"
+	"net/http"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
-
-	"github.com/dependabot/cli/internal/model"
+	"time"
 )
 
 func Test_processInput(t *testing.T) {
@@ -53,6 +55,92 @@ func Test_processInput(t *testing.T) {
 			"host": "github.com",
 		}) {
 			t.Error("expected credentials metadata to be added")
+		}
+	})
+}
+
+func Test_extractInput(t *testing.T) {
+	t.Run("test arguments", func(t *testing.T) {
+		cmd := NewUpdateCommand()
+		if err := cmd.ParseFlags([]string{"go_modules", "rsc/quote"}); err != nil {
+			t.Fatal(err)
+		}
+		input, err := extractInput(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if input.Job.PackageManager != "go_modules" {
+			t.Errorf("expected package manager to be go_modules, got %s", input.Job.PackageManager)
+		}
+	})
+	t.Run("test file", func(t *testing.T) {
+		cmd := NewUpdateCommand()
+		// The working directory is cmd/dependabot/internal/cmd
+		if err := cmd.ParseFlags([]string{"-f", "../../../../testdata/basic.yml"}); err != nil {
+			t.Fatal(err)
+		}
+		input, err := extractInput(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if input.Job.PackageManager != "go_modules" {
+			t.Errorf("expected package manager to be go_modules, got %s", input.Job.PackageManager)
+		}
+	})
+	t.Run("test server", func(t *testing.T) {
+		go func() {
+			// Retry the calls in case the server takes a bit to start up.
+			for i := 0; i < 10; i++ {
+				body := strings.NewReader(`{"job":{"package-manager":"go_modules"}}`)
+				_, err := http.Post("http://127.0.0.1:8080", "application/json", body)
+				if err != nil {
+					time.Sleep(10 * time.Millisecond)
+				} else {
+					return
+				}
+			}
+		}()
+
+		cmd := NewUpdateCommand()
+		if err := cmd.ParseFlags([]string{"--input-port", "8080"}); err != nil {
+			t.Fatal(err)
+		}
+		input, err := extractInput(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if input.Job.PackageManager != "go_modules" {
+			t.Errorf("expected package manager to be go_modules, got %s", input.Job.PackageManager)
+		}
+	})
+	t.Run("test stdin", func(t *testing.T) {
+		tmp, err := os.CreateTemp("", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmp.Name())
+
+		tmp.WriteString(`{"job":{"package-manager":"go_modules"}}`)
+		tmp.Close()
+
+		os.Stdin, _ = os.Open(tmp.Name())
+		cmd := NewUpdateCommand()
+		input, err := extractInput(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if input.Job.PackageManager != "go_modules" {
+			t.Errorf("expected package manager to be go_modules, got %s", input.Job.PackageManager)
+		}
+	})
+	t.Run("test too many input types", func(t *testing.T) {
+		cmd := NewUpdateCommand()
+		if err := cmd.ParseFlags([]string{"go_modules", "-f", "basic.yml"}); err != nil {
+			t.Fatal(err)
+		}
+		_, err := extractInput(cmd)
+		if err == nil {
+			t.Errorf("expected error, got nil")
 		}
 	})
 }

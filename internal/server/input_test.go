@@ -14,7 +14,7 @@ func TestInput(t *testing.T) {
 	wg.Add(1)
 	var input *model.Input
 	go func() {
-		input = Input(8080)
+		input, _ = Input(8080)
 		wg.Done()
 	}()
 

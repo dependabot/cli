@@ -26,139 +26,190 @@ var (
 	inputServerPort int
 )
 
-var updateCmd = &cobra.Command{
-	Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
-	Short: "Perform an update job",
-	Example: heredoc.Doc(`
+func NewUpdateCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
+		Short: "Perform an update job",
+		Example: heredoc.Doc(`
 		    $ dependabot update go_modules rsc/quote
 		    $ dependabot update -f input.yml
 	    `),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var outFile *os.File
-		if output != "" {
-			var err error
-			outFile, err = os.Create(output)
-			if err != nil {
-				return fmt.Errorf("failed to create output file: %w", err)
-			}
-			defer outFile.Close()
-		}
-
-		input := &model.Input{}
-		var inputRaw []byte
-
-		if file != "" {
-			if len(cmd.Flags().Args()) > 0 {
-				return errors.New("cannot use file and arguments together")
-			}
-			var err error
-			input, inputRaw, err = readInputFile(file)
-			if err != nil {
-				return err
-			}
-		}
-
-		if len(cmd.Flags().Args()) > 0 {
-			packageManager = cmd.Flags().Args()[0]
-			if packageManager == "" {
-				return errors.New("requires a package manager argument")
-			}
-
-			repo = cmd.Flags().Args()[1]
-			if repo == "" {
-				return errors.New("requires a repo argument")
-			}
-
-			input.Job = model.Job{
-				PackageManager: packageManager,
-				AllowedUpdates: []model.Allowed{{
-					UpdateType: "all",
-				}},
-				DependencyGroups:           nil,
-				Dependencies:               nil,
-				ExistingPullRequests:       [][]model.ExistingPR{},
-				IgnoreConditions:           []model.Condition{},
-				LockfileOnly:               false,
-				RequirementsUpdateStrategy: nil,
-				SecurityAdvisories:         []model.Advisory{},
-				SecurityUpdatesOnly:        false,
-				Source: model.Source{
-					Provider:    provider,
-					Repo:        repo,
-					Directory:   directory,
-					Branch:      nil,
-					Hostname:    nil,
-					APIEndpoint: nil,
-				},
-				UpdateSubdependencies: false,
-				UpdatingAPullRequest:  false,
-			}
-		}
-
-		if inputServerPort != 0 {
-			input = server.Input(inputServerPort)
-		}
-
-		if doesStdinHaveData() {
-			in := &bytes.Buffer{}
-			_, err := io.Copy(in, os.Stdin)
-			if err != nil {
-				return err
-			}
-			data := in.Bytes()
-			if err = json.Unmarshal(data, &input); err != nil {
-				if err = yaml.Unmarshal(data, &input); err != nil {
-					return fmt.Errorf("failed to decode input file: %w", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var outFile *os.File
+			if output != "" {
+				var err error
+				outFile, err = os.Create(output)
+				if err != nil {
+					return fmt.Errorf("failed to create output file: %w", err)
 				}
+				defer outFile.Close()
 			}
-		}
 
-		processInput(input)
+			input, err := extractInput(cmd)
+			if err != nil {
+				return err
+			}
 
-		var writer io.Writer
-		if !debugging {
-			writer = os.Stdout
-		}
+			processInput(input)
 
-		if err := infra.Run(infra.RunParams{
-			CacheDir:      cache,
-			Creds:         input.Credentials,
-			Debug:         debugging,
-			Expected:      nil, // update subcommand doesn't use expectations
-			ExtraHosts:    extraHosts,
-			InputName:     file,
-			InputRaw:      inputRaw,
-			Job:           &input.Job,
-			Output:        output,
-			ProxyCertPath: proxyCertPath,
-			ProxyImage:    proxyImage,
-			PullImages:    pullImages,
-			Timeout:       timeout,
-			UpdaterImage:  updaterImage,
-			Writer:        writer,
-			Volumes:       volumes,
-		}); err != nil {
-			log.Fatalf("failed to run updater: %v", err)
-		}
+			var writer io.Writer
+			if !debugging {
+				writer = os.Stdout
+			}
 
-		return nil
-	},
+			if err := infra.Run(infra.RunParams{
+				CacheDir:      cache,
+				Creds:         input.Credentials,
+				Debug:         debugging,
+				Expected:      nil, // update subcommand doesn't use expectations
+				ExtraHosts:    extraHosts,
+				InputName:     file,
+				Job:           &input.Job,
+				Output:        output,
+				ProxyCertPath: proxyCertPath,
+				ProxyImage:    proxyImage,
+				PullImages:    pullImages,
+				Timeout:       timeout,
+				UpdaterImage:  updaterImage,
+				Writer:        writer,
+				Volumes:       volumes,
+			}); err != nil {
+				log.Fatalf("failed to run updater: %v", err)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&file, "file", "f", "", "path to scenario file")
+
+	cmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
+	cmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
+
+	cmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
+	cmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
+	cmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
+	cmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
+	cmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
+	cmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
+	cmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
+	cmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
+	cmd.Flags().IntVar(&inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
+
+	return cmd
 }
 
-func readInputFile(file string) (*model.Input, []byte, error) {
+var updateCmd = NewUpdateCommand()
+
+func extractInput(cmd *cobra.Command) (*model.Input, error) {
+	hasFile := file != ""
+	hasArguments := len(cmd.Flags().Args()) > 0
+	hasServer := inputServerPort != 0
+	hasStdin := doesStdinHaveData()
+
+	var count int
+	for _, b := range []bool{hasFile, hasArguments, hasServer, hasStdin} {
+		if b {
+			count++
+		}
+	}
+	if count > 1 {
+		return nil, errors.New("can only use one of: input file, arguments, server, or stdin")
+	}
+
+	if hasFile {
+		return readInputFile(file)
+	}
+
+	if hasArguments {
+		return readArguments(cmd)
+	}
+
+	if hasServer {
+		return server.Input(inputServerPort)
+	}
+
+	if hasStdin {
+		return readStdin()
+	}
+
+	return nil, fmt.Errorf("requires input as arguments, input file, or stdin")
+}
+
+func readStdin() (*model.Input, error) {
+	in := &bytes.Buffer{}
+	_, err := io.Copy(in, os.Stdin)
+	if err != nil {
+		return nil, err
+	}
+	data := in.Bytes()
+	input := &model.Input{}
+	if err = json.Unmarshal(data, &input); err != nil {
+		if err = yaml.Unmarshal(data, &input); err != nil {
+			return nil, fmt.Errorf("failed to decode input file: %w", err)
+		}
+	}
+	return input, nil
+}
+
+func readArguments(cmd *cobra.Command) (*model.Input, error) {
+	if len(cmd.Flags().Args()) != 2 {
+		return nil, errors.New("requires a package manager and repo argument")
+	}
+
+	packageManager = cmd.Flags().Args()[0]
+	if packageManager == "" {
+		return nil, errors.New("requires a package manager argument")
+	}
+
+	repo = cmd.Flags().Args()[1]
+	if repo == "" {
+		return nil, errors.New("requires a repo argument")
+	}
+
+	input := &model.Input{
+		Job: model.Job{
+			PackageManager: packageManager,
+			AllowedUpdates: []model.Allowed{{
+				UpdateType: "all",
+			}},
+			DependencyGroups:           nil,
+			Dependencies:               nil,
+			ExistingPullRequests:       [][]model.ExistingPR{},
+			IgnoreConditions:           []model.Condition{},
+			LockfileOnly:               false,
+			RequirementsUpdateStrategy: nil,
+			SecurityAdvisories:         []model.Advisory{},
+			SecurityUpdatesOnly:        false,
+			Source: model.Source{
+				Provider:    provider,
+				Repo:        repo,
+				Directory:   directory,
+				Branch:      nil,
+				Hostname:    nil,
+				APIEndpoint: nil,
+			},
+			UpdateSubdependencies: false,
+			UpdatingAPullRequest:  false,
+		},
+	}
+	return input, nil
+}
+
+func readInputFile(file string) (*model.Input, error) {
 	var input model.Input
 
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open input file: %w", err)
+		return nil, fmt.Errorf("failed to open input file: %w", err)
 	}
 	if err = json.Unmarshal(data, &input); err != nil {
 		if err = yaml.Unmarshal(data, &input); err != nil {
-			return nil, nil, fmt.Errorf("failed to decode input file: %w", err)
+			return nil, fmt.Errorf("failed to decode input file: %w", err)
 		}
 	}
 
-	return &input, nil, nil
+	return &input, nil
 }
 
 func processInput(input *model.Input) {
@@ -235,19 +286,4 @@ func doesStdinHaveData() bool {
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
-
-	updateCmd.Flags().StringVarP(&file, "file", "f", "", "path to scenario file")
-
-	updateCmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
-	updateCmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
-
-	updateCmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
-	updateCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
-	updateCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
-	updateCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
-	updateCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
-	updateCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
-	updateCmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
-	updateCmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
-	updateCmd.Flags().IntVar(&inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
 }
