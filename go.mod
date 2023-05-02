@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/docker/cli v23.0.4+incompatible
+	github.com/docker/cli v23.0.5+incompatible
 	github.com/docker/docker v23.0.4+incompatible
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/hexops/gotextdiff v1.0.3
