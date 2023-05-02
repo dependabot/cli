@@ -215,14 +215,14 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiPort int) er
 	return nil
 }
 
-// RunUpdate executes the update scripts as the dependabot user, blocks until complete.
-func (u *Updater) RunUpdate(ctx context.Context, proxyURL string, apiPort int) error {
+// RunCmd executes the update scripts as the dependabot user, blocks until complete.
+func (u *Updater) RunCmd(ctx context.Context, cmd string, env ...string) error {
 	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, types.ExecConfig{
 		AttachStdout: true,
 		AttachStderr: true,
 		User:         dependabot,
-		Env:          userEnv(proxyURL, apiPort),
-		Cmd:          []string{"/bin/sh", "-c", "update-ca-certificates && bin/run fetch_files && bin/run update_files"},
+		Env:          env,
+		Cmd:          []string{"/bin/sh", "-c", cmd},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create exec: %w", err)
