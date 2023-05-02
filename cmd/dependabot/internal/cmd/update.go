@@ -66,6 +66,7 @@ func NewUpdateCommand() *cobra.Command {
 				ExtraHosts:    extraHosts,
 				InputName:     file,
 				Job:           &input.Job,
+				LocalDir:      local,
 				Output:        output,
 				ProxyCertPath: proxyCertPath,
 				ProxyImage:    proxyImage,
@@ -89,6 +90,7 @@ func NewUpdateCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	cmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
+	cmd.Flags().StringVar(&local, "local", "", "local directory to use as fetched source")
 	cmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
 	cmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	cmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
