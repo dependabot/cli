@@ -37,6 +37,7 @@ type DependencyFile struct {
 	Name            string `json:"name" yaml:"name"`
 	Operation       string `json:"operation" yaml:"operation"`
 	SupportFile     bool   `json:"support_file" yaml:"support_file"`
+	SymlinkTarget   string `json:"symlink_target,omitempty" yaml:"symlink_target,omitempty"`
 	Type            string `json:"type" yaml:"type"`
 	Mode            string `json:"mode" yaml:"mode,omitempty"`
 }
