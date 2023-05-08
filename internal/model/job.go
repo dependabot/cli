@@ -44,6 +44,7 @@ type Job struct {
 	UpdatingAPullRequest       bool              `json:"updating-a-pull-request" yaml:"updating-a-pull-request,omitempty"`
 	VendorDependencies         bool              `json:"vendor-dependencies" yaml:"vendor-dependencies,omitempty"`
 	RejectExternalCode         bool              `json:"reject-external-code" yaml:"reject-external-code,omitempty"`
+	RepoPrivate                bool              `json:"repo-private" yaml:"repo-private,omitempty"`
 	CommitMessageOptions       *CommitOptions    `json:"commit-message-options" yaml:"commit-message-options,omitempty"`
 	CredentialsMetadata        []Credential      `json:"credentials-metadata" yaml:"credentials-metadata,omitempty"`
 	MaxUpdaterRunTime          int               `json:"max-updater-run-time" yaml:"max-updater-run-time,omitempty"`
