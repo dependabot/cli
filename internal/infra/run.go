@@ -346,7 +346,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 		}
 	} else {
 		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
-		if err := updater.RunCmd(ctx, cmd, userEnv(prox.url, api.Port())...); err != nil {
+		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, api.Port())...); err != nil {
 			return err
 		}
 	}
@@ -357,7 +357,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir string) error {
 	// Docker won't create the directory, so we have to do it first.
 	const cmd = "mkdir -p " + guestRepoDir
-	err := updater.RunCmd(ctx, cmd)
+	err := updater.RunCmd(ctx, cmd, dependabot)
 	if err != nil {
 		return fmt.Errorf("failed to create clone dir: %w", err)
 	}
@@ -373,6 +373,11 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 		return fmt.Errorf("failed to copy clone dir to container: %w", err)
 	}
 
+	err = updater.RunCmd(ctx, "chown -R dependabot "+guestRepoDir, root)
+	if err != nil {
+		return fmt.Errorf("failed to initialize clone dir: %w", err)
+	}
+
 	// The directory needs to be a git repo, so we need to initialize it.
 	commands := []string{
 		"cd " + guestRepoDir,
@@ -380,9 +385,9 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 		"git config user.email 'dependabot@github.com'",
 		"git config user.name 'dependabot'",
 		"git add .",
-		"git commit -m 'initial commit'",
+		"git commit --quiet -m 'initial commit'",
 	}
-	err = updater.RunCmd(ctx, strings.Join(commands, " && "))
+	err = updater.RunCmd(ctx, strings.Join(commands, " && "), dependabot)
 	if err != nil {
 		return fmt.Errorf("failed to initialize clone dir: %w", err)
 	}

@@ -24,7 +24,10 @@ import (
 )
 
 const jobID = "cli"
-const dependabot = "dependabot"
+const (
+	root       = "root"
+	dependabot = "dependabot"
+)
 
 const (
 	guestInputDir = "/home/dependabot/dependabot-updater/job.json"
@@ -216,11 +219,11 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiPort int) er
 }
 
 // RunCmd executes the update scripts as the dependabot user, blocks until complete.
-func (u *Updater) RunCmd(ctx context.Context, cmd string, env ...string) error {
+func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) error {
 	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, types.ExecConfig{
 		AttachStdout: true,
 		AttachStderr: true,
-		User:         dependabot,
+		User:         user,
 		Env:          env,
 		Cmd:          []string{"/bin/sh", "-c", cmd},
 	})
