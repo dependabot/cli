@@ -56,4 +56,4 @@ jobs:
           go-version: 1.19
 
       - name: Run integration tests
-        run: tests/clone
+        run: tests/local
