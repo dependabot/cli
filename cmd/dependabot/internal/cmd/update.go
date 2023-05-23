@@ -271,6 +271,9 @@ func processInput(input *model.Input) {
 			if credential["url"] != nil {
 				entry["url"] = credential["url"]
 			}
+			if credential["registry"] != nil {
+				entry["registry"] = credential["registry"]
+			}
 			if credential["replaces-base"] != nil {
 				entry["replaces-base"] = credential["replaces-base"]
 			}

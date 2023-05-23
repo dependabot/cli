@@ -57,6 +57,35 @@ func Test_processInput(t *testing.T) {
 			t.Error("expected credentials metadata to be added")
 		}
 	})
+
+	t.Run("adds metadata when credentials are provided", func(t *testing.T) {
+		var input model.Input
+		input.Credentials = []model.Credential{
+			{
+				"type":          "git_source",
+				"host":          "example.com",
+				"registry":      "registry.example.com",
+				"url":           "https://example.com",
+				"replaces-base": "true",
+				"password":      "password",
+			},
+		}
+
+		processInput(&input)
+
+		if len(input.Job.CredentialsMetadata) != 1 {
+			t.Fatal("expected credentials metadata to be added")
+		}
+		if !reflect.DeepEqual(input.Job.CredentialsMetadata[0], model.Credential{
+			"type":          "git_source",
+			"host":          "example.com",
+			"registry":      "registry.example.com",
+			"url":           "https://example.com",
+			"replaces-base": "true",
+		}) {
+			t.Error("expected credentials metadata to be added")
+		}
+	})
 }
 
 func Test_extractInput(t *testing.T) {
