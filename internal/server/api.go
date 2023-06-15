@@ -48,7 +48,11 @@ func NewAPI(expected []model.Output, writer io.Writer) *API {
 		fakeAPIHost = os.Getenv("FAKE_API_HOST")
 	}
 	// Bind to port 0 for arbitrary port assignment
-	l, err := net.Listen("tcp", fakeAPIHost+":0")
+	port := "0"
+	if os.Getenv("FAKE_API_PORT") != "" {
+		port = os.Getenv("FAKE_API_PORT")
+	}
+	l, err := net.Listen("tcp", fakeAPIHost+":"+port)
 	if err != nil {
 		panic(err)
 	}
