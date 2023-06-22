@@ -40,15 +40,18 @@ Usage:
 
 Examples:
   $ dependabot update go_modules rsc/quote
-  $ dependabot test -f scenario.yaml
+  $ dependabot test -f input.yml
 
 Available Commands:
+  completion  Generate the autocompletion script for the specified shell
   help        Help about any command
   test        Test scenarios
-  update      Perform update job
+  update      Perform an update job
 
 Flags:
   -h, --help                   help for dependabot
+      --proxy-image string     container image to use for the proxy (default "ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest")
+      --updater-image string   container image to use for the updater
   -v, --version                version for dependabot
 
 Use "dependabot [command] --help" for more information about a command.
