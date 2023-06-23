@@ -90,7 +90,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
 	cmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
 	cmd.Flags().StringVarP(&commit, "commit", "", "", "commit to update")
-	cmd.Flags().StringArrayVarP(&dependencies, "dep", "", nil, "dependency to update")
+	cmd.Flags().StringArrayVarP(&dependencies, "dep", "", nil, "dependencies to update")
 
 	cmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	cmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
