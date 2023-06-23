@@ -23,6 +23,8 @@ var (
 	repo           string
 	directory      string
 	local          string
+	commit         string
+	dependencies   []string
 
 	inputServerPort int
 )
@@ -87,6 +89,8 @@ func NewUpdateCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
 	cmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
+	cmd.Flags().StringVarP(&commit, "commit", "", "", "commit to update")
+	cmd.Flags().StringArrayVarP(&dependencies, "dep", "", nil, "dependency to update")
 
 	cmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
 	cmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
@@ -170,12 +174,18 @@ func readArguments(cmd *cobra.Command) (*model.Input, error) {
 		return nil, errors.New("requires a repo argument")
 	}
 
+	allowed := []model.Allowed{{UpdateType: "all"}}
+	if len(dependencies) > 0 {
+		allowed = allowed[:0]
+		for _, dep := range dependencies {
+			allowed = append(allowed, model.Allowed{DependencyName: dep})
+		}
+	}
+
 	input := &model.Input{
 		Job: model.Job{
-			PackageManager: packageManager,
-			AllowedUpdates: []model.Allowed{{
-				UpdateType: "all",
-			}},
+			PackageManager:             packageManager,
+			AllowedUpdates:             allowed,
 			DependencyGroups:           nil,
 			Dependencies:               nil,
 			ExistingPullRequests:       [][]model.ExistingPR{},
@@ -188,6 +198,7 @@ func readArguments(cmd *cobra.Command) (*model.Input, error) {
 				Provider:    provider,
 				Repo:        repo,
 				Directory:   directory,
+				Commit:      &commit,
 				Branch:      nil,
 				Hostname:    nil,
 				APIEndpoint: nil,
