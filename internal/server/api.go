@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"runtime"
 	"strings"
 	"time"
 
@@ -41,9 +40,6 @@ type API struct {
 // NewAPI creates a new API instance and starts the server
 func NewAPI(expected []model.Output, writer io.Writer) *API {
 	fakeAPIHost := "127.0.0.1"
-	if runtime.GOOS == "linux" {
-		fakeAPIHost = "0.0.0.0"
-	}
 	if os.Getenv("FAKE_API_HOST") != "" {
 		fakeAPIHost = os.Getenv("FAKE_API_HOST")
 	}
@@ -52,11 +48,16 @@ func NewAPI(expected []model.Output, writer io.Writer) *API {
 	if os.Getenv("FAKE_API_PORT") != "" {
 		port = os.Getenv("FAKE_API_PORT")
 	}
-	l, err := net.Listen("tcp", fakeAPIHost+":"+port)
+	addr := fmt.Sprintf("%v:%v", fakeAPIHost, port)
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		panic(err)
 	}
+	if port == "0" {
+		addr = fmt.Sprintf("%v:%v", fakeAPIHost, l.Addr().(*net.TCPAddr).Port)
+	}
 	server := &http.Server{
+		Addr:              addr,
 		ReadTimeout:       5 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      10 * time.Second,
