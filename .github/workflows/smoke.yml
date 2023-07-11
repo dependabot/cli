@@ -49,8 +49,11 @@ jobs:
           go-version: 1.19
 
       # Download the Proxy cache. The job is ideally 100% cached so no real calls are made.
-      - name: Download artifacts
-        run: script/download-cache.sh ${{ matrix.suite }}
+      - name: Download cache
+        run: |
+          mkdir test-cache
+          cd test-cache
+          gh run download --repo dependabot/smoke-tests --name cache-${{ matrix.suite }}
 
       - name: ${{ matrix.suite }}
         env:
