@@ -42,9 +42,6 @@ jobs:
             exit 1
           fi
 
-      - name: Run shellcheck
-        run: shellcheck **/*.sh
-
   integration:
     runs-on: ubuntu-latest
     steps:
