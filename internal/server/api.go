@@ -223,8 +223,8 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 		actual.Data, err = decode[model.ClosePullRequest](data)
 	case "mark_as_processed":
 		actual.Data, err = decode[model.MarkAsProcessed](data)
-	case "record_package_manager_version":
-		actual.Data, err = decode[model.RecordPackageManagerVersion](data)
+	case "record_ecosystem_versions":
+		actual.Data, err = decode[model.RecordEcosystemVersions](data)
 	case "record_update_job_error":
 		actual.Data, err = decode[model.RecordUpdateJobError](data)
 	case "increment_metric":
@@ -273,8 +273,8 @@ func compare(expect, actual *model.UpdateWrapper) error {
 		return compareUpdatePullRequest(v, actual.Data.(model.UpdatePullRequest))
 	case model.ClosePullRequest:
 		return compareClosePullRequest(v, actual.Data.(model.ClosePullRequest))
-	case model.RecordPackageManagerVersion:
-		return compareRecordPackageManagerVersion(v, actual.Data.(model.RecordPackageManagerVersion))
+	case model.RecordEcosystemVersions:
+		return compareRecordEcosystemVersions(v, actual.Data.(model.RecordEcosystemVersions))
 	case model.MarkAsProcessed:
 		return compareMarkAsProcessed(v, actual.Data.(model.MarkAsProcessed))
 	case model.RecordUpdateJobError:
@@ -316,11 +316,11 @@ func compareClosePullRequest(expect, actual model.ClosePullRequest) error {
 	return unexpectedBody("close_pull_request")
 }
 
-func compareRecordPackageManagerVersion(expect, actual model.RecordPackageManagerVersion) error {
+func compareRecordEcosystemVersions(expect, actual model.RecordEcosystemVersions) error {
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
-	return unexpectedBody("record_package_manager_version")
+	return unexpectedBody("record_ecosystem_versions")
 }
 
 func compareMarkAsProcessed(expect, actual model.MarkAsProcessed) error {

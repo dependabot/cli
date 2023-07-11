@@ -51,7 +51,7 @@ type MarkAsProcessed struct {
 	BaseCommitSha string `json:"base-commit-sha" yaml:"base-commit-sha"`
 }
 
-type RecordPackageManagerVersion struct {
+type RecordEcosystemVersions struct {
 	Ecosystem       string         `json:"ecosystem" yaml:"ecosystem"`
 	PackageManagers map[string]any `json:"package-managers" yaml:"package-managers"`
 }
