@@ -52,8 +52,7 @@ type MarkAsProcessed struct {
 }
 
 type RecordEcosystemVersions struct {
-	Ecosystem       string         `json:"ecosystem" yaml:"ecosystem"`
-	PackageManagers map[string]any `json:"package-managers,omitempty" yaml:"package-managers,omitempty"`
+	EcosystemVersions map[string]any `json:"ecosystem_versions" yaml:"ecosystem_versions"`
 }
 
 type RecordUpdateJobError struct {
