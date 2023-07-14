@@ -51,9 +51,7 @@ jobs:
       # Download the Proxy cache. The job is ideally 100% cached so no real calls are made.
       - name: Download cache
         run: |
-          mkdir test-cache
-          cd test-cache
-          gh run download --repo dependabot/smoke-tests --name cache-${{ matrix.suite }}
+          gh run download --repo dependabot/smoke-tests --name cache-${{ matrix.suite }} --dir cache
 
       - name: ${{ matrix.suite }}
         env:
