@@ -60,7 +60,12 @@ jobs:
           set -o pipefail
           URL=https://api.github.com/repos/dependabot/smoke-tests/contents/tests/smoke-${{ matrix.suite }}.yaml
           curl $(gh api $URL --jq .download_url) -o smoke.yaml
-          go run cmd/dependabot/dependabot.go test -f=smoke.yaml -o=result.yaml --timeout 20m --cache=cache 2>&1 | tee -a log.txt
+          go run cmd/dependabot/dependabot.go test \
+            -f=smoke.yaml \
+            -o=result.yaml \
+            --cache=cache \
+            --timeout 20m \
+            2>&1 | tee -a log.txt
 
       - name: Diff
         if: always()
