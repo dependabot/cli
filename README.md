@@ -74,8 +74,8 @@ $ dependabot update go_modules rsc/quote
 ```
 
 The first argument specifies the _package manager_
-(e.g. `go_modules`, `bundler`, `npm_and_yarn`, or `python`).
-Available values are defined in [`dependabot-core`][dependabot-core];
+(e.g. `go_modules`, `bundler`, `npm_and_yarn`, or `pip`).
+Available values are defined in [`dependabot-core`](https://github.com/dependabot/dependabot-core/blob/main/common/lib/dependabot/config/file.rb);
 by convention, each ecosystem registers itself according to
 [the name of its top-level subdirectory][dependabot-omnibus] in the repo.
 
