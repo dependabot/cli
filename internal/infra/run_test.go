@@ -225,7 +225,7 @@ func TestRun(t *testing.T) {
 }
 
 const dockerFile = `
-FROM golang:1.19
+FROM golang:1.20.5
 
 # needed to run update-ca-certificates
 RUN apt-get update && apt-get install -y ca-certificates
