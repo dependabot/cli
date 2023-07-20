@@ -21,13 +21,9 @@ import (
 )
 
 func Test_checkCredAccess(t *testing.T) {
-	t.Run("returns error if the credential has write access", func(t *testing.T) {
-		authEndpoint = "http://127.0.0.1:3000"
-		addr := "127.0.0.1:3000"
-		if os.Getenv("CI") != "" {
-			t.Log("detected running in actions")
-			addr = "0.0.0.0:3000"
-		}
+	addr := "127.0.0.1:3000"
+
+	startTestServer := func() *http.Server {
 		testServer := &http.Server{
 			ReadHeaderTimeout: time.Second,
 			Addr:              addr,
@@ -36,20 +32,41 @@ func Test_checkCredAccess(t *testing.T) {
 				_, _ = w.Write([]byte("SUCCESS"))
 			}),
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-		defer func() {
-			_ = testServer.Shutdown(ctx)
-		}()
 		go func() {
 			_ = testServer.ListenAndServe()
 		}()
 		time.Sleep(1 * time.Millisecond) // allow time for the server to start
+		return testServer
+	}
+
+	t.Run("returns error if the credential has write access", func(t *testing.T) {
+		defaultApiEndpoint = "http://127.0.0.1:3000"
+		testServer := startTestServer()
+		defer func() {
+			_ = testServer.Shutdown(context.Background())
+		}()
 
 		credentials := []model.Credential{{
 			"token": "ghp_fake",
 		}}
-		err := checkCredAccess(ctx, credentials)
+		err := checkCredAccess(context.Background(), nil, credentials)
+		if err != ErrWriteAccess {
+			t.Error("unexpected error", err)
+		}
+	})
+
+	t.Run("it works with GitHub Enterprise", func(t *testing.T) {
+		testServer := startTestServer()
+		defer func() {
+			_ = testServer.Shutdown(context.Background())
+		}()
+
+		credentials := []model.Credential{{
+			"token": "ghp_fake",
+		}}
+		apiEndpoint := "http://" + addr
+		job := &model.Job{Source: model.Source{APIEndpoint: &apiEndpoint}}
+		err := checkCredAccess(context.Background(), job, credentials)
 		if err != ErrWriteAccess {
 			t.Error("unexpected error", err)
 		}
