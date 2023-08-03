@@ -31,7 +31,7 @@ type Job struct {
 	Debug                      bool              `json:"debug" yaml:"debug,omitempty"`
 	DependencyGroups           []Group           `json:"dependency-groups" yaml:"dependency-groups,omitempty"`
 	Dependencies               []string          `json:"dependencies" yaml:"dependencies,omitempty"`
-	DependencyGroupToRefresh   string            `json:"dependency-group-to-refresh" yaml:"dependency-group-to-refresh,omitempty"`
+	DependencyGroupToRefresh   *string           `json:"dependency-group-to-refresh" yaml:"dependency-group-to-refresh,omitempty"`
 	ExistingPullRequests       [][]ExistingPR    `json:"existing-pull-requests" yaml:"existing-pull-requests,omitempty"`
 	ExistingGroupPullRequests  []ExistingGroupPR `json:"existing-group-pull-requests" yaml:"existing-group-pull-requests,omitempty"`
 	Experiments                Experiment        `json:"experiments" yaml:"experiments,omitempty"`
