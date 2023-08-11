@@ -18,6 +18,13 @@ jobs:
           echo "suite=$(gh api $URL | jq -r '.[].name'  | sed 's/smoke-//' | sed 's/.yaml$//' | jq -R | jq -sc)" >> $GITHUB_OUTPUT
     outputs:
       suites: ${{ steps.suites.outputs.suite }}
+  debug:
+    runs-on: ubuntu-latest
+    needs: suites
+    steps:
+      - name: Debug
+        run: |
+          echo ${{ needs.suites.outputs }}
   smoke:
     runs-on: ubuntu-latest
     needs: suites
