@@ -9,37 +9,23 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  suites:
+    runs-on: ubuntu-latest
+    steps:
+      - id: gather
+        run: |
+          URL="https://api.github.com/repos/dependabot/smoke-tests/contents/tests"
+          DATA="$(gh api $URL | jq -r '.[].name'  | sed 's/smoke-//' | sed 's/.yaml$//' | jq -R | jq -sc)"
+          echo "suite=$DATA" >> $GITHUB_OUTPUT
+    outputs:
+      suites: ${{ steps.gather.outputs.suite }}
   smoke:
     runs-on: ubuntu-latest
+    needs: suites
     strategy:
       fail-fast: false
       matrix:
-        suite:
-          - actions
-          - bundler
-          - cargo
-          - composer
-          - docker
-          - elm
-          - go
-          - go-close-pr
-          - go-security
-          - go-update-pr
-          - gradle
-          - hex
-          - maven
-          - npm
-          - npm-remove-transitive
-          - nuget
-          - pip
-          - pip-compile
-          - pipenv
-          - poetry
-          - pub
-          - submodules
-          - terraform
-          - yarn-berry
-          - yarn-berry-workspaces
+        suite: ${{ fromJSON(needs.suites.outputs.suites) }}
     steps:
       - uses: actions/checkout@v3
 
