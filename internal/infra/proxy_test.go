@@ -13,17 +13,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/moby/moby/client"
-	"github.com/moby/moby/pkg/namesgenerator"
 )
-
-func TestSeed(t *testing.T) {
-	// ensure we're still seeding
-	a := namesgenerator.GetRandomName(1)
-	b := namesgenerator.GetRandomName(1)
-	if a == b {
-		t.Error("Not seeding math/rand")
-	}
-}
 
 // This tests the Proxy's ability to use a custom cert for outbound calls.
 // It creates a custom proxy image to test with, passes it a cert, and uses it to
@@ -97,7 +87,7 @@ func TestNewProxy_customCert(t *testing.T) {
 	proxy, err := NewProxy(ctx, cli, &RunParams{
 		ProxyCertPath: cert.Name(),
 		ProxyImage:    proxyImageName,
-	})
+	}, nil)
 	if err != nil {
 		panic(err)
 	}
