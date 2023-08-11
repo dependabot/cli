@@ -12,14 +12,14 @@ jobs:
   suites:
     runs-on: ubuntu-latest
     steps:
-      - name: Get suites
+      - id: gather
         run: |
           URL="https://api.github.com/repos/dependabot/smoke-tests/contents/tests"
           DATA="$(gh api $URL | jq -r '.[].name'  | sed 's/smoke-//' | sed 's/.yaml$//' | jq -R | jq -sc)"
           echo "Data is $DATA"
           echo "suite=$DATA" >> $GITHUB_OUTPUT
     outputs:
-      suites: ${{ steps.suites.outputs.suite }}
+      suites: ${{ steps.gather.outputs.suite }}
   debug:
     runs-on: ubuntu-latest
     needs: suites
