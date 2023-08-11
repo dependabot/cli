@@ -126,13 +126,6 @@ func generateOutput(params RunParams, api *server.API, outFile *os.File) ([]byte
 	}
 	api.Actual.Input.Job = *params.Job
 
-	// ignore conditions help make tests reproducible, so they are generated if there aren't any yet
-	if len(api.Actual.Input.Job.IgnoreConditions) == 0 && api.Actual.Input.Job.PackageManager != "submodules" {
-		if err := generateIgnoreConditions(&params, &api.Actual); err != nil {
-			return nil, err
-		}
-	}
-
 	output, err := yaml.Marshal(api.Actual)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write output: %v", err)
@@ -270,31 +263,6 @@ func expandEnvironmentVariables(api *server.API, params *RunParams) {
 			}
 		}
 	}
-}
-
-func generateIgnoreConditions(params *RunParams, actual *model.Scenario) error {
-	for _, out := range actual.Output {
-		if out.Type == "create_pull_request" {
-			createPR, ok := out.Expect.Data.(model.CreatePullRequest)
-			if !ok {
-				return fmt.Errorf("failed to decode CreatePullRequest object")
-			}
-
-			for _, dep := range createPR.Dependencies {
-				if dep.Version == nil {
-					// dependency version nil due to it being removed
-					continue
-				}
-				ignore := model.Condition{
-					DependencyName:     dep.Name,
-					VersionRequirement: fmt.Sprintf(">%v", *dep.Version),
-					Source:             params.Output,
-				}
-				actual.Input.Job.IgnoreConditions = append(actual.Input.Job.IgnoreConditions, ignore)
-			}
-		}
-	}
-	return nil
 }
 
 func runContainers(ctx context.Context, params RunParams, api *server.API) error {
