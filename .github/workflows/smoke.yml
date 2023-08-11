@@ -15,7 +15,9 @@ jobs:
       - name: Get suites
         run: |
           URL="https://api.github.com/repos/dependabot/smoke-tests/contents/tests"
-          echo "suite=$(gh api $URL | jq -r '.[].name'  | sed 's/smoke-//' | sed 's/.yaml$//' | jq -R | jq -sc)" >> $GITHUB_OUTPUT
+          DATA=$(gh api $URL | jq -r '.[].name'  | sed 's/smoke-//' | sed 's/.yaml$//' | jq -R | jq -sc)"
+          echo "Data is $DATA"
+          echo "::set-output name=suite::$DATA"
     outputs:
       suites: ${{ steps.suites.outputs.suite }}
   debug:
