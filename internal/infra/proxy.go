@@ -13,6 +13,7 @@ import (
 	"github.com/moby/moby/pkg/namesgenerator"
 	"github.com/moby/moby/pkg/stdcopy"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -126,7 +127,12 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect proxy container: %w", err)
 	}
-	proxy.url = fmt.Sprintf("http://%s:1080", containerInfo.NetworkSettings.Networks[nets.noInternetName].IPAddress)
+	if nets != nil {
+		proxy.url = fmt.Sprintf("http://%s:1080", containerInfo.NetworkSettings.Networks[nets.noInternetName].IPAddress)
+	} else {
+		// This should only happen during testing, adding a warning in case
+		log.Println("Warning: no-internet network not found")
+	}
 
 	return proxy, nil
 }
