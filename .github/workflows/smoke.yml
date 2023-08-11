@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Debug
         run: |
-          echo ${{ fromJSON(needs.suites.outputs) }}
+          echo ${{ toJSON(needs.suites.outputs) }}
   smoke:
     runs-on: ubuntu-latest
     needs: suites
