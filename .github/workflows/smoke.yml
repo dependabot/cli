@@ -17,7 +17,7 @@ jobs:
           URL="https://api.github.com/repos/dependabot/smoke-tests/contents/tests"
           DATA="$(gh api $URL | jq -r '.[].name'  | sed 's/smoke-//' | sed 's/.yaml$//' | jq -R | jq -sc)"
           echo "Data is $DATA"
-          echo "::set-output name=suite::$DATA"
+          echo "suite=$DATA" >> $GITHUB_OUTPUT
     outputs:
       suites: ${{ steps.suites.outputs.suite }}
   debug:
@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: ${{ fromJSON(needs.suites.outputs.suite) }}
+        suite: ${{ fromJSON(needs.suites.outputs.suites) }}
     steps:
       - uses: actions/checkout@v3
 
