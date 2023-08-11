@@ -321,7 +321,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 	}
 	defer networks.Close()
 
-	prox, err := NewProxy(ctx, cli, &params, networks.NoInternet, networks.Internet)
+	prox, err := NewProxy(ctx, cli, &params, networks)
 	if err != nil {
 		return err
 	}

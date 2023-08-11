@@ -4,43 +4,34 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/goware/prefixer"
-	"io"
-	"math/rand"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
-	"time"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/goware/prefixer"
 	"github.com/moby/moby/client"
 	"github.com/moby/moby/pkg/namesgenerator"
 	"github.com/moby/moby/pkg/stdcopy"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
 const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
-
-func init() {
-	// needed for namesgenerator.GetRandomName
-	rand.Seed(time.Now().UnixNano())
-}
 
 // ProxyImageName is the default Docker image used by the proxy
 const ProxyImageName = "ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest"
 
 type Proxy struct {
-	cli           *client.Client
-	containerID   string
-	containerName string
-	url           string
-	ca            CertificateAuthority
+	cli         *client.Client
+	containerID string
+	url         string
+	ca          CertificateAuthority
 }
 
-func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets ...types.NetworkCreateResponse) (*Proxy, error) {
+func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *Networks) (*Proxy, error) {
 	// Generate secrets:
 	ca, err := GenerateCertificateAuthority()
 	if err != nil {
@@ -104,11 +95,9 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 	}
 
 	proxy := &Proxy{
-		cli:           cli,
-		containerID:   proxyContainer.ID,
-		containerName: hostName,
-		url:           fmt.Sprintf("http://%s:1080", hostName),
-		ca:            ca,
+		cli:         cli,
+		containerID: proxyContainer.ID,
+		ca:          ca,
 	}
 
 	if err = putProxyConfig(ctx, cli, proxyConfig, proxyContainer.ID); err != nil {
@@ -116,10 +105,15 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 		return nil, fmt.Errorf("failed to connect to network: %w", err)
 	}
 
-	for _, n := range nets {
-		if err = cli.NetworkConnect(ctx, n.ID, proxyContainer.ID, &network.EndpointSettings{}); err != nil {
+	// nil check since tests don't always need networks
+	if nets != nil {
+		if err = cli.NetworkConnect(ctx, nets.NoInternet.ID, proxyContainer.ID, &network.EndpointSettings{}); err != nil {
 			_ = proxy.Close()
-			return nil, fmt.Errorf("failed to connect to network: %w", err)
+			return nil, fmt.Errorf("failed to connect to internal network: %w", err)
+		}
+		if err = cli.NetworkConnect(ctx, nets.Internet.ID, proxyContainer.ID, &network.EndpointSettings{}); err != nil {
+			_ = proxy.Close()
+			return nil, fmt.Errorf("failed to connect to external network: %w", err)
 		}
 	}
 
@@ -127,6 +121,12 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets .
 		_ = proxy.Close()
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
+
+	containerInfo, err := cli.ContainerInspect(ctx, proxyContainer.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect proxy container: %w", err)
+	}
+	proxy.url = fmt.Sprintf("http://%s:1080", containerInfo.NetworkSettings.Networks[nets.noInternetName].IPAddress)
 
 	return proxy, nil
 }
