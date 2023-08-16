@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -62,7 +63,23 @@ type RunParams struct {
 	InputRaw  []byte
 }
 
+var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+func (p *RunParams) Validate() error {
+	if p.Job == nil {
+		return fmt.Errorf("job is required")
+	}
+	if p.Job.Source.Commit != nil && *p.Job.Source.Commit != "" && !gitShaRegex.MatchString(*p.Job.Source.Commit) {
+		return fmt.Errorf("commit must be a SHA, or not provided")
+	}
+	return nil
+}
+
 func Run(params RunParams) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
+
 	var ctx context.Context
 	var cancel func()
 	if params.Timeout > 0 {
