@@ -1,13 +1,14 @@
 package cmd
 
 import (
-	"github.com/dependabot/cli/internal/model"
 	"net/http"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dependabot/cli/internal/model"
 )
 
 func Test_processInput(t *testing.T) {
@@ -147,12 +148,22 @@ func Test_extractInput(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer os.Remove(tmp.Name())
+		t.Cleanup(func() { os.Remove(tmp.Name()) })
 
-		tmp.WriteString(`{"job":{"package-manager":"go_modules"}}`)
+		_, err = tmp.WriteString(`{"job":{"package-manager":"go_modules"}}`)
+		if err != nil {
+			t.Fatal(err)
+		}
 		tmp.Close()
 
-		os.Stdin, _ = os.Open(tmp.Name())
+		// This test changes os.Stdin, which contains global state, so ensure we reset it after the test
+		originalStdIn := os.Stdin
+		t.Cleanup(func() { os.Stdin = originalStdIn })
+		os.Stdin, err = os.Open(tmp.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		cmd := NewUpdateCommand()
 		input, err := extractInput(cmd)
 		if err != nil {
