@@ -84,6 +84,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 		Env: []string{
 			"JOB_ID=" + jobID,
 			"PROXY_CACHE=true",
+			"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
 		},
 		Entrypoint: []string{
 			"sh", "-c", "update-ca-certificates && /update-job-proxy",
