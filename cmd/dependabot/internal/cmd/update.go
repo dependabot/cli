@@ -239,6 +239,12 @@ func processInput(input *model.Input) {
 	if job.SecurityAdvisories == nil {
 		job.SecurityAdvisories = []model.Advisory{}
 	}
+	if job.ExistingGroupPullRequests == nil {
+		job.ExistingGroupPullRequests = []model.ExistingGroupPR{}
+	}
+	if job.DependencyGroups == nil {
+		job.DependencyGroups = []model.Group{}
+	}
 
 	// As a convenience, fill in a git_source if credentials are in the environment and a git_source
 	// doesn't already exist. This way the user doesn't run out of calls from being anonymous.
