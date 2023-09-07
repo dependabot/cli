@@ -57,7 +57,7 @@ type Source struct {
 	Repo      string  `json:"repo" yaml:"repo,omitempty"`
 	Directory string  `json:"directory" yaml:"directory,omitempty"`
 	Branch    *string `json:"branch" yaml:"branch,omitempty"`
-	Commit    *string `json:"commit" yaml:"commit,omitempty"`
+	Commit    string  `json:"commit,omitempty" yaml:"commit,omitempty"`
 
 	Hostname    *string `json:"hostname" yaml:"hostname,omitempty"`         // Must be provided if APIEndpoint is
 	APIEndpoint *string `json:"api-endpoint" yaml:"api-endpoint,omitempty"` // Must be provided if Hostname is

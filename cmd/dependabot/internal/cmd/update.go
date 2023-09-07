@@ -198,7 +198,7 @@ func readArguments(cmd *cobra.Command) (*model.Input, error) {
 				Provider:    provider,
 				Repo:        repo,
 				Directory:   directory,
-				Commit:      &commit,
+				Commit:      commit,
 				Branch:      nil,
 				Hostname:    nil,
 				APIEndpoint: nil,
