@@ -1,8 +1,10 @@
 package infra
 
 import (
+	"github.com/dependabot/cli/internal/model"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -47,4 +49,23 @@ func Test_mountOptions(t *testing.T) {
 			t.Errorf("For input '%v' got '%v' '%v' '%v' '%v'", test.input, local, remote, readOnly, err)
 		}
 	}
+}
+
+func TestJobFile_ToJSON(t *testing.T) {
+	t.Run("empty commit doesn't pass in empty string", func(t *testing.T) {
+		job := JobFile{
+			Job: &model.Job{
+				Source: model.Source{
+					Commit: "",
+				},
+			},
+		}
+		json, err := job.ToJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(json, `"commit"`) {
+			t.Errorf("expected JSON to not contain commit: %v", json)
+		}
+	})
 }

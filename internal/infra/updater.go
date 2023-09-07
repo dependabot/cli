@@ -109,11 +109,11 @@ func putUpdaterInputs(ctx context.Context, cli *client.Client, cert, id string, 
 		return fmt.Errorf("failed to copy cert to container: %w", err)
 	}
 
-	data, err := json.Marshal(FileFetcherJobFile{Job: job})
+	data, err := JobFile{Job: job}.ToJSON()
 	if err != nil {
 		return fmt.Errorf("failed to marshal job file: %w", err)
 	}
-	if t, err := tarball(guestInputDir, string(data)); err != nil {
+	if t, err := tarball(guestInputDir, data); err != nil {
 		return fmt.Errorf("failed create input tarball: %w", err)
 	} else if err = cli.CopyToContainer(ctx, id, "/", t, opt); err != nil {
 		return fmt.Errorf("failed to copy input to container: %w", err)
@@ -278,9 +278,14 @@ func (u *Updater) Close() error {
 	})
 }
 
-// FileFetcherJobFile  is the payload passed to file updater containers.
-type FileFetcherJobFile struct {
+// JobFile  is the payload passed to file updater containers.
+type JobFile struct {
 	Job *model.Job `json:"job"`
+}
+
+func (j JobFile) ToJSON() (string, error) {
+	data, err := json.Marshal(j)
+	return string(data), err
 }
 
 func tarball(name, contents string) (*bytes.Buffer, error) {
