@@ -69,7 +69,7 @@ func (p *RunParams) Validate() error {
 	if p.Job == nil {
 		return fmt.Errorf("job is required")
 	}
-	if p.Job.Source.Commit != nil && *p.Job.Source.Commit != "" && !gitShaRegex.MatchString(*p.Job.Source.Commit) {
+	if p.Job.Source.Commit != "" && !gitShaRegex.MatchString(p.Job.Source.Commit) {
 		return fmt.Errorf("commit must be a SHA, or not provided")
 	}
 	return nil
@@ -137,7 +137,7 @@ func Run(params RunParams) error {
 }
 
 func generateOutput(params RunParams, api *server.API, outFile *os.File) ([]byte, error) {
-	if params.Job.Source.Commit == nil {
+	if params.Job.Source.Commit == "" {
 		// store the SHA we worked with for reproducible tests
 		params.Job.Source.Commit = api.Actual.Input.Job.Source.Commit
 	}

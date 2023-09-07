@@ -198,7 +198,7 @@ func (a *API) pushResult(kind string, actual *model.UpdateWrapper) error {
 
 	if msg, ok := actual.Data.(model.MarkAsProcessed); ok {
 		// record the commit SHA so the test is reproducible
-		a.Actual.Input.Job.Source.Commit = &msg.BaseCommitSha
+		a.Actual.Input.Job.Source.Commit = msg.BaseCommitSha
 	}
 
 	return nil
