@@ -102,7 +102,7 @@ func (a *API) Complete() {
 }
 
 // ServeHTTP handles requests to the server
-func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
+func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		err = fmt.Errorf("failed to read body: %w", err)
@@ -120,6 +120,12 @@ func (a *API) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 	actual, err := decodeWrapper(kind, data)
 	if err != nil {
 		a.pushError(err)
+	}
+
+	if actual == nil {
+		// indicates the kind (endpoint) isn't implemented in decodeWrapper, so return a 501
+		w.WriteHeader(http.StatusNotImplemented)
+		return
 	}
 
 	if kind == "increment_metric" {
