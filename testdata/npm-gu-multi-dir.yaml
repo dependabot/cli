@@ -1,0 +1,241 @@
+input:
+    job:
+        package-manager: npm_and_yarn
+        allowed-updates:
+            - update-type: all
+        ignore-conditions:
+            - dependency-name: marked
+              source: npm-scenario.yml
+              version-requirement: '>9.1.0'
+        source:
+            provider: github
+            repo: dsp-testing/dependabot-sgu-npm-test-gu
+            directory: 
+              - /frontend
+              - /backend
+            commit: ""
+        credentials-metadata:
+            - host: github.com
+              type: git_source
+    credentials:
+        - host: github.com
+          password: $LOCAL_GITHUB_ACCESS_TOKEN
+          type: git_source
+          username: x-access-token
+output:
+    - type: update_dependency_list
+      expect:
+        data:
+            dependencies:
+                - name: marked
+                  requirements:
+                    - file: package.json
+                      groups:
+                        - dependencies
+                      requirement: ^0.3.1
+                      source:
+                        type: registry
+                        url: https://registry.npmjs.org
+                  version: 0.3.1
+            dependency_files:
+                - /frontend/package.json
+                - /frontend/package-lock.json
+    - type: update_dependency_list
+      expect:
+        data:
+            dependencies:
+                - name: marked
+                  requirements:
+                    - file: package.json
+                      groups:
+                        - dependencies
+                      requirement: ^0.3.1
+                      source:
+                        type: registry
+                        url: https://registry.npmjs.org
+                  version: 0.3.1
+            dependency_files:
+                - /backend/package.json
+                - /backend/package-lock.json
+    - type: create_pull_request
+      expect:
+        data:
+            base-commit-sha: 57a5be57a48fb5587a7ccefab4e29be434fd47e7
+            dependencies:
+                - name: marked
+                  previous-requirements:
+                    - file: package.json
+                      groups:
+                        - dependencies
+                      requirement: ^0.3.1
+                      source:
+                        type: registry
+                        url: https://registry.npmjs.org
+                  previous-version: 0.3.1
+                  requirements:
+                    - file: package.json
+                      groups:
+                        - dependencies
+                      requirement: ^9.1.0
+                      source:
+                        type: registry
+                        url: https://registry.npmjs.org
+                  version: 9.1.0
+            updated-dependency-files:
+                - content: |
+                    {
+                      "name": "dependabot-sgu-npm-test-gu",
+                      "version": "1.0.0",
+                      "description": "",
+                      "main": "index.js",
+                      "scripts": {
+                        "test": "echo \"Error: no test specified\" && exit 1"
+                      },
+                      "repository": {
+                        "type": "git",
+                        "url": "git+https://github.com/dsp-testing/frontend/dependabot-sgu-npm-test-gu.git"
+                      },
+                      "author": "",
+                      "license": "ISC",
+                      "bugs": {
+                        "url": "https://github.com/dsp-testing/frontend/dependabot-sgu-npm-test-gu/issues"
+                      },
+                      "homepage": "https://github.com/dsp-testing/frontend/dependabot-sgu-npm-test-gu#readme",
+                      "dependencies": {
+                        "marked": "^9.1.0"
+                      }
+                    }
+                  content_encoding: utf-8
+                  deleted: false
+                  directory: /frontend
+                  name: package.json
+                  operation: update
+                  support_file: false
+                  type: file
+                - content: |
+                    {
+                      "name": "dependabot-sgu-npm-test-gu",
+                      "version": "1.0.0",
+                      "lockfileVersion": 2,
+                      "requires": true,
+                      "packages": {
+                        "": {
+                          "version": "1.0.0",
+                          "license": "ISC",
+                          "dependencies": {
+                            "marked": "^9.1.0"
+                          }
+                        },
+                        "node_modules/marked": {
+                          "version": "9.1.0",
+                          "resolved": "https://registry.npmjs.org/marked/-/marked-9.1.0.tgz",
+                          "integrity": "sha512-VZjm0PM5DMv7WodqOUps3g6Q7dmxs9YGiFUZ7a2majzQTTCgX+6S6NAJHPvOhgFBzYz8s4QZKWWMfZKFmsfOgA==",
+                          "bin": {
+                            "marked": "bin/marked.js"
+                          },
+                          "engines": {
+                            "node": ">= 16"
+                          }
+                        }
+                      },
+                      "dependencies": {
+                        "marked": {
+                          "version": "9.1.0",
+                          "resolved": "https://registry.npmjs.org/marked/-/marked-9.1.0.tgz",
+                          "integrity": "sha512-VZjm0PM5DMv7WodqOUps3g6Q7dmxs9YGiFUZ7a2majzQTTCgX+6S6NAJHPvOhgFBzYz8s4QZKWWMfZKFmsfOgA=="
+                        }
+                      }
+                    }
+                  content_encoding: utf-8
+                  deleted: false
+                  directory: /frontend
+                  name: package-lock.json
+                  operation: update
+                  support_file: false
+                  type: file
+            pr-title: Bump marked from 0.3.1 to 9.1.0 in /frontend
+            pr-body: |
+                Bumps [marked](https://github.com/markedjs/marked) from 0.3.1 to 9.1.0.
+                <details>
+                <summary>Release notes</summary>
+                <p><em>Sourced from <a href="https://github.com/markedjs/marked/releases">marked's releases</a>.</em></p>
+                <blockquote>
+                <h2>v9.1.0</h2>
+                <h1><a href="https://github.com/markedjs/marked/compare/v9.0.3...v9.1.0">9.1.0</a> (2023-10-05)</h1>
+                <h3>Features</h3>
+                <ul>
+                <li>add <code>--no-clobber</code> option to CLI (<a href="https://redirect.github.com/markedjs/marked/issues/3025">#3025</a>) (<a href="https://github.com/markedjs/marked/commit/b8adee7f7ca589cde2c25caeb0ee628f792b9a8f">b8adee7</a>)</li>
+                </ul>
+                <h2>v9.0.3</h2>
+                <h2><a href="https://github.com/markedjs/marked/compare/v9.0.2...v9.0.3">9.0.3</a> (2023-09-18)</h2>
+                <h3>Bug Fixes</h3>
+                <ul>
+                <li>marked --help (<a href="https://redirect.github.com/markedjs/marked/issues/2991">#2991</a>) (<a href="https://github.com/markedjs/marked/commit/43643b3a0013deba352ebf4daf399daaa57915b7">43643b3</a>)</li>
+                </ul>
+                <h2>v9.0.2</h2>
+                <h2><a href="https://github.com/markedjs/marked/compare/v9.0.1...v9.0.2">9.0.2</a> (2023-09-16)</h2>
+                <h3>Bug Fixes</h3>
+                <ul>
+                <li>fix unicode emstrong (<a href="https://redirect.github.com/markedjs/marked/issues/2989">#2989</a>) (<a href="https://github.com/markedjs/marked/commit/8ebbb3c3d414ebf9fad7696de55ecc1e95dd0db1">8ebbb3c</a>)</li>
+                </ul>
+                <h2>v9.0.1</h2>
+                <h2><a href="https://github.com/markedjs/marked/compare/v9.0.0...v9.0.1">9.0.1</a> (2023-09-15)</h2>
+                <h3>Bug Fixes</h3>
+                <ul>
+                <li>fix unexpected setext heading (<a href="https://redirect.github.com/markedjs/marked/issues/2986">#2986</a>) (<a href="https://github.com/markedjs/marked/commit/bcc3067087b60a2913938d0bca77a71dacc06ba2">bcc3067</a>)</li>
+                <li>single column table (<a href="https://redirect.github.com/markedjs/marked/issues/2985">#2985</a>) (<a href="https://github.com/markedjs/marked/commit/0743d4adb48f7ccf410912d4c211545772882479">0743d4a</a>)</li>
+                </ul>
+                <h2>v9.0.0</h2>
+                <h1><a href="https://github.com/markedjs/marked/compare/v8.0.1...v9.0.0">9.0.0</a> (2023-09-09)</h1>
+                <h3>Bug Fixes</h3>
+                <ul>
+                <li>Clean up files in repo (<a href="https://redirect.github.com/markedjs/marked/issues/2963">#2963</a>) (<a href="https://github.com/markedjs/marked/commit/7d95a91093f8b5cbdb30b642d06b0c9dd0ab269d">7d95a91</a>)</li>
+                </ul>
+                <h3>BREAKING CHANGES</h3>
+                <ul>
+                <li>
+                <ul>
+                <li>remove built files from git repo.</li>
+                <li>If you need to use the latest version of marked on the web you can use a cdn to get marked.min.js from npm:</li>
+                <li><code>https://cdn.jsdelivr.net/npm/marked/marked.min.js</code></li>
+                </ul>
+                </li>
+                </ul>
+                <h2>v8.0.1</h2>
+                <h2><a href="https://github.com/markedjs/marked/compare/v8.0.0...v8.0.1">8.0.1</a> (2023-09-06)</h2>
+                <!-- raw HTML omitted -->
+                </blockquote>
+                <p>... (truncated)</p>
+                </details>
+                <details>
+                <summary>Commits</summary>
+                <ul>
+                <li><a href="https://github.com/markedjs/marked/commit/7242d58462a51afef0634dc3a8a9edc2e4df4576"><code>7242d58</code></a> chore(release): 9.1.0 [skip ci]</li>
+                <li><a href="https://github.com/markedjs/marked/commit/b8adee7f7ca589cde2c25caeb0ee628f792b9a8f"><code>b8adee7</code></a> feat: add <code>--no-clobber</code> option to CLI (<a href="https://redirect.github.com/markedjs/marked/issues/3025">#3025</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/c9ffa649a4671afec2f18fe11777693b9007ee6a"><code>c9ffa64</code></a> chore(deps-dev): Bump eslint from 8.48.0 to 8.50.0 (<a href="https://redirect.github.com/markedjs/marked/issues/3024">#3024</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/4cdea5fc02972e75c67eeae065ca35aef08f687d"><code>4cdea5f</code></a> chore(deps-dev): Bump markdown-it from 13.0.1 to 13.0.2 (<a href="https://redirect.github.com/markedjs/marked/issues/3023">#3023</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/2bb06c1a90b5ce9cadff89d8bd7f701aa75024f4"><code>2bb06c1</code></a> chore(deps-dev): Bump <code>@​typescript-eslint/parser</code> from 6.7.2 to 6.7.3 (<a href="https://redirect.github.com/markedjs/marked/issues/3022">#3022</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/dcb1802d7a934329451adc9e05ac5c80baa5f30b"><code>dcb1802</code></a> chore(deps-dev): Bump <code>@​semantic-release/github</code> from 9.0.7 to 9.2.1 (<a href="https://redirect.github.com/markedjs/marked/issues/3021">#3021</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/6bc8f5891942a7fdd03d2cf1c452e30d932c2e90"><code>6bc8f58</code></a> chore(deps-dev): Bump rollup from 3.29.3 to 3.29.4 (<a href="https://redirect.github.com/markedjs/marked/issues/3020">#3020</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/587729f9a5721369ace1d1ad0d429b68022d55a6"><code>587729f</code></a> chore: remove node 4 polyfills (<a href="https://redirect.github.com/markedjs/marked/issues/3014">#3014</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/591ad8048344bd757732dd1a8447cde7fb935f03"><code>591ad80</code></a> docs: Update authors link in SECURITY.md (<a href="https://redirect.github.com/markedjs/marked/issues/3013">#3013</a>)</li>
+                <li><a href="https://github.com/markedjs/marked/commit/ad067139499ae1f9ed44f4f4de6067f3ec64e618"><code>ad06713</code></a> chore(deps-dev): Bump <code>@​typescript-eslint/eslint-plugin</code> from 6.6.0 to 6.7.3 (#...</li>
+                <li>Additional commits viewable in <a href="https://github.com/markedjs/marked/compare/v0.3.1...v9.1.0">compare view</a></li>
+                </ul>
+                </details>
+                <details>
+                <summary>Maintainer changes</summary>
+                <p>This version was pushed to npm by <a href="https://www.npmjs.com/~tonybrix">tonybrix</a>, a new releaser for marked since your current version.</p>
+                </details>
+                <br />
+            commit-message: |-
+                Bump marked from 0.3.1 to 9.1.0 in /frontend
+
+                Bumps [marked](https://github.com/markedjs/marked) from 0.3.1 to 9.1.0.
+                - [Release notes](https://github.com/markedjs/marked/releases)
+                - [Changelog](https://github.com/markedjs/marked/blob/master/.releaserc.json)
+                - [Commits](https://github.com/markedjs/marked/compare/v0.3.1...v9.1.0)
+    - type: mark_as_processed
+      expect:
+        data:
+            base-commit-sha: 57a5be57a48fb5587a7ccefab4e29be434fd47e7
