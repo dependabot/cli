@@ -21,7 +21,7 @@ var (
 	packageManager string
 	provider       string
 	repo           string
-	directory      string
+	directory      []string
 	local          string
 	commit         string
 	dependencies   []string
@@ -88,7 +88,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&file, "file", "f", "", "path to scenario file")
 
 	cmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
-	cmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
+	cmd.Flags().StringArrayVarP(&directory, "directory", "d", nil, "directory to update")
 	cmd.Flags().StringVarP(&commit, "commit", "", "", "commit to update")
 	cmd.Flags().StringArrayVarP(&dependencies, "dep", "", nil, "dependencies to update")
 
