@@ -62,6 +62,8 @@ func NewUpdateCommand() *cobra.Command {
 
 			if err := infra.Run(infra.RunParams{
 				CacheDir:            cache,
+				CollectorConfigPath: collectorConfigPath,
+				CollectorImage:      collectorImage,
 				Creds:               input.Credentials,
 				Debug:               debugging,
 				EnableOpenTelemetry: enableOpenTelemetry,
@@ -73,13 +75,11 @@ func NewUpdateCommand() *cobra.Command {
 				Output:              output,
 				ProxyCertPath:       proxyCertPath,
 				ProxyImage:          proxyImage,
-				CollectorConfigPath: collectorConfigPath,
-				CollectorImage:      collectorImage,
 				PullImages:          pullImages,
 				Timeout:             timeout,
 				UpdaterImage:        updaterImage,
-				Writer:              writer,
 				Volumes:             volumes,
+				Writer:              writer,
 			}); err != nil {
 				log.Fatalf("failed to run updater: %v", err)
 			}

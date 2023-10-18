@@ -38,6 +38,8 @@ var testCmd = &cobra.Command{
 
 		if err := infra.Run(infra.RunParams{
 			CacheDir:            cache,
+			CollectorConfigPath: collectorConfigPath,
+			CollectorImage:      collectorImage,
 			Creds:               scenario.Input.Credentials,
 			Debug:               debugging,
 			EnableOpenTelemetry: enableOpenTelemetry,
@@ -50,8 +52,6 @@ var testCmd = &cobra.Command{
 			Output:              output,
 			ProxyCertPath:       proxyCertPath,
 			ProxyImage:          proxyImage,
-			CollectorConfigPath: collectorConfigPath,
-			CollectorImage:      collectorImage,
 			PullImages:          pullImages,
 			Timeout:             timeout,
 			UpdaterImage:        updaterImage,
