@@ -46,6 +46,8 @@ type RunParams struct {
 	PullImages bool
 	// run an interactive shell?
 	Debug bool
+	// EnableOpenTelemetry enables OpenTelemetry tracing
+	EnableOpenTelemetry bool
 	// Volumes are used to mount directories in Docker
 	Volumes []string
 	// Timeout specifies an optional maximum duration the CLI will run an update.
@@ -57,6 +59,10 @@ type RunParams struct {
 	UpdaterImage string
 	// ProxyImage is the image to use for the proxy
 	ProxyImage string
+	// CollectorImage is the image to use for the OpenTelemetry collector
+	CollectorImage string
+	// CollectorConfigPath is the path to the OpenTelemetry collector configuration file
+	CollectorConfigPath string
 	// Writer is where API calls will be written to
 	Writer    io.Writer
 	InputName string
@@ -256,6 +262,9 @@ func setImageNames(params *RunParams) error {
 	if params.ProxyImage == "" {
 		params.ProxyImage = ProxyImageName
 	}
+	if params.CollectorImage == "" {
+		params.CollectorImage = CollectorImageName
+	}
 	if params.UpdaterImage == "" {
 		pm, ok := packageManagerLookup[params.Job.PackageManager]
 		if !ok {
@@ -326,6 +335,11 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 			return err
 		}
 
+		err = pullImage(ctx, cli, params.CollectorImage)
+		if err != nil {
+			return err
+		}
+
 		err = pullImage(ctx, cli, params.UpdaterImage)
 		if err != nil {
 			return err
@@ -347,6 +361,14 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 	// proxy logs interfere with debugging output
 	if !params.Debug {
 		go prox.TailLogs(ctx, cli)
+	}
+
+	if params.EnableOpenTelemetry {
+		collector, err := NewCollector(ctx, cli, networks, &params, prox)
+		if err != nil {
+			return err
+		}
+		defer collector.Close()
 	}
 
 	updater, err := NewUpdater(ctx, cli, networks, &params, prox)

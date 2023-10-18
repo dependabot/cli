@@ -53,6 +53,11 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		Cmd:   []string{"/bin/sh"},
 		Tty:   true, // prevent container from stopping
 	}
+
+	if params.EnableOpenTelemetry == true {
+		containerCfg.Env = append(containerCfg.Env, "OTEL_ENABLED=true")
+	}
+
 	hostCfg := &container.HostConfig{}
 	var err error
 	for _, v := range params.Volumes {
