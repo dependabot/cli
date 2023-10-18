@@ -335,9 +335,11 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 			return err
 		}
 
-		err = pullImage(ctx, cli, params.CollectorImage)
-		if err != nil {
-			return err
+		if params.EnableOpenTelemetry == true {
+			err = pullImage(ctx, cli, params.CollectorImage)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = pullImage(ctx, cli, params.UpdaterImage)
