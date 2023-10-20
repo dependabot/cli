@@ -91,9 +91,14 @@ func NewCollector(ctx context.Context, cli *client.Client, net *Networks, params
 
 }
 
-// Close kills and deletes the container and deletes updater mount paths related to the run.
-func (u *Collector) Close() error {
-	return u.cli.ContainerRemove(context.Background(), u.containerID, types.ContainerRemoveOptions{
-		Force: true,
-	})
+// Close stops and removes the container.
+func (c *Collector) Close() error {
+	timeout := 5
+	_ = c.cli.ContainerStop(context.Background(), c.containerID, container.StopOptions{Timeout: &timeout})
+
+	err := c.cli.ContainerRemove(context.Background(), c.containerID, types.ContainerRemoveOptions{Force: true})
+	if err != nil {
+		return fmt.Errorf("failed to remove collector container: %w", err)
+	}
+	return nil
 }
