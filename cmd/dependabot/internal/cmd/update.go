@@ -66,7 +66,6 @@ func NewUpdateCommand() *cobra.Command {
 				CollectorImage:      collectorImage,
 				Creds:               input.Credentials,
 				Debug:               debugging,
-				EnableOpenTelemetry: enableOpenTelemetry,
 				Expected:            nil, // update subcommand doesn't use expectations
 				ExtraHosts:          extraHosts,
 				InputName:           file,
@@ -102,7 +101,6 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringVar(&collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
 	cmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	cmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
-	cmd.Flags().BoolVar(&enableOpenTelemetry, "enable-opentelemetry", false, "enable OpenTelemetry tracing")
 	cmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
 	cmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
 	cmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")

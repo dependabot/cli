@@ -15,7 +15,6 @@ var (
 	file                string
 	cache               string
 	debugging           bool
-	enableOpenTelemetry bool
 	proxyCertPath       string
 	collectorConfigPath string
 	extraHosts          []string

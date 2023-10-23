@@ -54,7 +54,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		Tty:   true, // prevent container from stopping
 	}
 
-	if params.EnableOpenTelemetry == true {
+	if params.CollectorConfigPath != "" {
 		containerCfg.Env = append(containerCfg.Env, "OTEL_ENABLED=true")
 	}
 

@@ -46,8 +46,6 @@ type RunParams struct {
 	PullImages bool
 	// run an interactive shell?
 	Debug bool
-	// EnableOpenTelemetry enables OpenTelemetry tracing
-	EnableOpenTelemetry bool
 	// Volumes are used to mount directories in Docker
 	Volumes []string
 	// Timeout specifies an optional maximum duration the CLI will run an update.
@@ -335,7 +333,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 			return err
 		}
 
-		if params.EnableOpenTelemetry == true {
+		if params.CollectorConfigPath != "" {
 			err = pullImage(ctx, cli, params.CollectorImage)
 			if err != nil {
 				return err
@@ -365,7 +363,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 		go prox.TailLogs(ctx, cli)
 	}
 
-	if params.EnableOpenTelemetry {
+	if params.CollectorConfigPath != "" {
 		collector, err := NewCollector(ctx, cli, networks, &params, prox)
 		if err != nil {
 			return err

@@ -42,7 +42,6 @@ var testCmd = &cobra.Command{
 			CollectorImage:      collectorImage,
 			Creds:               scenario.Input.Credentials,
 			Debug:               debugging,
-			EnableOpenTelemetry: enableOpenTelemetry,
 			Expected:            scenario.Output,
 			ExtraHosts:          extraHosts,
 			InputName:           file,
@@ -94,7 +93,6 @@ func init() {
 	testCmd.Flags().StringVar(&collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
 	testCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	testCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
-	testCmd.Flags().BoolVar(&enableOpenTelemetry, "enable-opentelemetry", false, "enable OpenTelemetry tracing")
 	testCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
 	testCmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
 	testCmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
