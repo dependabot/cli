@@ -37,22 +37,24 @@ var testCmd = &cobra.Command{
 		processInput(&scenario.Input)
 
 		if err := infra.Run(infra.RunParams{
-			CacheDir:      cache,
-			Creds:         scenario.Input.Credentials,
-			Debug:         debugging,
-			Expected:      scenario.Output,
-			ExtraHosts:    extraHosts,
-			InputName:     file,
-			InputRaw:      inputRaw,
-			Job:           &scenario.Input.Job,
-			LocalDir:      local,
-			Output:        output,
-			ProxyCertPath: proxyCertPath,
-			ProxyImage:    proxyImage,
-			PullImages:    pullImages,
-			Timeout:       timeout,
-			UpdaterImage:  updaterImage,
-			Volumes:       volumes,
+			CacheDir:            cache,
+			CollectorConfigPath: collectorConfigPath,
+			CollectorImage:      collectorImage,
+			Creds:               scenario.Input.Credentials,
+			Debug:               debugging,
+			Expected:            scenario.Output,
+			ExtraHosts:          extraHosts,
+			InputName:           file,
+			InputRaw:            inputRaw,
+			Job:                 &scenario.Input.Job,
+			LocalDir:            local,
+			Output:              output,
+			ProxyCertPath:       proxyCertPath,
+			ProxyImage:          proxyImage,
+			PullImages:          pullImages,
+			Timeout:             timeout,
+			UpdaterImage:        updaterImage,
+			Volumes:             volumes,
 		}); err != nil {
 			log.Fatal(err)
 		}
@@ -88,6 +90,7 @@ func init() {
 	testCmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
 	testCmd.Flags().StringVar(&local, "local", "", "local directory to use as fetched source")
 	testCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
+	testCmd.Flags().StringVar(&collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
 	testCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	testCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
 	testCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")

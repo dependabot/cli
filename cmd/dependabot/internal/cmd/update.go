@@ -61,22 +61,24 @@ func NewUpdateCommand() *cobra.Command {
 			}
 
 			if err := infra.Run(infra.RunParams{
-				CacheDir:      cache,
-				Creds:         input.Credentials,
-				Debug:         debugging,
-				Expected:      nil, // update subcommand doesn't use expectations
-				ExtraHosts:    extraHosts,
-				InputName:     file,
-				Job:           &input.Job,
-				LocalDir:      local,
-				Output:        output,
-				ProxyCertPath: proxyCertPath,
-				ProxyImage:    proxyImage,
-				PullImages:    pullImages,
-				Timeout:       timeout,
-				UpdaterImage:  updaterImage,
-				Writer:        writer,
-				Volumes:       volumes,
+				CacheDir:            cache,
+				CollectorConfigPath: collectorConfigPath,
+				CollectorImage:      collectorImage,
+				Creds:               input.Credentials,
+				Debug:               debugging,
+				Expected:            nil, // update subcommand doesn't use expectations
+				ExtraHosts:          extraHosts,
+				InputName:           file,
+				Job:                 &input.Job,
+				LocalDir:            local,
+				Output:              output,
+				ProxyCertPath:       proxyCertPath,
+				ProxyImage:          proxyImage,
+				PullImages:          pullImages,
+				Timeout:             timeout,
+				UpdaterImage:        updaterImage,
+				Volumes:             volumes,
+				Writer:              writer,
 			}); err != nil {
 				log.Fatalf("failed to run updater: %v", err)
 			}
@@ -96,6 +98,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
 	cmd.Flags().StringVar(&local, "local", "", "local directory to use as fetched source")
 	cmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
+	cmd.Flags().StringVar(&collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
 	cmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	cmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
 	cmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
