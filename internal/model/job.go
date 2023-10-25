@@ -56,6 +56,7 @@ type Source struct {
 	Provider  string  `json:"provider" yaml:"provider,omitempty"`
 	Repo      string  `json:"repo" yaml:"repo,omitempty"`
 	Directory string  `json:"directory" yaml:"directory,omitempty"`
+	Directories []string `json:"directories" yaml:"directories,omitempty"`
 	Branch    *string `json:"branch" yaml:"branch,omitempty"`
 	Commit    string  `json:"commit,omitempty" yaml:"commit,omitempty"`
 
