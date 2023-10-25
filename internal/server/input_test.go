@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/dependabot/cli/internal/model"
 )
@@ -17,6 +18,8 @@ func TestInput(t *testing.T) {
 		input, _ = Input(8080)
 		wg.Done()
 	}()
+	// give the server time to start
+	time.Sleep(10 * time.Millisecond)
 
 	data := `{"job":{"package-manager":"test"},"credentials":[{"credential":"value"}]}`
 	resp, err := http.Post("http://localhost:8080", "application/json", bytes.NewReader([]byte(data)))
