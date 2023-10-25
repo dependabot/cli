@@ -363,15 +363,16 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 		go prox.TailLogs(ctx, cli)
 	}
 
+	var collector *Collector
 	if params.CollectorConfigPath != "" {
-		collector, err := NewCollector(ctx, cli, networks, &params, prox)
+		collector, err = NewCollector(ctx, cli, networks, &params, prox)
 		if err != nil {
 			return err
 		}
 		defer collector.Close()
 	}
 
-	updater, err := NewUpdater(ctx, cli, networks, &params, prox)
+	updater, err := NewUpdater(ctx, cli, networks, &params, prox, collector)
 	if err != nil {
 		return err
 	}
