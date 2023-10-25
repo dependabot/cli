@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/moby/moby/client"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,6 +24,7 @@ const sslCertificates = "/etc/ssl/certs/ca-certificates.crt"
 type Collector struct {
 	cli         *client.Client
 	containerID string
+	url         string
 }
 
 // NewCollector starts the OpenTelemetry collector container.
@@ -85,6 +87,17 @@ func NewCollector(ctx context.Context, cli *client.Client, net *Networks, params
 	if err = cli.ContainerStart(ctx, collectorContainer.ID, types.ContainerStartOptions{}); err != nil {
 		collector.Close()
 		return nil, fmt.Errorf("failed to start collector container: %w", err)
+	}
+
+	containerInfo, err := cli.ContainerInspect(ctx, collector.containerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect collector container: %w", err)
+	}
+	if net != nil {
+		collector.url = fmt.Sprintf("http://%s:4318", containerInfo.NetworkSettings.Networks[net.noInternetName].IPAddress)
+	} else {
+		// This should only happen during testing, adding a warning in case
+		log.Println("Warning: no-internet network not found")
 	}
 
 	return collector, nil

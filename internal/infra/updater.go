@@ -46,7 +46,7 @@ const (
 )
 
 // NewUpdater starts the update container interactively running /bin/sh, so it does not stop.
-func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy) (*Updater, error) {
+func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy, collector *Collector) (*Updater, error) {
 	containerCfg := &container.Config{
 		User:  dependabot,
 		Image: params.UpdaterImage,
@@ -55,7 +55,12 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	}
 
 	if params.CollectorConfigPath != "" {
-		containerCfg.Env = append(containerCfg.Env, "OTEL_ENABLED=true")
+		containerCfg.Env = append(
+			containerCfg.Env,
+			[]string{
+				"OTEL_ENABLED=true",
+				fmt.Sprintf("OTEL_EXPORTER_OTLP_ENDPOINT=%s", collector.url),
+			}...)
 	}
 
 	hostCfg := &container.HostConfig{}
