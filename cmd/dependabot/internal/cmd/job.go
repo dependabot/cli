@@ -15,18 +15,35 @@ var jobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Runs a Dependabot job in Actions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		params, err := github.Context()
-		if err != nil {
-			return err
-		}
-		if params == nil {
-			return errors.New("no job parameters provided")
+		if v := numPresent(jobId, jobToken, credentialsToken, apiURL); v == 0 {
+			// running in actions, pull data from environment
+			params, err := github.Context()
+			if err != nil {
+				return err
+			}
+			if params == nil {
+				return errors.New("no job parameters provided")
+			}
+
+			jobId = params.Payload.Inputs.JobID
+			jobToken = params.Payload.Inputs.JobToken
+			credentialsToken = params.Payload.Inputs.CredentialsToken
+			apiURL = params.Payload.Inputs.APIURL
+
+			core.SetSecret(jobToken)
+			core.SetSecret(credentialsToken)
+		} else if v < 4 {
+			return errors.New("must provide all of job-id, job-token, credentials-token, and api-url")
 		}
 
-		core.SetSecret(params.Payload.Inputs.JobToken)
-		core.SetSecret(params.Payload.Inputs.CredentialsToken)
+		jobParameters := github.JobParameters{
+			JobID:            jobId,
+			JobToken:         jobToken,
+			CredentialsToken: credentialsToken,
+			APIURL:           apiURL,
+		}
 
-		apiClient := client.New(params.Payload.Inputs.DependabotAPIURL, &params.Payload.Inputs)
+		apiClient := client.New(apiURL, &jobParameters)
 		job, err := apiClient.JobDetails(context.Background())
 		if err != nil {
 			return err
@@ -47,6 +64,27 @@ var jobCmd = &cobra.Command{
 	},
 }
 
+func numPresent(args ...string) (count int) {
+	for _, arg := range args {
+		if arg != "" {
+			count++
+		}
+	}
+	return
+}
+
+var (
+	jobId            string
+	jobToken         string
+	credentialsToken string
+	apiURL           string
+)
+
 func init() {
 	rootCmd.AddCommand(jobCmd)
+
+	jobCmd.Flags().StringVarP(&jobId, "job-id", "j", "", "job id")
+	jobCmd.Flags().StringVarP(&jobToken, "job-token", "t", "", "token used to fetch job details")
+	jobCmd.Flags().StringVarP(&credentialsToken, "credentials-token", "c", "", "token used to fetch credentials")
+	jobCmd.Flags().StringVarP(&apiURL, "api-url", "u", "", "URL that will be queried for job details and credentials")
 }

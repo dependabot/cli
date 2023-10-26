@@ -21,7 +21,7 @@ type JobParameters struct {
 	JobID                  string `json:"jobId"`
 	JobToken               string `json:"jobToken"`
 	CredentialsToken       string `json:"credentialsToken"`
-	DependabotAPIURL       string `json:"dependabotApiUrl"`
+	APIURL                 string `json:"dependabotApiUrl"`
 	DependabotAPIDockerURL string `json:"dependabotApiDockerUrl"`
 	UpdaterImage           string `json:"updaterImage"`
 	WorkingDirectory       string `json:"workingDirectory"`
@@ -31,6 +31,9 @@ func Context() (*ActionsContext, error) {
 	context := &ActionsContext{
 		Actor:     os.Getenv("GITHUB_ACTOR"),
 		EventName: os.Getenv("GITHUB_EVENT_NAME"),
+	}
+	if context.Actor == "" && context.EventName == "" {
+		return nil, nil
 	}
 	if eventPath := os.Getenv("GITHUB_EVENT_PATH"); eventPath != "" {
 		f, err := os.Open(eventPath)
