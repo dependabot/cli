@@ -2,4 +2,4 @@ tmp
 testdata/caches
 cache
 out.yaml
-dependabot
+./dependabot

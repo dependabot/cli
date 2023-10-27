@@ -95,7 +95,7 @@ func Test_extractInput(t *testing.T) {
 		if err := cmd.ParseFlags([]string{"go_modules", "rsc/quote"}); err != nil {
 			t.Fatal(err)
 		}
-		input, err := extractInput(cmd)
+		input, err := extractInput(cmd, &UpdateFlags{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,11 +105,12 @@ func Test_extractInput(t *testing.T) {
 	})
 	t.Run("test file", func(t *testing.T) {
 		cmd := NewUpdateCommand()
-		// The working directory is cmd/dependabot/internal/cmd
-		if err := cmd.ParseFlags([]string{"-f", "../../../../testdata/basic.yml"}); err != nil {
-			t.Fatal(err)
-		}
-		input, err := extractInput(cmd)
+		input, err := extractInput(cmd, &UpdateFlags{
+			SharedFlags: SharedFlags{
+				// The working directory is cmd/dependabot/internal/cmd
+				file: "../../../../testdata/basic.yml",
+			},
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,10 +133,9 @@ func Test_extractInput(t *testing.T) {
 		}()
 
 		cmd := NewUpdateCommand()
-		if err := cmd.ParseFlags([]string{"--input-port", "8080"}); err != nil {
-			t.Fatal(err)
-		}
-		input, err := extractInput(cmd)
+		input, err := extractInput(cmd, &UpdateFlags{
+			inputServerPort: 8080,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -165,7 +165,7 @@ func Test_extractInput(t *testing.T) {
 		}
 
 		cmd := NewUpdateCommand()
-		input, err := extractInput(cmd)
+		input, err := extractInput(cmd, &UpdateFlags{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,7 +178,7 @@ func Test_extractInput(t *testing.T) {
 		if err := cmd.ParseFlags([]string{"go_modules", "-f", "basic.yml"}); err != nil {
 			t.Fatal(err)
 		}
-		_, err := extractInput(cmd)
+		_, err := extractInput(cmd, &UpdateFlags{})
 		if err == nil {
 			t.Errorf("expected error, got nil")
 		}
