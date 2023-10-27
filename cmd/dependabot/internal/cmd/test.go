@@ -50,6 +50,7 @@ var testCmd = &cobra.Command{
 			LocalDir:            local,
 			Output:              output,
 			ProxyCertPath:       proxyCertPath,
+			ProxyKeyPath:        proxyKeyPath,
 			ProxyImage:          proxyImage,
 			PullImages:          pullImages,
 			Timeout:             timeout,
@@ -91,6 +92,7 @@ func init() {
 	testCmd.Flags().StringVar(&local, "local", "", "local directory to use as fetched source")
 	testCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
 	testCmd.Flags().StringVar(&collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
+	testCmd.Flags().StringVar(&proxyKeyPath, "proxy-key", "", "path to a certificate the proxy will trust")
 	testCmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
 	testCmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
 	testCmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")

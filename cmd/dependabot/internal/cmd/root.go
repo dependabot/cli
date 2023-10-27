@@ -16,6 +16,7 @@ var (
 	cache               string
 	debugging           bool
 	proxyCertPath       string
+	proxyKeyPath        string
 	collectorConfigPath string
 	extraHosts          []string
 	output              string

@@ -42,6 +42,7 @@ type RunParams struct {
 	Output string
 	// ProxyCertPath is the path to a cert for the proxy to trust
 	ProxyCertPath string
+	ProxyKeyPath  string
 	// attempt to pull images if they aren't local?
 	PullImages bool
 	// run an interactive shell?

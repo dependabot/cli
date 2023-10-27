@@ -62,6 +62,20 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 			}
 			params.ProxyCertPath = path.Join(dir, params.ProxyCertPath)
 		}
+		cert, err := os.ReadFile(params.ProxyCertPath)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't read proxy cert: %w", err)
+		}
+		if params.ProxyKeyPath != "" {
+			key, err := os.ReadFile(params.ProxyKeyPath)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't read proxy key: %w", err)
+			}
+			proxyConfig.CA.Cert = string(cert)
+			proxyConfig.CA.Key = string(key)
+			ca.Cert = string(cert)
+			ca.Key = string(key)
+		}
 		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
 			Type:     mount.TypeBind,
 			Source:   params.ProxyCertPath,
@@ -69,7 +83,6 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 			ReadOnly: true,
 		})
 	}
-	hostCfg.ExtraHosts = append(hostCfg.ExtraHosts, params.ExtraHosts...)
 	if params.CacheDir != "" {
 		_ = os.MkdirAll(params.CacheDir, 0744)
 		cacheDir, _ := filepath.Abs(params.CacheDir)
