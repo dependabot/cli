@@ -50,20 +50,39 @@ func request[T any](ctx context.Context, method, url, auth string, body io.Reade
 	return &result, nil
 }
 
+type updateJobResponse struct {
+	Data struct {
+		Attributes model.Job `json:"attributes"`
+	} `json:"data"`
+}
+
 func (c *Client) JobDetails(ctx context.Context) (*model.Job, error) {
 	detailsUrl := fmt.Sprintf("%s/update_jobs/%s/details", c.baseUrl, c.params.JobID)
-	return request[model.Job](ctx, http.MethodGet, detailsUrl, c.params.JobToken, nil)
+	response, err := request[updateJobResponse](ctx, http.MethodGet, detailsUrl, c.params.JobToken, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job details: %w", err)
+	}
+	return &response.Data.Attributes, nil
+}
+
+type credentialsResponse struct {
+	Data struct {
+		Attributes struct {
+			Credentials []model.Credential `json:"credentials"`
+		} `json:"attributes"`
+	} `json:"data"`
 }
 
 func (c *Client) Credentials(ctx context.Context) ([]model.Credential, error) {
 	credentialsUrl := fmt.Sprintf("%s/update_jobs/%s/credentials", c.baseUrl, c.params.JobID)
-	credentials, err := request[[]model.Credential](ctx, http.MethodGet, credentialsUrl, c.params.CredentialsToken, nil)
+	response, err := request[credentialsResponse](ctx, http.MethodGet, credentialsUrl, c.params.CredentialsToken, nil)
 	if err != nil {
 		return nil, err
 	}
+	credentials := response.Data.Attributes.Credentials
 
 	// mask secrets
-	for _, credential := range *credentials {
+	for _, credential := range credentials {
 		if credential["password"] != nil {
 			core.SetSecret(credential["password"].(string))
 		}
@@ -72,7 +91,7 @@ func (c *Client) Credentials(ctx context.Context) ([]model.Credential, error) {
 		}
 	}
 
-	return *credentials, nil
+	return credentials, nil
 }
 
 // TODO
