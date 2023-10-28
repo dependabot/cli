@@ -82,7 +82,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	config := &container.Config{
 		Image: params.ProxyImage,
 		Env: []string{
-			"JOB_ID=" + jobID,
+			"JOB_ID=" + params.JobID,
 			"PROXY_CACHE=true",
 			"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
 		},

@@ -68,6 +68,7 @@ func NewUpdateCommand() *cobra.Command {
 				ExtraHosts:    extraHosts,
 				InputName:     file,
 				Job:           &input.Job,
+				JobID:         "cli",
 				LocalDir:      local,
 				Output:        output,
 				ProxyCertPath: proxyCertPath,

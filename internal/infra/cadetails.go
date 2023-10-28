@@ -66,6 +66,7 @@ func generateCert(key *rsa.PrivateKey) (string, error) {
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
+		DNSNames:              []string{"host.docker.internal"},
 	}
 	cert, err := x509.CreateCertificate(rand.Reader, &template, &template, key.Public(), key)
 	if err != nil {

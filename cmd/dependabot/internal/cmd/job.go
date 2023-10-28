@@ -15,7 +15,7 @@ var jobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Runs a Dependabot job in Actions",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if v := numPresent(jobId, jobToken, credentialsToken, apiURL); v == 0 {
+		if v := numPresent(jobId, jobToken, credentialsToken, dependabotAPIURL); v == 0 {
 			// running in actions, pull data from environment
 			params, err := github.Context()
 			if err != nil {
@@ -28,7 +28,7 @@ var jobCmd = &cobra.Command{
 			jobId = params.Payload.Inputs.JobID
 			jobToken = params.Payload.Inputs.JobToken
 			credentialsToken = params.Payload.Inputs.CredentialsToken
-			apiURL = params.Payload.Inputs.APIURL
+			dependabotAPIURL = params.Payload.Inputs.APIURL
 
 			core.SetSecret(jobToken)
 			core.SetSecret(credentialsToken)
@@ -40,10 +40,10 @@ var jobCmd = &cobra.Command{
 			JobID:            jobId,
 			JobToken:         jobToken,
 			CredentialsToken: credentialsToken,
-			APIURL:           apiURL,
+			APIURL:           dependabotAPIURL,
 		}
 
-		apiClient := client.New(apiURL, &jobParameters)
+		apiClient := client.New(dependabotAPIURL, &jobParameters)
 		job, err := apiClient.JobDetails(context.Background())
 		if err != nil {
 			return err
@@ -54,8 +54,12 @@ var jobCmd = &cobra.Command{
 		}
 
 		if err := infra.Run(infra.RunParams{
-			Job:   job,
-			Creds: credentials,
+			ProxyCertPath:    proxyCertPath,
+			JobID:            jobId,
+			JobToken:         jobToken,
+			DependabotAPIURL: dependabotAPIURL,
+			Job:              job,
+			Creds:            credentials,
 		}); err != nil {
 			log.Fatal(err)
 		}
@@ -77,7 +81,7 @@ var (
 	jobId            string
 	jobToken         string
 	credentialsToken string
-	apiURL           string
+	dependabotAPIURL string
 )
 
 func init() {
@@ -86,5 +90,7 @@ func init() {
 	jobCmd.Flags().StringVarP(&jobId, "job-id", "j", "", "job id")
 	jobCmd.Flags().StringVarP(&jobToken, "job-token", "t", "", "token used to fetch job details")
 	jobCmd.Flags().StringVarP(&credentialsToken, "credentials-token", "c", "", "token used to fetch credentials")
-	jobCmd.Flags().StringVarP(&apiURL, "api-url", "u", "", "URL that will be queried for job details and credentials")
+	jobCmd.Flags().StringVarP(&dependabotAPIURL, "dependabot-api-url", "u", "", "URL that will be queried for job details and credentials")
+
+	jobCmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/moby/moby/pkg/stdcopy"
 )
 
-const jobID = "cli"
 const (
 	root       = "root"
 	dependabot = "dependabot"
@@ -143,7 +142,7 @@ func mountOptions(v string) (local, remote string, readOnly bool, err error) {
 	return local, remote, readOnly, nil
 }
 
-func userEnv(proxyURL string, apiPort int) []string {
+func userEnv(proxyURL, jobID, jobToken string, apiPort int) []string {
 	return []string{
 		"GITHUB_ACTIONS=true", // sets exit code when fetch fails
 		fmt.Sprintf("http_proxy=%s", proxyURL),
@@ -151,7 +150,7 @@ func userEnv(proxyURL string, apiPort int) []string {
 		fmt.Sprintf("https_proxy=%s", proxyURL),
 		fmt.Sprintf("HTTPS_PROXY=%s", proxyURL),
 		fmt.Sprintf("DEPENDABOT_JOB_ID=%v", jobID),
-		fmt.Sprintf("DEPENDABOT_JOB_TOKEN=%v", ""),
+		fmt.Sprintf("DEPENDABOT_JOB_TOKEN=%v", jobToken),
 		fmt.Sprintf("DEPENDABOT_JOB_PATH=%v", guestInputDir),
 		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", guestOutput),
 		fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%v", guestRepoDir),
@@ -170,7 +169,7 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiPort int) er
 		AttachStderr: true,
 		Tty:          true,
 		User:         dependabot,
-		Env:          append(userEnv(proxyURL, apiPort), "DEBUG=1"),
+		Env:          append(userEnv(proxyURL, "cli", "", apiPort), "DEBUG=1"),
 		Cmd:          []string{"/bin/bash", "-c", "update-ca-certificates && /bin/bash"},
 	})
 	if err != nil {

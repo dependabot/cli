@@ -2,4 +2,6 @@ tmp
 testdata/caches
 cache
 out.yaml
-dependabot
+./dependabot
+cert.pem
+key.pem

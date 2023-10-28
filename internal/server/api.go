@@ -12,6 +12,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"reflect"
 	"runtime"
@@ -39,7 +41,7 @@ type API struct {
 }
 
 // NewAPI creates a new API instance and starts the server
-func NewAPI(expected []model.Output, writer io.Writer) *API {
+func NewAPI(expected []model.Output, writer io.Writer, dependabotApiURL string) *API {
 	fakeAPIHost := "127.0.0.1"
 	if runtime.GOOS == "linux" {
 		fakeAPIHost = "0.0.0.0"
@@ -71,6 +73,12 @@ func NewAPI(expected []model.Output, writer io.Writer) *API {
 		port:            l.Addr().(*net.TCPAddr).Port,
 	}
 	server.Handler = api
+
+	if dependabotApiURL != "" {
+		// Forward requests to the real Dependabot API
+		u, _ := url.Parse(dependabotApiURL)
+		server.Handler = httputil.NewSingleHostReverseProxy(u)
+	}
 
 	go func() {
 		if err := server.Serve(l); err != nil && !errors.Is(err, http.ErrServerClosed) {

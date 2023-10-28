@@ -26,6 +26,8 @@ import (
 )
 
 type RunParams struct {
+	JobID    string
+	JobToken string
 	// Input file
 	Input string
 	// job definition passed to the updater
@@ -58,9 +60,10 @@ type RunParams struct {
 	// ProxyImage is the image to use for the proxy
 	ProxyImage string
 	// Writer is where API calls will be written to
-	Writer    io.Writer
-	InputName string
-	InputRaw  []byte
+	Writer           io.Writer
+	InputName        string
+	InputRaw         []byte
+	DependabotAPIURL string
 }
 
 var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -94,7 +97,7 @@ func Run(params RunParams) error {
 		cancel()
 	}()
 
-	api := server.NewAPI(params.Expected, params.Writer)
+	api := server.NewAPI(params.Expected, params.Writer, params.DependabotAPIURL)
 	defer api.Stop()
 
 	var outFile *os.File
@@ -368,7 +371,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 		}
 	} else {
 		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
-		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, api.Port())...); err != nil {
+		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, params.JobID, params.JobToken, api.Port())...); err != nil {
 			return err
 		}
 	}

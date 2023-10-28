@@ -45,6 +45,7 @@ var testCmd = &cobra.Command{
 			InputName:     file,
 			InputRaw:      inputRaw,
 			Job:           &scenario.Input.Job,
+			JobID:         "cli",
 			LocalDir:      local,
 			Output:        output,
 			ProxyCertPath: proxyCertPath,
