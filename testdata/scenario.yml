@@ -1,0 +1,10 @@
+input:
+  job:
+    package-manager: go_modules
+    allowed-updates:
+      - dependency-type: direct
+        update-type: all
+    source:
+      provider: github
+      repo: rsc/quote
+      directory: /

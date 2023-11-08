@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
+type SharedFlags struct {
 	file                string
 	cache               string
 	debugging           bool
@@ -22,9 +22,14 @@ var (
 	pullImages          bool
 	volumes             []string
 	timeout             time.Duration
-	updaterImage        string
-	proxyImage          string
-	collectorImage      string
+	local               string
+}
+
+// root flags
+var (
+	updaterImage   string
+	proxyImage     string
+	collectorImage string
 )
 
 // rootCmd represents the base command when called without any subcommands

@@ -17,19 +17,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	packageManager string
-	provider       string
-	repo           string
-	directory      string
-	local          string
-	commit         string
-	dependencies   []string
+var updateCmd = NewUpdateCommand()
 
+func init() {
+	rootCmd.AddCommand(updateCmd)
+}
+
+type UpdateFlags struct {
+	SharedFlags
+	provider        string
+	directory       string
+	local           string
+	commit          string
+	dependencies    []string
 	inputServerPort int
-)
+}
 
 func NewUpdateCommand() *cobra.Command {
+	var flags UpdateFlags
+
 	cmd := &cobra.Command{
 		Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
 		Short: "Perform an update job",
@@ -39,16 +45,16 @@ func NewUpdateCommand() *cobra.Command {
 	    `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var outFile *os.File
-			if output != "" {
+			if flags.output != "" {
 				var err error
-				outFile, err = os.Create(output)
+				outFile, err = os.Create(flags.output)
 				if err != nil {
 					return fmt.Errorf("failed to create output file: %w", err)
 				}
 				defer outFile.Close()
 			}
 
-			input, err := extractInput(cmd)
+			input, err := extractInput(cmd, &flags)
 			if err != nil {
 				return err
 			}
@@ -56,28 +62,28 @@ func NewUpdateCommand() *cobra.Command {
 			processInput(input)
 
 			var writer io.Writer
-			if !debugging {
+			if !flags.debugging {
 				writer = os.Stdout
 			}
 
 			if err := infra.Run(infra.RunParams{
-				CacheDir:            cache,
-				CollectorConfigPath: collectorConfigPath,
+				CacheDir:            flags.cache,
+				CollectorConfigPath: flags.collectorConfigPath,
 				CollectorImage:      collectorImage,
 				Creds:               input.Credentials,
-				Debug:               debugging,
+				Debug:               flags.debugging,
 				Expected:            nil, // update subcommand doesn't use expectations
-				ExtraHosts:          extraHosts,
-				InputName:           file,
+				ExtraHosts:          flags.extraHosts,
+				InputName:           flags.file,
 				Job:                 &input.Job,
-				LocalDir:            local,
-				Output:              output,
-				ProxyCertPath:       proxyCertPath,
+				LocalDir:            flags.local,
+				Output:              flags.output,
+				ProxyCertPath:       flags.proxyCertPath,
 				ProxyImage:          proxyImage,
-				PullImages:          pullImages,
-				Timeout:             timeout,
+				PullImages:          flags.pullImages,
+				Timeout:             flags.timeout,
 				UpdaterImage:        updaterImage,
-				Volumes:             volumes,
+				Volumes:             flags.volumes,
 				Writer:              writer,
 			}); err != nil {
 				log.Fatalf("failed to run updater: %v", err)
@@ -87,34 +93,32 @@ func NewUpdateCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "f", "", "path to scenario file")
+	cmd.Flags().StringVarP(&flags.file, "file", "f", "", "path to input file")
 
-	cmd.Flags().StringVarP(&provider, "provider", "p", "github", "provider of the repository")
-	cmd.Flags().StringVarP(&directory, "directory", "d", "/", "directory to update")
-	cmd.Flags().StringVarP(&commit, "commit", "", "", "commit to update")
-	cmd.Flags().StringArrayVarP(&dependencies, "dep", "", nil, "dependencies to update")
+	cmd.Flags().StringVarP(&flags.provider, "provider", "p", "github", "provider of the repository")
+	cmd.Flags().StringVarP(&flags.directory, "directory", "d", "/", "directory to update")
+	cmd.Flags().StringVarP(&flags.commit, "commit", "", "", "commit to update")
+	cmd.Flags().StringArrayVarP(&flags.dependencies, "dep", "", nil, "dependencies to update")
 
-	cmd.Flags().StringVarP(&output, "output", "o", "", "write scenario to file")
-	cmd.Flags().StringVar(&cache, "cache", "", "cache import/export directory")
-	cmd.Flags().StringVar(&local, "local", "", "local directory to use as fetched source")
-	cmd.Flags().StringVar(&proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
-	cmd.Flags().StringVar(&collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
-	cmd.Flags().BoolVar(&pullImages, "pull", true, "pull the image if it isn't present")
-	cmd.Flags().BoolVar(&debugging, "debug", false, "run an interactive shell inside the updater")
-	cmd.Flags().StringArrayVarP(&volumes, "volume", "v", nil, "mount volumes in Docker")
-	cmd.Flags().StringArrayVar(&extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
-	cmd.Flags().DurationVarP(&timeout, "timeout", "t", 0, "max time to run an update")
-	cmd.Flags().IntVar(&inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
+	cmd.Flags().StringVarP(&flags.output, "output", "o", "", "write scenario to file")
+	cmd.Flags().StringVar(&flags.cache, "cache", "", "cache import/export directory")
+	cmd.Flags().StringVar(&flags.local, "local", "", "local directory to use as fetched source")
+	cmd.Flags().StringVar(&flags.proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
+	cmd.Flags().StringVar(&flags.collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
+	cmd.Flags().BoolVar(&flags.pullImages, "pull", true, "pull the image if it isn't present")
+	cmd.Flags().BoolVar(&flags.debugging, "debug", false, "run an interactive shell inside the updater")
+	cmd.Flags().StringArrayVarP(&flags.volumes, "volume", "v", nil, "mount volumes in Docker")
+	cmd.Flags().StringArrayVar(&flags.extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
+	cmd.Flags().DurationVarP(&flags.timeout, "timeout", "t", 0, "max time to run an update")
+	cmd.Flags().IntVar(&flags.inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
 
 	return cmd
 }
 
-var updateCmd = NewUpdateCommand()
-
-func extractInput(cmd *cobra.Command) (*model.Input, error) {
-	hasFile := file != ""
+func extractInput(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error) {
+	hasFile := flags.file != ""
 	hasArguments := len(cmd.Flags().Args()) > 0
-	hasServer := inputServerPort != 0
+	hasServer := flags.inputServerPort != 0
 	hasStdin := doesStdinHaveData()
 
 	var count int
@@ -128,15 +132,15 @@ func extractInput(cmd *cobra.Command) (*model.Input, error) {
 	}
 
 	if hasFile {
-		return readInputFile(file)
+		return readInputFile(flags.file)
 	}
 
 	if hasArguments {
-		return readArguments(cmd)
+		return readArguments(cmd, flags)
 	}
 
 	if hasServer {
-		return server.Input(inputServerPort)
+		return server.Input(flags.inputServerPort)
 	}
 
 	if hasStdin {
@@ -162,25 +166,25 @@ func readStdin() (*model.Input, error) {
 	return input, nil
 }
 
-func readArguments(cmd *cobra.Command) (*model.Input, error) {
+func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error) {
 	if len(cmd.Flags().Args()) != 2 {
 		return nil, errors.New("requires a package manager and repo argument")
 	}
 
-	packageManager = cmd.Flags().Args()[0]
+	packageManager := cmd.Flags().Args()[0]
 	if packageManager == "" {
 		return nil, errors.New("requires a package manager argument")
 	}
 
-	repo = cmd.Flags().Args()[1]
+	repo := cmd.Flags().Args()[1]
 	if repo == "" {
 		return nil, errors.New("requires a repo argument")
 	}
 
 	allowed := []model.Allowed{{UpdateType: "all"}}
-	if len(dependencies) > 0 {
+	if len(flags.dependencies) > 0 {
 		allowed = allowed[:0]
-		for _, dep := range dependencies {
+		for _, dep := range flags.dependencies {
 			allowed = append(allowed, model.Allowed{DependencyName: dep})
 		}
 	}
@@ -198,10 +202,10 @@ func readArguments(cmd *cobra.Command) (*model.Input, error) {
 			SecurityAdvisories:         []model.Advisory{},
 			SecurityUpdatesOnly:        false,
 			Source: model.Source{
-				Provider:    provider,
+				Provider:    flags.provider,
 				Repo:        repo,
-				Directory:   directory,
-				Commit:      commit,
+				Directory:   flags.directory,
+				Commit:      flags.commit,
 				Branch:      nil,
 				Hostname:    nil,
 				APIEndpoint: nil,
@@ -308,8 +312,4 @@ func doesStdinHaveData() bool {
 		log.Println("file.Stat()", err)
 	}
 	return fi.Size() > 0
-}
-
-func init() {
-	rootCmd.AddCommand(updateCmd)
 }
