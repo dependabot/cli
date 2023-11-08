@@ -4,13 +4,13 @@ go 1.21
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/docker/cli v24.0.6+incompatible
-	github.com/docker/docker v24.0.6+incompatible
+	github.com/docker/cli v24.0.7+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/moby/moby v24.0.6+incompatible
+	github.com/moby/moby v24.0.7+incompatible
 	github.com/moby/sys/signal v0.7.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

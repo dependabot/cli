@@ -53,11 +53,12 @@ type Job struct {
 
 // Source is a reference to some source code
 type Source struct {
-	Provider  string  `json:"provider" yaml:"provider,omitempty"`
-	Repo      string  `json:"repo" yaml:"repo,omitempty"`
-	Directory string  `json:"directory" yaml:"directory,omitempty"`
-	Branch    *string `json:"branch" yaml:"branch,omitempty"`
-	Commit    string  `json:"commit,omitempty" yaml:"commit,omitempty"`
+	Provider    string   `json:"provider" yaml:"provider,omitempty"`
+	Repo        string   `json:"repo" yaml:"repo,omitempty"`
+	Directory   string   `json:"directory" yaml:"directory,omitempty"`
+	Directories []string `json:"directories,omitempty" yaml:"directories,omitempty"`
+	Branch      *string  `json:"branch" yaml:"branch,omitempty"`
+	Commit      string   `json:"commit,omitempty" yaml:"commit,omitempty"`
 
 	Hostname    *string `json:"hostname" yaml:"hostname,omitempty"`         // Must be provided if APIEndpoint is
 	APIEndpoint *string `json:"api-endpoint" yaml:"api-endpoint,omitempty"` // Must be provided if Hostname is
