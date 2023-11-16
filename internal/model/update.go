@@ -60,6 +60,11 @@ type RecordUpdateJobError struct {
 	ErrorDetails map[string]any `json:"error-details" yaml:"error-details"`
 }
 
+type RecordUpdateJobUnknownError struct {
+	ErrorType    string         `json:"error-type" yaml:"error-type"`
+	ErrorDetails map[string]any `json:"error-details" yaml:"error-details"`
+}
+
 type IncrementMetric struct {
 	Metric string         `json:"metric" yaml:"metric"`
 	Tags   map[string]any `json:"tags" yaml:"tags"`
