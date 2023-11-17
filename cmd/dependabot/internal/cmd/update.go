@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
@@ -140,7 +141,11 @@ func extractInput(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error) 
 	}
 
 	if hasServer {
-		return server.Input(flags.inputServerPort)
+		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", flags.inputServerPort))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create listener: %w", err)
+		}
+		return server.Input(l)
 	}
 
 	if hasStdin {

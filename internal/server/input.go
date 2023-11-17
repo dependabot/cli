@@ -3,12 +3,11 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"time"
-
+	"errors"
 	"github.com/dependabot/cli/internal/model"
+	"log"
+	"net"
+	"net/http"
 )
 
 type credServer struct {
@@ -29,17 +28,15 @@ func (s *credServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Input receives configuration via HTTP on the port and returns it decoded
-func Input(port int) (*model.Input, error) {
-	server := &http.Server{
-		Addr:              fmt.Sprintf("127.0.0.1:%d", port),
-		ReadHeaderTimeout: time.Second,
-	}
-	s := &credServer{server: server}
-	server.Handler = s
+func Input(listener net.Listener) (*model.Input, error) {
+	handler := &credServer{}
+	srv := &http.Server{Handler: handler}
+	handler.server = srv
+
 	// printing so the user doesn't think the cli is hanging
-	log.Println("waiting for input on port", port)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	log.Println("waiting for input on", listener.Addr())
+	if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return nil, err
 	}
-	return s.data, nil
+	return handler.data, nil
 }
