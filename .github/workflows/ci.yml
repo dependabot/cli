@@ -22,7 +22,7 @@ jobs:
       - name: Test
         # -count=2 ensures that test fixtures cleanup after themselves
         # because any leftover state will generally cause the second run to fail.
-        run: go test -shuffle=on -count=2 -race -cover -v ./...
+        run: go test -shuffle=on -count=2 -race -cover -v -timeout=5m ./...
 
   lint:
     runs-on: ubuntu-latest
