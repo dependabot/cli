@@ -17,7 +17,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 )
 
 const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
@@ -53,7 +52,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 	hostCfg.ExtraHosts = append(hostCfg.ExtraHosts, params.ExtraHosts...)
 	if params.ProxyCertPath != "" {
-		if !strings.HasPrefix(params.ProxyCertPath, "/") {
+		if !path.IsAbs(params.ProxyCertPath) {
 			// needs to be absolute, assume it is relative to the working directory
 			var dir string
 			dir, err = os.Getwd()
