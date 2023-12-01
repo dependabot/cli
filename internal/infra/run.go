@@ -451,15 +451,15 @@ func pullImage(ctx context.Context, cli *client.Client, image string) error {
 
 	// pull image if necessary
 	if err != nil {
-		var privilegeFunc types.RequestPrivilegeFunc
+		var imagePullOptions types.ImagePullOptions
 
 		if strings.HasPrefix(image, "ghcr.io/") {
 
 			token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
 			if token != "" {
 				auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
-				privilegeFunc = func() (string, error) {
-					return "Basic " + auth, nil
+				imagePullOptions = types.ImagePullOptions{
+					RegistryAuth: fmt.Sprintf("Basic %s", auth),
 				}
 			} else {
 				log.Println("Failed to find credentials for GitHub container registry.")
@@ -479,8 +479,9 @@ func pullImage(ctx context.Context, cli *client.Client, image string) error {
 
 				encodedJSON, _ := json.Marshal(authConfig)
 				authStr := base64.URLEncoding.EncodeToString(encodedJSON)
-				privilegeFunc = func() (string, error) {
-					return authStr, nil
+
+				imagePullOptions = types.ImagePullOptions{
+					RegistryAuth: authStr,
 				}
 			} else {
 				log.Println("Failed to find credentials for Azure container registry.")
@@ -489,16 +490,8 @@ func pullImage(ctx context.Context, cli *client.Client, image string) error {
 			log.Printf("Failed to find credentials for pulling image: %s\n.", image)
 		}
 
-		if privilegeFunc == nil {
-			return fmt.Errorf("failed to get credentials to pull image: %s", image)
-		}
-
-		encodedAuth, _ := privilegeFunc()
-
 		log.Printf("pulling image: %s\n", image)
-		out, err := cli.ImagePull(ctx, image, types.ImagePullOptions{
-			RegistryAuth: encodedAuth,
-		})
+		out, err := cli.ImagePull(ctx, image, imagePullOptions)
 		if err != nil {
 			return fmt.Errorf("failed to pull %v: %w", image, err)
 		}
