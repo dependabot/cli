@@ -482,14 +482,18 @@ func pullImage(ctx context.Context, cli *client.Client, image string) error {
 				privilegeFunc = func() (string, error) {
 					return authStr, nil
 				}
+			} else {
+				log.Println("Failed to find credentials for Azure container registry.")
+			}
 		} else {
-			log.Println("Failed to find credentials for Azure container registry.")
-		}
-	} else {
 			log.Printf("Failed to find credentials for pulling image: %s\n.", image)
 		}
 
-		encodedAuth, _ := privilegeFunc()
+		encodedAuth, err := privilegeFunc()
+		if err != nil {
+			return fmt.Errorf("failed to get credentials for %v: %w", image, err)
+		}
+
 		log.Printf("pulling image: %s\n", image)
 		out, err := cli.ImagePull(ctx, image, types.ImagePullOptions{
 			RegistryAuth: encodedAuth,
