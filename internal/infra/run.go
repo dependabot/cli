@@ -3,11 +3,8 @@ package infra
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/pkg/archive"
-	"github.com/hexops/gotextdiff"
-	"github.com/hexops/gotextdiff/myers"
-	"github.com/hexops/gotextdiff/span"
 	"io"
 	"log"
 	"net/http"
@@ -18,9 +15,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/docker/docker/pkg/archive"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
+
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
 	"github.com/docker/docker/api/types"
+	"github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
 )
@@ -449,17 +452,47 @@ func pullImage(ctx context.Context, cli *client.Client, image string) error {
 	// pull image if necessary
 	if err != nil {
 		var privilegeFunc types.RequestPrivilegeFunc
-		token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
-		if token != "" {
-			auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
-			privilegeFunc = func() (string, error) {
-				return "Basic " + auth, nil
+
+		if strings.HasPrefix(image, "ghcr.io/") {
+
+			token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
+			if token != "" {
+				auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
+				privilegeFunc = func() (string, error) {
+					return "Basic " + auth, nil
+				}
+			} else {
+				log.Println("Failed to find credentials for GitHub container registry.")
 			}
+		} else if strings.Contains(image, ".azurecr.io/") {
+			username := os.Getenv("AZURE_REGISTRY_USERNAME")
+			password := os.Getenv("AZURE_REGISTRY_PASSWORD")
+
+			registryName := strings.Split(image, "/")[0]
+
+			if username != "" && password != "" {
+				authConfig := registry.AuthConfig{
+					Username:      username,
+					Password:      password,
+					ServerAddress: registryName,
+				}
+
+				encodedJSON, _ := json.Marshal(authConfig)
+				authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+				privilegeFunc = func() (string, error) {
+					return authStr, nil
+				}
+		} else {
+			log.Println("Failed to find credentials for Azure container registry.")
+		}
+	} else {
+			log.Printf("Failed to find credentials for pulling image: %s\n.", image)
 		}
 
+		encodedAuth, _ := privilegeFunc()
 		log.Printf("pulling image: %s\n", image)
 		out, err := cli.ImagePull(ctx, image, types.ImagePullOptions{
-			PrivilegeFunc: privilegeFunc,
+			RegistryAuth: encodedAuth,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to pull %v: %w", image, err)
