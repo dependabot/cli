@@ -1,0 +1,14 @@
+{
+  "name": "Dependabot CLI",
+  "image": "mcr.microsoft.com/devcontainers/go:1.21",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker": "latest"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go"
+      ]
+    }
+  }
+}
