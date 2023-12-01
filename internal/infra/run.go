@@ -489,10 +489,11 @@ func pullImage(ctx context.Context, cli *client.Client, image string) error {
 			log.Printf("Failed to find credentials for pulling image: %s\n.", image)
 		}
 
-		encodedAuth, err := privilegeFunc()
-		if err != nil {
-			return fmt.Errorf("failed to get credentials for %v: %w", image, err)
+		if privilegeFunc == nil {
+			return fmt.Errorf("failed to get credentials to pull image: %s", image)
 		}
+
+		encodedAuth, _ := privilegeFunc()
 
 		log.Printf("pulling image: %s\n", image)
 		out, err := cli.ImagePull(ctx, image, types.ImagePullOptions{
