@@ -68,6 +68,7 @@ type RunParams struct {
 	Writer    io.Writer
 	InputName string
 	InputRaw  []byte
+	ApiUrl    string
 }
 
 var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -125,7 +126,10 @@ func Run(params RunParams) error {
 		return err
 	}
 
-	if err := runContainers(ctx, params, api); err != nil {
+	if params.ApiUrl == "" {
+		params.ApiUrl = fmt.Sprintf("http://host.docker.internal:%v", api.Port())
+	}
+	if err := runContainers(ctx, params); err != nil {
 		return err
 	}
 
@@ -277,16 +281,18 @@ func setImageNames(params *RunParams) error {
 }
 
 func expandEnvironmentVariables(api *server.API, params *RunParams) {
-	api.Actual.Input.Credentials = params.Creds
+	if api != nil {
+		api.Actual.Input.Credentials = params.Creds
 
-	// Make a copy of the credentials, so we don't inject them into the output file.
-	params.Creds = []model.Credential{}
-	for _, cred := range api.Actual.Input.Credentials {
-		newCred := model.Credential{}
-		for k, v := range cred {
-			newCred[k] = v
+		// Make a copy of the credentials, so we don't inject them into the output file.
+		params.Creds = []model.Credential{}
+		for _, cred := range api.Actual.Input.Credentials {
+			newCred := model.Credential{}
+			for k, v := range cred {
+				newCred[k] = v
+			}
+			params.Creds = append(params.Creds, newCred)
 		}
-		params.Creds = append(params.Creds, newCred)
 	}
 
 	// Add the actual credentials from the environment.
@@ -324,7 +330,7 @@ func generateIgnoreConditions(params *RunParams, actual *model.Scenario) error {
 	return nil
 }
 
-func runContainers(ctx context.Context, params RunParams, api *server.API) error {
+func runContainers(ctx context.Context, params RunParams) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
@@ -389,12 +395,12 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 	}
 
 	if params.Debug {
-		if err := updater.RunShell(ctx, prox.url, api.Port()); err != nil {
+		if err := updater.RunShell(ctx, prox.url, params.ApiUrl); err != nil {
 			return err
 		}
 	} else {
 		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
-		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, api.Port())...); err != nil {
+		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, params.ApiUrl)...); err != nil {
 			return err
 		}
 	}

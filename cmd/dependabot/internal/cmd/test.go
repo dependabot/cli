@@ -32,7 +32,7 @@ func NewTestCommand() *cobra.Command {
 				return err
 			}
 
-			processInput(&scenario.Input)
+			processInput(&scenario.Input, nil)
 
 			if err := executeTestJob(infra.RunParams{
 				CacheDir:            flags.cache,

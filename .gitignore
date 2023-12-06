@@ -3,3 +3,5 @@ testdata/caches
 cache
 out.yaml
 ./dependabot
+dependabot.exe
+.env
