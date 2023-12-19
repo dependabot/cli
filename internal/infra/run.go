@@ -331,7 +331,7 @@ func runContainers(ctx context.Context, params RunParams, api *server.API) error
 	}
 
 	if params.PullImages {
-		err = pullImage(ctx, cli, ProxyImageName)
+		err = pullImage(ctx, cli, params.ProxyImage)
 		if err != nil {
 			return err
 		}
