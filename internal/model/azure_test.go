@@ -1,9 +1,8 @@
 package model
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func Test_NewAzureRepo(t *testing.T) {
@@ -39,7 +38,9 @@ func Test_NewAzureRepo(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			actual := NewAzureRepo(test.packageManager, test.repo, test.directory)
-			assert.Equal(t, test.expected, actual)
+			if !reflect.DeepEqual(actual, test.expected) {
+				t.Errorf("expected %v, got %v", test.expected, actual)
+			}
 		})
 	}
 }
