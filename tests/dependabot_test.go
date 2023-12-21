@@ -22,6 +22,12 @@ func TestDependabot(t *testing.T) {
 	scripttest.Test(t, ctx, engine, env, "../testdata/scripts/*.txt")
 }
 
+// Commands returns the commands that can be used in the scripts.
+// Each line of the scripts are <command> <args...>
+// So if you enter "dependabot update go_modules rsc/quote", it will run
+// the Dependabot() function with args "update go_modules rsc/quote".
+// When you use "echo" in the scripts it's actually running the echo command
+// from the scripttest package.
 func Commands() map[string]script.Cmd {
 	commands := scripttest.DefaultCmds()
 
@@ -31,6 +37,7 @@ func Commands() map[string]script.Cmd {
 	return commands
 }
 
+// Dependabot runs the Dependabot CLI. TODO Should this build once then execute thereafter?
 func Dependabot() script.Cmd {
 	return script.Command(
 		script.CmdUsage{
