@@ -12,6 +12,14 @@ import (
 )
 
 func TestDependabot(t *testing.T) {
+	err := exec.Command("go", "build", "../cmd/dependabot/dependabot.go").Run()
+	if err != nil {
+		panic("failed to build dependabot")
+	}
+	t.Cleanup(func() {
+		os.Remove("dependabot")
+	})
+
 	ctx := context.Background()
 	engine := &script.Engine{
 		Conds: scripttest.DefaultConds(),
@@ -39,7 +47,7 @@ func Commands() map[string]script.Cmd {
 	return commands
 }
 
-// Dependabot runs the Dependabot CLI. TODO Should this build once then execute thereafter?
+// Dependabot runs the Dependabot CLI.
 func Dependabot() script.Cmd {
 	return script.Command(
 		script.CmdUsage{
@@ -51,10 +59,13 @@ func Dependabot() script.Cmd {
 				return nil, script.ErrUsage
 			}
 
-			args = append([]string{"run", "../cmd/dependabot/dependabot.go"}, args...)
-			execCmd := exec.Command("go", args...)
+			os.Link("dependabot", s.Getwd()+"/dependabot")
+
+			execCmd := exec.Command("./dependabot", args...)
 
 			var execOut, execErr bytes.Buffer
+			execCmd.Dir = s.Getwd()
+			execCmd.Env = s.Environ()
 			execCmd.Stdout = &execOut
 			execCmd.Stderr = &execErr
 
