@@ -92,7 +92,6 @@ job:
     provider: github
     repo: dependabot/dependabot-core
     directory: "/npm_and_yarn/helpers"
-    branch:
     api-endpoint: https://api.github.com/
     hostname: github.com
   dependencies:
