@@ -1,0 +1,27 @@
+# Build the dummy Dockerfile
+exec docker build -qt dummy-updater .
+
+# Run the dependabot command
+dependabot update go_modules dependabot/cli --updater-image dummy-updater
+
+# assert the dummy is working
+stderr 'bin/run arguments: fetch_files'
+stderr 'bin/run arguments: update_files'
+
+-- Dockerfile --
+FROM ubuntu:22.04
+
+RUN useradd dependabot
+
+COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
+COPY --chown=dependabot --chmod=755 run bin/run
+
+-- update-ca-certificates --
+#!/usr/bin/env bash
+
+echo "Updated those certificates for ya"
+
+-- run --
+#!/usr/bin/env bash
+
+echo "bin/run arguments: $@"

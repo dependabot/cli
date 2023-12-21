@@ -1,0 +1,36 @@
+# This test tries to verify that the proper job.json is written based on command line arguments.
+
+exec docker build -qt input-verify-updater .
+
+dependabot update go_modules dependabot/cli --updater-image input-verify-updater
+stderr '"package-manager":"go_modules"'
+stderr '"repo":"dependabot/cli"'
+
+dependabot update go_modules dependabot/cli --commit 1278c8d7503f9881eb969959446e2c3a5a0cce2d --updater-image input-verify-updater
+stderr '"commit":"1278c8d7503f9881eb969959446e2c3a5a0cce2d"'
+
+! dependabot update go_modules dependabot/cli --commit unknown --updater-image input-verify-updater
+stderr 'commit must be a SHA, or not provided'
+
+dependabot update go_modules dependabot/cli --dep golang.org/x/image --updater-image input-verify-updater
+stderr '"allowed-updates":\[\{"dependency-name":"golang.org/x/image"\}\]'
+
+-- Dockerfile --
+FROM ubuntu:22.04
+
+RUN useradd dependabot
+
+COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
+COPY --chown=dependabot --chmod=755 run bin/run
+
+-- update-ca-certificates --
+#!/usr/bin/env bash
+
+echo "Updated those certificates for ya"
+
+-- run --
+#!/usr/bin/env bash
+
+echo "Not sure why but unless I echo here the json doesn't output"
+
+cat /home/dependabot/dependabot-updater/job.json
