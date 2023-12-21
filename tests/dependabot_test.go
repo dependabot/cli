@@ -18,7 +18,9 @@ func TestDependabot(t *testing.T) {
 		Cmds:  Commands(),
 		Quiet: !testing.Verbose(),
 	}
-	env := os.Environ()
+	env := []string{
+		"PATH=" + os.Getenv("PATH"),
+	}
 	scripttest.Test(t, ctx, engine, env, "../testdata/scripts/*.txt")
 }
 
