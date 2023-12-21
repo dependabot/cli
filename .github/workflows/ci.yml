@@ -43,16 +43,3 @@ jobs:
             echo "gofmt failed, please run gofmt -w ."
             exit 1
           fi
-
-  integration:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.21
-
-      - name: Run integration tests
-        run: tests/local

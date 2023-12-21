@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"rsc.io/script"
 	"rsc.io/script/scripttest"
+	"sync"
 	"testing"
 )
 
@@ -39,7 +40,7 @@ func Commands() map[string]script.Cmd {
 	return commands
 }
 
-// Dependabot runs the Dependabot CLI. TODO Should this build once then execute thereafter?
+// Dependabot runs the Dependabot CLI.
 func Dependabot() script.Cmd {
 	return script.Command(
 		script.CmdUsage{
@@ -51,10 +52,21 @@ func Dependabot() script.Cmd {
 				return nil, script.ErrUsage
 			}
 
-			args = append([]string{"run", "../cmd/dependabot/dependabot.go"}, args...)
-			execCmd := exec.Command("go", args...)
+			sync.OnceFunc(func() {
+				err := exec.Command("go", "build", "../cmd/dependabot/dependabot.go").Run()
+				if err != nil {
+					panic("failed to build dependabot")
+				}
+				if err := os.Rename("dependabot", s.Getwd()+"/dependabot"); err != nil {
+					panic("failed to move dependabot into test directory")
+				}
+			})()
+
+			execCmd := exec.Command("./dependabot", args...)
 
 			var execOut, execErr bytes.Buffer
+			execCmd.Dir = s.Getwd()
+			execCmd.Env = s.Environ()
 			execCmd.Stdout = &execOut
 			execCmd.Stderr = &execErr
 

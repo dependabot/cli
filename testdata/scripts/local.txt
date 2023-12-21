@@ -1,0 +1,17 @@
+# Normal usage clones dependabot-fixtures/go-modules-lib
+dependabot update go_modules dependabot-fixtures/go-modules-lib --cache cache
+stderr 'https://github.com:443/dependabot-fixtures/go-modules-lib/git-upload-pack'
+stdout 'create_pull_request'
+
+exec git clone https://github.com/dependabot-fixtures/go-modules-lib repo
+
+# Using --local prevents cloning
+dependabot update go_modules dependabot-fixtures/go-modules-lib --local repo --cache cache
+! stderr 'https://github.com:443/dependabot-fixtures/go-modules-lib/git-upload-pack'
+stdout 'create_pull_request'
+
+# Verify it works with a non-git repo
+rm -rf tmp/sys/.git
+dependabot update go_modules dependabot-fixtures/go-modules-lib --local repo --cache cache
+! stderr 'https://github.com:443/dependabot-fixtures/go-modules-lib/git-upload-pack'
+stdout 'create_pull_request'
