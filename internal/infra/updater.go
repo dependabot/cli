@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/goware/prefixer"
 	"io"
 	"os"
 	"path"
@@ -19,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/goware/prefixer"
 	"github.com/moby/moby/client"
 	"github.com/moby/moby/pkg/stdcopy"
 )
@@ -153,19 +153,19 @@ func mountOptions(v string) (local, remote string, readOnly bool, err error) {
 	return local, remote, readOnly, nil
 }
 
-func userEnv(proxyURL string, apiPort int) []string {
+func userEnv(proxyURL string, apiUrl string) []string {
 	return []string{
 		"GITHUB_ACTIONS=true", // sets exit code when fetch fails
 		fmt.Sprintf("http_proxy=%s", proxyURL),
 		fmt.Sprintf("HTTP_PROXY=%s", proxyURL),
 		fmt.Sprintf("https_proxy=%s", proxyURL),
 		fmt.Sprintf("HTTPS_PROXY=%s", proxyURL),
-		fmt.Sprintf("DEPENDABOT_JOB_ID=%v", jobID),
+		fmt.Sprintf("DEPENDABOT_JOB_ID=%v", firstNonEmpty(os.Getenv("DEPENDABOT_JOB_ID"), jobID)),
 		fmt.Sprintf("DEPENDABOT_JOB_TOKEN=%v", ""),
 		fmt.Sprintf("DEPENDABOT_JOB_PATH=%v", guestInputDir),
 		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", guestOutput),
 		fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%v", guestRepoDir),
-		fmt.Sprintf("DEPENDABOT_API_URL=http://host.docker.internal:%v", apiPort),
+		fmt.Sprintf("DEPENDABOT_API_URL=%s", apiUrl),
 		fmt.Sprintf("SSL_CERT_FILE=%v/ca-certificates.crt", certsPath),
 		"UPDATER_ONE_CONTAINER=true",
 		"UPDATER_DETERMINISTIC=true",
@@ -173,14 +173,14 @@ func userEnv(proxyURL string, apiPort int) []string {
 }
 
 // RunShell executes an interactive shell, blocks until complete.
-func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiPort int) error {
+func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string) error {
 	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, types.ExecConfig{
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
 		User:         dependabot,
-		Env:          append(userEnv(proxyURL, apiPort), "DEBUG=1"),
+		Env:          append(userEnv(proxyURL, apiUrl), "DEBUG=1"),
 		Cmd:          []string{"/bin/bash", "-c", "update-ca-certificates && /bin/bash"},
 	})
 	if err != nil {
@@ -325,4 +325,14 @@ func addFileToArchive(tw *tar.Writer, name string, mode int64, content string) e
 	}
 
 	return nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+
+	return ""
 }

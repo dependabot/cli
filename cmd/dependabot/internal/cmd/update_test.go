@@ -16,7 +16,7 @@ func Test_processInput(t *testing.T) {
 		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "")
 
 		var input model.Input
-		processInput(&input)
+		processInput(&input, nil)
 
 		if input.Job.ExistingPullRequests == nil {
 			t.Error("expected existing pull requests to be initialized")
@@ -38,7 +38,7 @@ func Test_processInput(t *testing.T) {
 		// Adding a dummy metadata to test the inner if
 		input.Job.CredentialsMetadata = []model.Credential{{}}
 
-		processInput(&input)
+		processInput(&input, nil)
 
 		if len(input.Credentials) != 1 {
 			t.Fatal("expected credentials to be added")
@@ -72,7 +72,7 @@ func Test_processInput(t *testing.T) {
 			},
 		}
 
-		processInput(&input)
+		processInput(&input, nil)
 
 		if len(input.Job.CredentialsMetadata) != 1 {
 			t.Fatal("expected credentials metadata to be added")

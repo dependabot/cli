@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/url"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
@@ -28,10 +29,12 @@ type UpdateFlags struct {
 	SharedFlags
 	provider        string
 	directory       string
+	branch          string
 	local           string
 	commit          string
 	dependencies    []string
 	inputServerPort int
+	apiUrl          string
 }
 
 func NewUpdateCommand() *cobra.Command {
@@ -60,7 +63,7 @@ func NewUpdateCommand() *cobra.Command {
 				return err
 			}
 
-			processInput(input)
+			processInput(input, &flags)
 
 			var writer io.Writer
 			if !flags.debugging {
@@ -86,6 +89,7 @@ func NewUpdateCommand() *cobra.Command {
 				UpdaterImage:        updaterImage,
 				Volumes:             flags.volumes,
 				Writer:              writer,
+				ApiUrl:              flags.apiUrl,
 			}); err != nil {
 				log.Fatalf("failed to run updater: %v", err)
 			}
@@ -97,6 +101,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&flags.file, "file", "f", "", "path to input file")
 
 	cmd.Flags().StringVarP(&flags.provider, "provider", "p", "github", "provider of the repository")
+	cmd.Flags().StringVarP(&flags.branch, "branch", "b", "", "target branch to update")
 	cmd.Flags().StringVarP(&flags.directory, "directory", "d", "/", "directory to update")
 	cmd.Flags().StringVarP(&flags.commit, "commit", "", "", "commit to update")
 	cmd.Flags().StringArrayVarP(&flags.dependencies, "dep", "", nil, "dependencies to update")
@@ -112,6 +117,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringArrayVar(&flags.extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
 	cmd.Flags().DurationVarP(&flags.timeout, "timeout", "t", 0, "max time to run an update")
 	cmd.Flags().IntVar(&flags.inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
+	cmd.Flags().StringVarP(&flags.apiUrl, "api-url", "a", "", "the api dependabot should connect to.")
 
 	return cmd
 }
@@ -194,6 +200,10 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 		}
 	}
 
+	if flags.branch != "" && flags.commit != "" {
+		return nil, errors.New("cannot specify both branch and commit")
+	}
+
 	input := &model.Input{
 		Job: model.Job{
 			PackageManager:             packageManager,
@@ -211,7 +221,7 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 				Repo:        repo,
 				Directory:   flags.directory,
 				Commit:      flags.commit,
-				Branch:      nil,
+				Branch:      flags.branch,
 				Hostname:    nil,
 				APIEndpoint: nil,
 			},
@@ -238,7 +248,7 @@ func readInputFile(file string) (*model.Input, error) {
 	return &input, nil
 }
 
-func processInput(input *model.Input) {
+func processInput(input *model.Input, flags *UpdateFlags) {
 	job := &input.Job
 	// a few of the fields need to be initialized instead of null,
 	// it would be nice if the updater didn't care
@@ -258,9 +268,13 @@ func processInput(input *model.Input) {
 		job.DependencyGroups = []model.Group{}
 	}
 
+	azureRepo := model.NewAzureRepo(input.Job.PackageManager, input.Job.Source.Repo, input.Job.Source.Directory)
+
 	// As a convenience, fill in a git_source if credentials are in the environment and a git_source
 	// doesn't already exist. This way the user doesn't run out of calls from being anonymous.
 	hasLocalToken := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN") != ""
+	hasLocalAzureToken := os.Getenv("LOCAL_AZURE_ACCESS_TOKEN") != ""
+
 	var isGitSourceInCreds bool
 	for _, cred := range input.Credentials {
 		if cred["type"] == "git_source" {
@@ -268,6 +282,16 @@ func processInput(input *model.Input) {
 			break
 		}
 	}
+	if hasLocalAzureToken && flags.apiUrl != "" && azureRepo != nil {
+		u, _ := url.Parse(flags.apiUrl)
+		input.Credentials = append(input.Credentials, model.Credential{
+			"type":     "git_source",
+			"host":     u.Hostname(),
+			"username": azureRepo.Org,
+			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
+		})
+	}
+
 	if hasLocalToken && !isGitSourceInCreds {
 		log.Println("Inserting $LOCAL_GITHUB_ACCESS_TOKEN into credentials")
 		input.Credentials = append(input.Credentials, model.Credential{
@@ -281,6 +305,50 @@ func processInput(input *model.Input) {
 			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
 				"type": "git_source",
 				"host": "github.com",
+			})
+		}
+	}
+
+	if hasLocalAzureToken && !isGitSourceInCreds && azureRepo != nil {
+		log.Println("Inserting $LOCAL_AZURE_ACCESS_TOKEN into credentials")
+		log.Printf("Inserting artifacts credentials for %s organization.", azureRepo.Org)
+		input.Credentials = append(input.Credentials, model.Credential{
+			"type":     "git_source",
+			"host":     "dev.azure.com",
+			"username": "x-access-token",
+			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
+		})
+		if len(input.Job.CredentialsMetadata) > 0 {
+			// Add the metadata since the next section will be skipped.
+			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
+				"type": "git_source",
+				"host": "dev.azure.com",
+			})
+		}
+		input.Credentials = append(input.Credentials, model.Credential{
+			"type":     "git_source",
+			"host":     fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
+			"username": "x-access-token",
+			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
+		})
+		if len(input.Job.CredentialsMetadata) > 0 {
+			// Add the metadata since the next section will be skipped.
+			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
+				"type": "git_source",
+				"host": fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
+			})
+		}
+		input.Credentials = append(input.Credentials, model.Credential{
+			"type":     "git_source",
+			"host":     "pkgs.dev.azure.com",
+			"username": "x-access-token",
+			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
+		})
+		if len(input.Job.CredentialsMetadata) > 0 {
+			// Add the metadata since the next section will be skipped.
+			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
+				"type": "git_source",
+				"host": "pkgs.dev.azure.com",
 			})
 		}
 	}
