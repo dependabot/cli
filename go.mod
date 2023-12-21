@@ -1,8 +1,6 @@
 module github.com/dependabot/cli
 
-go 1.22
-
-toolchain go1.22rc1
+go 1.21
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
@@ -14,7 +12,7 @@ require (
 	github.com/moby/sys/signal v0.7.0
 	github.com/spf13/cobra v1.8.0
 	gopkg.in/yaml.v3 v3.0.1
-	rsc.io/script v0.0.1
+	rsc.io/script v0.0.2-0.20231205190631-334f6c18cff3
 )
 
 require (
