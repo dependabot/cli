@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestSomething(t *testing.T) {
+func TestDependabot(t *testing.T) {
 	ctx := context.Background()
 	engine := &script.Engine{
 		Conds: scripttest.DefaultConds(),
