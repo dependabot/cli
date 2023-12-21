@@ -200,6 +200,10 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 		}
 	}
 
+	if flags.branch != "" && flags.commit != "" {
+		return nil, errors.New("cannot specify both branch and commit")
+	}
+
 	input := &model.Input{
 		Job: model.Job{
 			PackageManager:             packageManager,
@@ -217,7 +221,7 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 				Repo:        repo,
 				Directory:   flags.directory,
 				Commit:      flags.commit,
-				Branch:      &flags.branch,
+				Branch:      flags.branch,
 				Hostname:    nil,
 				APIEndpoint: nil,
 			},
