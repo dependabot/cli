@@ -1,17 +1,43 @@
-# Normal usage clones dependabot-fixtures/go-modules-lib
-dependabot update go_modules dependabot-fixtures/go-modules-lib --cache cache
-stderr 'https://github.com:443/dependabot-fixtures/go-modules-lib/git-upload-pack'
-stdout 'create_pull_request'
+exec docker build -qt local-updater .
 
-exec git clone https://github.com/dependabot-fixtures/go-modules-lib repo
+# The ls command in run will fail since this isn't a real updater
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater
+stderr 'No such file or directory'
 
-# Using --local prevents cloning
-dependabot update go_modules dependabot-fixtures/go-modules-lib --local repo --cache cache
-! stderr 'https://github.com:443/dependabot-fixtures/go-modules-lib/git-upload-pack'
-stdout 'create_pull_request'
+# The local flag should create the repo directory and put my-repo in it
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
+! stderr 'ls: cannot access '/home/dependabot/dependabot-updater/repo': No such file or directory'
+# The local flag should create the repo directory if it isn't already one
+stderr \.git
+stderr hello.txt
 
-# Verify it works with a non-git repo
-rm -rf tmp/sys/.git
-dependabot update go_modules dependabot-fixtures/go-modules-lib --local repo --cache cache
-! stderr 'https://github.com:443/dependabot-fixtures/go-modules-lib/git-upload-pack'
-stdout 'create_pull_request'
+-- Dockerfile --
+FROM ubuntu:22.04
+
+RUN useradd dependabot
+USER dependabot
+WORKDIR /home/dependabot
+RUN mkdir -p /home/dependabot/dependabot-updater
+
+COPY --chown=dependabot --chmod=755 git /usr/bin/git
+COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
+COPY --chown=dependabot --chmod=755 run bin/run
+
+-- update-ca-certificates --
+#!/usr/bin/env bash
+
+echo "Updated those certificates for ya"
+
+-- git --
+#!/usr/bin/env bash
+
+# Fake git command that just creates a .git directory
+mkdir -p .git
+
+-- run --
+#!/usr/bin/env bash
+
+ls -a /home/dependabot/dependabot-updater/repo
+
+-- my-repo/hello.txt --
+Hello, world!

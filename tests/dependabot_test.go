@@ -58,7 +58,7 @@ func Dependabot() script.Cmd {
 					panic("failed to build dependabot")
 				}
 				if err := os.Rename("dependabot", s.Getwd()+"/dependabot"); err != nil {
-					panic("failed to move dependabot into test directory")
+					panic("failed to move dependabot into test directory " + err.Error())
 				}
 			})()
 
