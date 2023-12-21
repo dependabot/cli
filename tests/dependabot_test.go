@@ -8,11 +8,18 @@ import (
 	"os/exec"
 	"rsc.io/script"
 	"rsc.io/script/scripttest"
-	"sync"
 	"testing"
 )
 
 func TestDependabot(t *testing.T) {
+	err := exec.Command("go", "build", "../cmd/dependabot/dependabot.go").Run()
+	if err != nil {
+		panic("failed to build dependabot")
+	}
+	t.Cleanup(func() {
+		os.Remove("dependabot")
+	})
+
 	ctx := context.Background()
 	engine := &script.Engine{
 		Conds: scripttest.DefaultConds(),
@@ -52,15 +59,7 @@ func Dependabot() script.Cmd {
 				return nil, script.ErrUsage
 			}
 
-			sync.OnceFunc(func() {
-				err := exec.Command("go", "build", "../cmd/dependabot/dependabot.go").Run()
-				if err != nil {
-					panic("failed to build dependabot")
-				}
-				if err := os.Rename("dependabot", s.Getwd()+"/dependabot"); err != nil {
-					panic("failed to move dependabot into test directory " + err.Error())
-				}
-			})()
+			os.Link("dependabot", s.Getwd()+"/dependabot")
 
 			execCmd := exec.Command("./dependabot", args...)
 
