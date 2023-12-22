@@ -9,11 +9,19 @@ stderr '"repo":"dependabot/cli"'
 dependabot update go_modules dependabot/cli --commit 1278c8d7503f9881eb969959446e2c3a5a0cce2d --updater-image input-verify-updater
 stderr '"commit":"1278c8d7503f9881eb969959446e2c3a5a0cce2d"'
 
+dependabot update go_modules dependabot/cli --branch cool-branch --updater-image input-verify-updater
+stderr '"branch":"cool-branch"'
+
 ! dependabot update go_modules dependabot/cli --commit unknown --updater-image input-verify-updater
 stderr 'commit must be a SHA, or not provided'
 
 dependabot update go_modules dependabot/cli --dep golang.org/x/image --updater-image input-verify-updater
 stderr '"allowed-updates":\[\{"dependency-name":"golang.org/x/image"\}\]'
+
+dependabot update go_modules dependabot/cli --directory /code --updater-image input-verify-updater
+stderr '"directory":"\/code"'
+
+exec docker rmi -f input-verify-updater
 
 -- Dockerfile --
 FROM ubuntu:22.04

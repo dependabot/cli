@@ -8,6 +8,8 @@ dependabot update go_modules dependabot/cli --updater-image dummy-updater
 stderr 'bin/run arguments: fetch_files'
 stderr 'bin/run arguments: update_files'
 
+exec docker rmi -f dummy-updater
+
 -- Dockerfile --
 FROM ubuntu:22.04
 

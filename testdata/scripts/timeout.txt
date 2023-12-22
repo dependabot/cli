@@ -1,0 +1,24 @@
+exec docker build -t sleepy-updater .
+
+! dependabot update go_modules dependabot/cli --timeout 1s --updater-image sleepy-updater
+stderr 'update timed out after 1s'
+
+exec docker rmi -f sleepy-updater
+
+-- Dockerfile --
+FROM ubuntu:22.04
+
+RUN useradd dependabot
+
+COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
+COPY --chown=dependabot --chmod=755 run bin/run
+
+-- update-ca-certificates --
+#!/usr/bin/env bash
+
+echo "Updated those certificates for ya"
+
+-- run --
+#!/usr/bin/env bash
+
+sleep 10
