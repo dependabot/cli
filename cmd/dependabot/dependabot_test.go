@@ -34,10 +34,8 @@ func TestDependabot(t *testing.T) {
 
 // Commands returns the commands that can be used in the scripts.
 // Each line of the scripts are <command> <args...>
-// So if you enter "dependabot update go_modules rsc/quote", it will run
-// the Dependabot() function with args "update go_modules rsc/quote".
-// When you use "echo" in the scripts it's actually running the echo command
-// from the scripttest package.
+// When you use "echo" in the scripts it's actually running script.Echo
+// not the echo binary on your system.
 func Commands() map[string]script.Cmd {
 	commands := scripttest.DefaultCmds()
 	wd, _ := os.Getwd()
