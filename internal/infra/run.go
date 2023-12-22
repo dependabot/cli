@@ -15,14 +15,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dependabot/cli/internal/model"
+	"github.com/dependabot/cli/internal/server"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
-
-	"github.com/dependabot/cli/internal/model"
-	"github.com/dependabot/cli/internal/server"
-	"github.com/docker/docker/api/types"
 	"github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
@@ -330,8 +329,9 @@ func generateIgnoreConditions(params *RunParams, actual *model.Scenario) error {
 	return nil
 }
 
-func runContainers(ctx context.Context, params RunParams) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+func runContainers(ctx context.Context, params RunParams) (err error) {
+	var cli *client.Client
+	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -365,7 +365,11 @@ func runContainers(ctx context.Context, params RunParams) error {
 	if err != nil {
 		return err
 	}
-	defer prox.Close()
+	defer func() {
+		if proxyErr := prox.Close(); proxyErr != nil {
+			err = proxyErr
+		}
+	}()
 
 	// proxy logs interfere with debugging output
 	if !params.Debug {
