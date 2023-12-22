@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -91,6 +92,9 @@ func NewUpdateCommand() *cobra.Command {
 				Writer:              writer,
 				ApiUrl:              flags.apiUrl,
 			}); err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					log.Fatalf("update timed out after %s", flags.timeout)
+				}
 				log.Fatalf("failed to run updater: %v", err)
 			}
 

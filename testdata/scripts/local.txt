@@ -11,6 +11,8 @@ dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image 
 stderr \.git
 stderr hello.txt
 
+exec docker rmi -f local-updater
+
 -- Dockerfile --
 FROM ubuntu:22.04
 
