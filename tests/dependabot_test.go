@@ -1,20 +1,20 @@
 package tests
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"rsc.io/script"
 	"rsc.io/script/scripttest"
 	"testing"
+	"time"
 )
 
 func TestDependabot(t *testing.T) {
-	err := exec.Command("go", "build", "../cmd/dependabot/dependabot.go").Run()
+	err := exec.Command("go", "build", "dependabot.go").Run()
 	if err != nil {
-		panic("failed to build dependabot")
+		t.Fatal("failed to build dependabot")
 	}
 	t.Cleanup(func() {
 		os.Remove("dependabot")
@@ -29,7 +29,7 @@ func TestDependabot(t *testing.T) {
 	env := []string{
 		"PATH=" + os.Getenv("PATH"),
 	}
-	scripttest.Test(t, ctx, engine, env, "../testdata/scripts/*.txt")
+	scripttest.Test(t, ctx, engine, env, "../../testdata/scripts/*.txt")
 }
 
 // Commands returns the commands that can be used in the scripts.
@@ -40,43 +40,11 @@ func TestDependabot(t *testing.T) {
 // from the scripttest package.
 func Commands() map[string]script.Cmd {
 	commands := scripttest.DefaultCmds()
+	wd, _ := os.Getwd()
+	dependabot := filepath.Join(wd, "dependabot")
 
 	// additional Dependabot commands
-	commands["dependabot"] = Dependabot()
+	commands["dependabot"] = script.Program(dependabot, nil, 100*time.Millisecond)
 
 	return commands
-}
-
-// Dependabot runs the Dependabot CLI.
-func Dependabot() script.Cmd {
-	return script.Command(
-		script.CmdUsage{
-			Summary: "runs the Dependabot CLI",
-			Args:    "[<package_manager> <repo> | -f <input.yml>] [flags]",
-		},
-		func(s *script.State, args ...string) (script.WaitFunc, error) {
-			if len(args) == 0 {
-				return nil, script.ErrUsage
-			}
-
-			os.Link("dependabot", s.Getwd()+"/dependabot")
-
-			execCmd := exec.Command("./dependabot", args...)
-
-			var execOut, execErr bytes.Buffer
-			execCmd.Dir = s.Getwd()
-			execCmd.Env = s.Environ()
-			execCmd.Stdout = &execOut
-			execCmd.Stderr = &execErr
-
-			if err := execCmd.Start(); err != nil {
-				return nil, fmt.Errorf("failed to run dependabot: %w", err)
-			}
-
-			wait := func(*script.State) (stdout, stderr string, err error) {
-				err = execCmd.Wait()
-				return execOut.String(), execErr.String(), err
-			}
-			return wait, nil
-		})
 }
