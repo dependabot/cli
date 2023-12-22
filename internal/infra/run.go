@@ -389,7 +389,11 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	if err != nil {
 		return err
 	}
-	defer updater.Close()
+	defer func() {
+		if updaterErr := updater.Close(); updaterErr != nil {
+			err = updaterErr
+		}
+	}()
 
 	// put the clone dir in the updater container to be used by during the update
 	if params.LocalDir != "" {

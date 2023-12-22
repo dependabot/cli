@@ -177,7 +177,7 @@ func (p *Proxy) Close() (err error) {
 	}()
 
 	// Check the error code if the container has already exited, so we can pass it along to the caller. If the proxy
-	//crashes we want the CLI to error out. Unlike the Updater it should never stop on its own.
+	//crashes we want the CLI to error out.
 	containerInfo, inspectErr := p.cli.ContainerInspect(context.Background(), p.containerID)
 	if inspectErr != nil {
 		return fmt.Errorf("failed to inspect proxy container: %w", inspectErr)

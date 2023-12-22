@@ -95,7 +95,7 @@ func NewUpdateCommand() *cobra.Command {
 				if errors.Is(err, context.DeadlineExceeded) {
 					log.Fatalf("update timed out after %s", flags.timeout)
 				}
-				log.Fatalf("failed to run updater: %v", err)
+				log.Fatalf("updater failure: %v", err)
 			}
 
 			return nil
