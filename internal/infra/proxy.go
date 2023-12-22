@@ -45,7 +45,6 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 
 	hostCfg := &container.HostConfig{
-		AutoRemove: true,
 		ExtraHosts: []string{
 			"host.docker.internal:host-gateway",
 		},
@@ -169,13 +168,26 @@ func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
 	_, _ = stdcopy.StdCopy(w, w, out)
 }
 
-func (p *Proxy) Close() error {
+func (p *Proxy) Close() (err error) {
+	defer func() {
+		removeErr := p.cli.ContainerRemove(context.Background(), p.containerID, types.ContainerRemoveOptions{Force: true})
+		if removeErr != nil {
+			err = fmt.Errorf("failed to remove proxy container: %w", removeErr)
+		}
+	}()
+
+	// Check the error code if the container has already exited, so we can pass it along to the caller. If the proxy
+	//crashes we want the CLI to error out. Unlike the Updater it should never stop on its own.
+	containerInfo, inspectErr := p.cli.ContainerInspect(context.Background(), p.containerID)
+	if inspectErr != nil {
+		return fmt.Errorf("failed to inspect proxy container: %w", inspectErr)
+	}
+	if containerInfo.State.ExitCode != 0 {
+		return fmt.Errorf("proxy container exited with non-zero exit code: %d", containerInfo.State.ExitCode)
+	}
+
 	timeout := 5
 	_ = p.cli.ContainerStop(context.Background(), p.containerID, container.StopOptions{Timeout: &timeout})
 
-	err := p.cli.ContainerRemove(context.Background(), p.containerID, types.ContainerRemoveOptions{Force: true})
-	if err != nil {
-		return fmt.Errorf("failed to remove proxy container: %w", err)
-	}
-	return nil
+	return err
 }
