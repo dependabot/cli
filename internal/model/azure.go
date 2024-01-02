@@ -11,13 +11,13 @@ type AzureRepo struct {
 }
 
 // NewAzureRepo parses a repo string and returns an AzureRepo struct
-// Expects a repo string in the format org/project/repo
+// Expects a repo string in the format org/project/_git/repo
 func NewAzureRepo(packageManager string, repo string, directory string) *AzureRepo {
 	repoParts := strings.Split(repo, "/")
 	for i, part := range repoParts {
 		println(i, part)
 	}
-	if len(repoParts) != 3 {
+	if len(repoParts) != 4 {
 		return nil
 	}
 
@@ -25,7 +25,7 @@ func NewAzureRepo(packageManager string, repo string, directory string) *AzureRe
 		PackageManger: packageManager,
 		Org:           repoParts[0],
 		Project:       repoParts[1],
-		Repo:          repoParts[2],
+		Repo:          repoParts[3],
 		Directory:     directory,
 	}
 }

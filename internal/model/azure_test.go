@@ -16,7 +16,7 @@ func Test_NewAzureRepo(t *testing.T) {
 		{
 			name:           "valid repo",
 			packageManager: "npm_and_yarn",
-			repo:           "my-org/my-project/my-repo",
+			repo:           "my-org/my-project/_git/my-repo",
 			directory:      "/",
 			expected: &AzureRepo{
 				PackageManger: "npm_and_yarn",
