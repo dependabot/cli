@@ -67,6 +67,7 @@ func Test_processInput(t *testing.T) {
 				"host":          "example.com",
 				"registry":      "registry.example.com",
 				"url":           "https://example.com",
+				"python-index":  "https://example.com",
 				"replaces-base": "true",
 				"password":      "password",
 			},
@@ -77,13 +78,14 @@ func Test_processInput(t *testing.T) {
 		if len(input.Job.CredentialsMetadata) != 1 {
 			t.Fatal("expected credentials metadata to be added")
 		}
-		if !reflect.DeepEqual(input.Job.CredentialsMetadata[0], model.Credential{
+		if !reflect.DeepEqual(input.Job.CredentialsMetadata, []model.Credential{{
 			"type":          "git_source",
 			"host":          "example.com",
 			"registry":      "registry.example.com",
 			"url":           "https://example.com",
+			"python-index":  "https://example.com",
 			"replaces-base": "true",
-		}) {
+		}}) {
 			t.Error("expected credentials metadata to be added")
 		}
 	})
