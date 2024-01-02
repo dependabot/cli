@@ -69,7 +69,12 @@ func Test_processInput(t *testing.T) {
 				"url":           "https://example.com",
 				"python-index":  "https://example.com",
 				"replaces-base": "true",
-				"password":      "password",
+
+				// These values will not propagate to the metadata
+				"password": "password",
+				"token":    "token",
+				"key":      "key",
+				"auth-key": "auth-key",
 			},
 		}
 

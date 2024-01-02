@@ -366,7 +366,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			entry := make(map[string]any)
 			for k, v := range credential {
 				// Updater does not get credentials.
-				if k != "token" && k != "password" {
+				if k != "token" && k != "password" && k != "key" && k != "auth-key" {
 					entry[k] = v
 				}
 			}
