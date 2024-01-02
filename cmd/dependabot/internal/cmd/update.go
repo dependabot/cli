@@ -363,20 +363,12 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 	if len(input.Job.CredentialsMetadata) == 0 {
 		log.Println("Adding missing credentials-metadata into job definition")
 		for _, credential := range input.Credentials {
-			entry := map[string]any{
-				"type": credential["type"],
-			}
-			if credential["host"] != nil {
-				entry["host"] = credential["host"]
-			}
-			if credential["url"] != nil {
-				entry["url"] = credential["url"]
-			}
-			if credential["registry"] != nil {
-				entry["registry"] = credential["registry"]
-			}
-			if credential["replaces-base"] != nil {
-				entry["replaces-base"] = credential["replaces-base"]
+			entry := make(map[string]any)
+			for k, v := range credential {
+				// Updater does not get credentials.
+				if k != "token" && k != "password" {
+					entry[k] = v
+				}
 			}
 			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, entry)
 		}
