@@ -38,6 +38,9 @@ const (
 type Updater struct {
 	cli         *client.Client
 	containerID string
+
+	// ExitCode is set once an Updater command has completed.
+	ExitCode *int
 }
 
 const (
@@ -270,9 +273,7 @@ func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) e
 		return fmt.Errorf("failed to inspect exec: %w", err)
 	}
 
-	if execInspect.ExitCode != 0 {
-		return fmt.Errorf("updater exited with code: %v", execInspect.ExitCode)
-	}
+	u.ExitCode = &execInspect.ExitCode
 
 	return nil
 }

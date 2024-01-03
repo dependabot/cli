@@ -411,6 +411,10 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, params.ApiUrl)...); err != nil {
 			return err
 		}
+		// If the exit code is non-zero, error when using the `update` subcommand, but not the `test` subcommand.
+		if len(params.Expected) > 0 && updater.ExitCode != nil && *updater.ExitCode != 0 {
+			return fmt.Errorf("updater exited with code %d", *updater.ExitCode)
+		}
 	}
 
 	return nil
