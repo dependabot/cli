@@ -412,7 +412,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 			return err
 		}
 		// If the exit code is non-zero, error when using the `update` subcommand, but not the `test` subcommand.
-		if len(params.Expected) > 0 && updater.ExitCode != nil && *updater.ExitCode != 0 {
+		if params.Expected == nil && *updater.ExitCode != 0 {
 			return fmt.Errorf("updater exited with code %d", *updater.ExitCode)
 		}
 	}
