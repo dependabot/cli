@@ -14,9 +14,6 @@ type AzureRepo struct {
 // Expects a repo string in the format org/project/_git/repo
 func NewAzureRepo(packageManager string, repo string, directory string) *AzureRepo {
 	repoParts := strings.Split(repo, "/")
-	for i, part := range repoParts {
-		println(i, part)
-	}
 	if len(repoParts) != 4 {
 		return nil
 	}
