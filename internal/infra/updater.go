@@ -38,6 +38,9 @@ const (
 type Updater struct {
 	cli         *client.Client
 	containerID string
+
+	// ExitCode is set once an Updater command has completed.
+	ExitCode *int
 }
 
 const (
@@ -251,18 +254,26 @@ func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) e
 		_, _ = io.Copy(os.Stderr, prefixer.New(r, "updater | "))
 	}()
 
-	// blocks until update is complete or ctl-c
 	ch := make(chan struct{})
 	go func() {
 		_, _ = stdcopy.StdCopy(w, w, execResp.Reader)
 		ch <- struct{}{}
 	}()
 
+	// blocks until update is complete or ctl-c
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-ch:
 	}
+
+	// check the exit code of the command
+	execInspect, err := u.cli.ContainerExecInspect(ctx, execCreate.ID)
+	if err != nil {
+		return fmt.Errorf("failed to inspect exec: %w", err)
+	}
+
+	u.ExitCode = &execInspect.ExitCode
 
 	return nil
 }
@@ -282,10 +293,24 @@ func (u *Updater) Wait(ctx context.Context, condition container.WaitCondition) e
 }
 
 // Close kills and deletes the container and deletes updater mount paths related to the run.
-func (u *Updater) Close() error {
-	return u.cli.ContainerRemove(context.Background(), u.containerID, types.ContainerRemoveOptions{
-		Force: true,
-	})
+func (u *Updater) Close() (err error) {
+	defer func() {
+		removeErr := u.cli.ContainerRemove(context.Background(), u.containerID, types.ContainerRemoveOptions{Force: true})
+		if removeErr != nil {
+			err = fmt.Errorf("failed to remove proxy container: %w", removeErr)
+		}
+	}()
+
+	// Handle non-zero exit codes.
+	containerInfo, inspectErr := u.cli.ContainerInspect(context.Background(), u.containerID)
+	if inspectErr != nil {
+		return fmt.Errorf("failed to inspect proxy container: %w", inspectErr)
+	}
+	if containerInfo.State.ExitCode != 0 {
+		return fmt.Errorf("updater container exited with non-zero exit code: %d", containerInfo.State.ExitCode)
+	}
+
+	return
 }
 
 // JobFile  is the payload passed to file updater containers.

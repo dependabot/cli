@@ -389,7 +389,11 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	if err != nil {
 		return err
 	}
-	defer updater.Close()
+	defer func() {
+		if updaterErr := updater.Close(); updaterErr != nil {
+			err = updaterErr
+		}
+	}()
 
 	// put the clone dir in the updater container to be used by during the update
 	if params.LocalDir != "" {
@@ -406,6 +410,10 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
 		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, params.ApiUrl)...); err != nil {
 			return err
+		}
+		// If the exit code is non-zero, error when using the `update` subcommand, but not the `test` subcommand.
+		if params.Expected == nil && *updater.ExitCode != 0 {
+			return fmt.Errorf("updater exited with code %d", *updater.ExitCode)
 		}
 	}
 
