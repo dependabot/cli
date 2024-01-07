@@ -22,7 +22,7 @@ jobs:
             goos: windows
     steps:
       - uses: actions/checkout@v4
-      - uses: wangyoucao577/go-release-action@v1.41
+      - uses: wangyoucao577/go-release-action@v1.42
         with:
           goversion: 1.21.0 # needs the patch specified
           github_token: ${{ secrets.GITHUB_TOKEN }}
