@@ -256,6 +256,11 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 	job := &input.Job
 	// a few of the fields need to be initialized instead of null,
 	// it would be nice if the updater didn't care
+	if job.AllowedUpdates == nil {
+		job.AllowedUpdates = []model.Allowed{{
+			UpdateType: "all",
+		}}
+	}
 	if job.ExistingPullRequests == nil {
 		job.ExistingPullRequests = [][]model.ExistingPR{}
 	}
