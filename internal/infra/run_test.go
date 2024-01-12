@@ -2,6 +2,9 @@ package infra
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -14,53 +17,50 @@ import (
 )
 
 func Test_checkCredAccess(t *testing.T) {
-	addr := "127.0.0.1:3000"
-
-	startTestServer := func() *http.Server {
-		testServer := &http.Server{
-			ReadHeaderTimeout: time.Second,
-			Addr:              addr,
-			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("X-OAuth-Scopes", "repo, write:packages")
-				_, _ = w.Write([]byte("SUCCESS"))
-			}),
-		}
-		go func() {
-			_ = testServer.ListenAndServe()
-		}()
-		time.Sleep(1 * time.Millisecond) // allow time for the server to start
-		return testServer
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal("Failed to create listener: ", err.Error())
 	}
 
+	testServer := &http.Server{
+		ReadHeaderTimeout: time.Second,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-OAuth-Scopes", "repo, write:packages")
+			_, _ = w.Write([]byte("SUCCESS"))
+		}),
+	}
+	go func() {
+		_ = testServer.Serve(l)
+	}()
+
+	t.Cleanup(func() {
+		testServer.Shutdown(context.Background())
+		l.Close()
+	})
+
+	addr := fmt.Sprintf("http://127.0.0.1:%v", l.Addr().(*net.TCPAddr).Port)
+
 	t.Run("returns error if the credential has write access", func(t *testing.T) {
-		defaultApiEndpoint = "http://127.0.0.1:3000"
-		testServer := startTestServer()
-		defer func() {
-			_ = testServer.Shutdown(context.Background())
-		}()
+		defaultApiEndpoint = addr
 
 		credentials := []model.Credential{{
 			"token": "ghp_fake",
 		}}
 		err := checkCredAccess(context.Background(), nil, credentials)
-		if err != ErrWriteAccess {
+		if !errors.Is(err, ErrWriteAccess) {
 			t.Error("unexpected error", err)
 		}
 	})
 
 	t.Run("it works with GitHub Enterprise", func(t *testing.T) {
-		testServer := startTestServer()
-		defer func() {
-			_ = testServer.Shutdown(context.Background())
-		}()
+		defaultApiEndpoint = "http://example.com" // ensure it's not used
 
 		credentials := []model.Credential{{
 			"token": "ghp_fake",
 		}}
-		apiEndpoint := "http://" + addr
-		job := &model.Job{Source: model.Source{APIEndpoint: &apiEndpoint}}
+		job := &model.Job{Source: model.Source{APIEndpoint: &addr}}
 		err := checkCredAccess(context.Background(), job, credentials)
-		if err != ErrWriteAccess {
+		if !errors.Is(err, ErrWriteAccess) {
 			t.Error("unexpected error", err)
 		}
 	})
