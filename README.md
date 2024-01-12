@@ -152,7 +152,7 @@ with values from the environment.
 > **Note**
 >
 > The job description file format isn't documented publicly,
-> but you can find examples in the [`testdata` directory](cli/tree/main/testdata/)
+> but you can find examples in the [`testdata` directory](testdata/)
 > and check out [the `Job` class in `dependabot-core`][dependabot-updater-job].
 
 ### How it works
