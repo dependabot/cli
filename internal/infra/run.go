@@ -260,6 +260,7 @@ var packageManagerLookup = map[string]string{
 	"pip":            "pip",
 	"terraform":      "terraform",
 	"swift":          "swift",
+	"devcontainers":  "devcontainers",
 }
 
 func setImageNames(params *RunParams) error {
