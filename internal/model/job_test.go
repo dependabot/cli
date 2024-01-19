@@ -338,9 +338,6 @@ job:
   - name: npm
     rules:
       patterns: ["npm", "@npmcli*"]
-  credentials-metadata:
-  - type: git_source
-    host: github.com
   security-advisories:
   - dependency-name: got
     patched-versions: []

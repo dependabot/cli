@@ -47,7 +47,7 @@ type Job struct {
 	RejectExternalCode         bool              `json:"reject-external-code" yaml:"reject-external-code,omitempty"`
 	RepoPrivate                bool              `json:"repo-private" yaml:"repo-private,omitempty"`
 	CommitMessageOptions       *CommitOptions    `json:"commit-message-options" yaml:"commit-message-options,omitempty"`
-	CredentialsMetadata        []Credential      `json:"credentials-metadata" yaml:"credentials-metadata,omitempty"`
+	CredentialsMetadata        []Credential      `json:"credentials-metadata" yaml:"-"`
 	MaxUpdaterRunTime          int               `json:"max-updater-run-time" yaml:"max-updater-run-time,omitempty"`
 }
 

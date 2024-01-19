@@ -362,21 +362,17 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 		}
 	}
 
-	// As a convenience, fill credentials-metadata if credentials are provided
-	// which is what happens in production. This way the user doesn't have to
-	// specify credentials-metadata in the scenario file unless they want to.
-	if len(input.Job.CredentialsMetadata) == 0 {
-		log.Println("Adding missing credentials-metadata into job definition")
-		for _, credential := range input.Credentials {
-			entry := make(map[string]any)
-			for k, v := range credential {
-				// Updater does not get credentials.
-				if k != "token" && k != "password" && k != "key" && k != "auth-key" {
-					entry[k] = v
-				}
+	// Calculate the credentials-metadata as it cannot be provided by the user anymore.
+	input.Job.CredentialsMetadata = []model.Credential{}
+	for _, credential := range input.Credentials {
+		entry := make(map[string]any)
+		for k, v := range credential {
+			// Updater does not get credentials.
+			if k != "username" && k != "token" && k != "password" && k != "key" && k != "auth-key" {
+				entry[k] = v
 			}
-			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, entry)
 		}
+		input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, entry)
 	}
 }
 
