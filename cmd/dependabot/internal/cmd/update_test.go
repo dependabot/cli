@@ -35,8 +35,6 @@ func Test_processInput(t *testing.T) {
 	t.Run("adds git_source to credentials when local token is present", func(t *testing.T) {
 		var input model.Input
 		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "token")
-		// Adding a dummy metadata to test the inner if
-		input.Job.CredentialsMetadata = []model.Credential{{}}
 
 		processInput(&input, nil)
 
@@ -51,7 +49,7 @@ func Test_processInput(t *testing.T) {
 		}) {
 			t.Error("expected credentials to be added")
 		}
-		if !reflect.DeepEqual(input.Job.CredentialsMetadata[1], model.Credential{
+		if !reflect.DeepEqual(input.Job.CredentialsMetadata[0], model.Credential{
 			"type": "git_source",
 			"host": "github.com",
 		}) {

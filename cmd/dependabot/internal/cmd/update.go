@@ -363,11 +363,12 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 	}
 
 	// Calculate the credentials-metadata as it cannot be provided by the user anymore.
+	input.Job.CredentialsMetadata = []model.Credential{}
 	for _, credential := range input.Credentials {
 		entry := make(map[string]any)
 		for k, v := range credential {
 			// Updater does not get credentials.
-			if k != "token" && k != "password" && k != "key" && k != "auth-key" {
+			if k != "username" && k != "token" && k != "password" && k != "key" && k != "auth-key" {
 				entry[k] = v
 			}
 		}
