@@ -448,6 +448,7 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 	// The directory needs to be a git repo, so we need to initialize it.
 	commands := []string{
 		"cd " + guestRepoDir,
+		"git config --global init.defaultBranch main",
 		"git init",
 		"git config user.email 'dependabot@github.com'",
 		"git config user.name 'dependabot'",
