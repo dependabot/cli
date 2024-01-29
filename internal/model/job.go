@@ -55,7 +55,7 @@ type Job struct {
 type Source struct {
 	Provider    string   `json:"provider" yaml:"provider,omitempty"`
 	Repo        string   `json:"repo" yaml:"repo,omitempty"`
-	Directory   string   `json:"directory" yaml:"directory,omitempty"`
+	Directory   string   `json:"directory,omitempty" yaml:"directory,omitempty"`
 	Directories []string `json:"directories,omitempty" yaml:"directories,omitempty"`
 	Branch      string   `json:"branch,omitempty" yaml:"branch,omitempty"`
 	Commit      string   `json:"commit,omitempty" yaml:"commit,omitempty"`
