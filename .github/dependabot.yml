@@ -6,6 +6,10 @@ updates:
       interval: "weekly"
       day: "sunday"
       time: "16:00"
+    groups:
+      all:
+        patterns:
+          - "*"
   - package-ecosystem: "gomod"
     directory: "/" # Location of package manifests
     schedule:
@@ -20,3 +24,17 @@ updates:
          patterns:
             - "github.com/docker/*"
             - "github.com/moby/*"
+      all:
+        patterns:
+          - "*"
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "16:00"
+    groups:
+      all:
+        patterns:
+          - "*"
+  
