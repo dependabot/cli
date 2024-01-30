@@ -106,7 +106,7 @@ func NewCollector(ctx context.Context, cli *client.Client, net *Networks, params
 
 // Close stops and removes the container.
 func (c *Collector) Close() error {
-	timeout := 5
+	timeout := 30
 	_ = c.cli.ContainerStop(context.Background(), c.containerID, container.StopOptions{Timeout: &timeout})
 
 	err := c.cli.ContainerRemove(context.Background(), c.containerID, types.ContainerRemoveOptions{Force: true})
