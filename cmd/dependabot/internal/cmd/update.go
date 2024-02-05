@@ -38,6 +38,15 @@ type UpdateFlags struct {
 	apiUrl          string
 }
 
+// A map of package manager names to credential type
+var packageManagerCredentialType = map[string]string{
+	"gradle":       "maven_repository",
+	"maven":        "maven_repository",
+	"npm_and_yarn": "npm_registry",
+	"nuget":        "nuget_feed",
+	"pip":          "python_index",
+}
+
 func NewUpdateCommand() *cobra.Command {
 	var flags UpdateFlags
 
@@ -334,31 +343,28 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 				"host": "dev.azure.com",
 			})
 		}
-		input.Credentials = append(input.Credentials, model.Credential{
-			"type":     "git_source",
-			"host":     fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
-			"username": "x-access-token",
-			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
-		})
-		if len(input.Job.CredentialsMetadata) > 0 {
-			// Add the metadata since the next section will be skipped.
-			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
-				"type": "git_source",
-				"host": fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
-			})
+
+		// All Azure Artifacts hosts
+		azureArtifactsHosts := []string{
+			"pkgs.dev.azure.com",
+			fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
 		}
-		input.Credentials = append(input.Credentials, model.Credential{
-			"type":     "git_source",
-			"host":     "pkgs.dev.azure.com",
-			"username": "x-access-token",
-			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
-		})
-		if len(input.Job.CredentialsMetadata) > 0 {
-			// Add the metadata since the next section will be skipped.
-			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
-				"type": "git_source",
-				"host": "pkgs.dev.azure.com",
+
+		// Add the Azure Artifacts credentials for each host
+		for _, host := range azureArtifactsHosts {
+			input.Credentials = append(input.Credentials, model.Credential{
+				"type":     packageManagerCredentialType[input.Job.PackageManager],
+				"host":     host,
+				"username": "x-access-token",
+				"password": "$LOCAL_AZURE_ACCESS_TOKEN",
 			})
+			if len(input.Job.CredentialsMetadata) > 0 {
+				// Add the metadata since the next section will be skipped.
+				input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
+					"type": packageManagerCredentialType[input.Job.PackageManager],
+					"host": host,
+				})
+			}
 		}
 	}
 
