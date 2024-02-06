@@ -12,6 +12,10 @@ import (
 )
 
 func Test_processInput(t *testing.T) {
+	t.Cleanup(func() {
+		os.Unsetenv("LOCAL_GITHUB_ACCESS_TOKEN")
+		os.Unsetenv("LOCAL_AZURE_ACCESS_TOKEN")
+	})
 	t.Run("initializes some fields", func(t *testing.T) {
 		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "")
 
@@ -90,6 +94,35 @@ func Test_processInput(t *testing.T) {
 			"replaces-base": "true",
 		}}) {
 			t.Error("expected credentials metadata to be added")
+		}
+	})
+
+	t.Run("add Azure credentials when local token is present", func(t *testing.T) {
+		var input = model.Input{
+			Job: model.Job{
+				PackageManager: "nuget",
+				Source: model.Source{
+					Repo:      "org/project/_git/repo",
+					Directory: "/",
+				},
+			},
+		}
+		var flags = UpdateFlags{
+			apiUrl: "https://dev.azure.com/org/project/_git/repo",
+		}
+		os.Unsetenv("LOCAL_GITHUB_ACCESS_TOKEN")
+		os.Setenv("LOCAL_AZURE_ACCESS_TOKEN", "token")
+
+		processInput(&input, &flags)
+
+		if len(input.Credentials) != 4 {
+			t.Fatal("expected credentials to be added")
+		}
+		// Ensure all credentials are either git_source or azure
+		for _, cred := range input.Credentials {
+			if cred["type"] != "git_source" && cred["type"] != "nuget_feed" {
+				t.Errorf("expected credentials to be either git_source or nuget_feed, got %s", cred["type"])
+			}
 		}
 	})
 }
