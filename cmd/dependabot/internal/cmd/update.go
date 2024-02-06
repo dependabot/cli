@@ -300,7 +300,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			break
 		}
 	}
-	if hasLocalAzureToken && flags.apiUrl != "" && azureRepo != nil {
+	if hasLocalAzureToken && flags != nil && flags.apiUrl != "" && azureRepo != nil {
 		u, _ := url.Parse(flags.apiUrl)
 		input.Credentials = append(input.Credentials, model.Credential{
 			"type":     "git_source",
@@ -344,27 +344,30 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			})
 		}
 
-		// All Azure Artifacts hosts
-		azureArtifactsHosts := []string{
-			"pkgs.dev.azure.com",
-			fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
-		}
-
-		// Add the Azure Artifacts credentials for each host
-		for _, host := range azureArtifactsHosts {
-			input.Credentials = append(input.Credentials, model.Credential{
-				"type":     packageManagerCredentialType[input.Job.PackageManager],
-				"host":     host,
-				"username": "x-access-token",
-				"password": "$LOCAL_AZURE_ACCESS_TOKEN",
-			})
-			if len(input.Job.CredentialsMetadata) > 0 {
-				// Add the metadata since the next section will be skipped.
-				input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
-					"type": packageManagerCredentialType[input.Job.PackageManager],
-					"host": host,
-				})
+		// Add the Azure Artifacts credentials for each host if the package manager is supported.
+		if _, ok := packageManagerCredentialType[input.Job.PackageManager]; ok {
+			// All Azure Artifacts hosts
+			azureArtifactsHosts := []string{
+				"pkgs.dev.azure.com",
+				fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
 			}
+			for _, host := range azureArtifactsHosts {
+				input.Credentials = append(input.Credentials, model.Credential{
+					"type":     packageManagerCredentialType[input.Job.PackageManager],
+					"host":     host,
+					"username": "x-access-token",
+					"password": "$LOCAL_AZURE_ACCESS_TOKEN",
+				})
+				if len(input.Job.CredentialsMetadata) > 0 {
+					// Add the metadata since the next section will be skipped.
+					input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
+						"type": packageManagerCredentialType[input.Job.PackageManager],
+						"host": host,
+					})
+				}
+			}
+		} else {
+			log.Printf("Skipping Azure Artifacts credentials for %s package manager.", input.Job.PackageManager)
 		}
 	}
 
