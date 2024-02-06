@@ -110,6 +110,7 @@ func Test_processInput(t *testing.T) {
 		var flags = UpdateFlags{
 			apiUrl: "https://dev.azure.com/org/project/_git/repo",
 		}
+		os.Unsetenv("LOCAL_GITHUB_ACCESS_TOKEN")
 		os.Setenv("LOCAL_AZURE_ACCESS_TOKEN", "token")
 
 		processInput(&input, &flags)
