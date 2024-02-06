@@ -14,7 +14,7 @@ import (
 func Test_processInput(t *testing.T) {
 	t.Cleanup(func() {
 		os.Unsetenv("LOCAL_GITHUB_ACCESS_TOKEN")
-		os.Unsetenv("LOCAL_GITHUB_ACCESS_TOKEN")
+		os.Unsetenv("LOCAL_AZURE_ACCESS_TOKEN")
 	})
 	t.Run("initializes some fields", func(t *testing.T) {
 		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "")

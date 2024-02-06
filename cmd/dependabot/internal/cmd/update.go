@@ -39,7 +39,7 @@ type UpdateFlags struct {
 }
 
 // A map of package manager names to credential type
-var packageManagerCredentialType = map[string]string{
+var azureArtifactsPackageManagerCredentialType = map[string]string{
 	"gradle":       "maven_repository",
 	"maven":        "maven_repository",
 	"npm_and_yarn": "npm_registry",
@@ -345,7 +345,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 		}
 
 		// Add the Azure Artifacts credentials for each host if the package manager is supported.
-		if _, ok := packageManagerCredentialType[input.Job.PackageManager]; ok {
+		if _, ok := azureArtifactsPackageManagerCredentialType[input.Job.PackageManager]; ok {
 			// All Azure Artifacts hosts
 			azureArtifactsHosts := []string{
 				"pkgs.dev.azure.com",
@@ -353,7 +353,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			}
 			for _, host := range azureArtifactsHosts {
 				input.Credentials = append(input.Credentials, model.Credential{
-					"type":     packageManagerCredentialType[input.Job.PackageManager],
+					"type":     azureArtifactsPackageManagerCredentialType[input.Job.PackageManager],
 					"host":     host,
 					"username": "x-access-token",
 					"password": "$LOCAL_AZURE_ACCESS_TOKEN",
@@ -361,7 +361,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 				if len(input.Job.CredentialsMetadata) > 0 {
 					// Add the metadata since the next section will be skipped.
 					input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
-						"type": packageManagerCredentialType[input.Job.PackageManager],
+						"type": azureArtifactsPackageManagerCredentialType[input.Job.PackageManager],
 						"host": host,
 					})
 				}
