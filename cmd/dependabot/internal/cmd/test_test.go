@@ -6,17 +6,13 @@ import (
 )
 
 func TestTestCommand(t *testing.T) {
-	t.Cleanup(func() {
-		executeTestJob = infra.Run
-	})
-
 	t.Run("Read a scenario file", func(t *testing.T) {
 		var actualParams *infra.RunParams
-		executeTestJob = func(params infra.RunParams) error {
+		executeTestJob := func(params infra.RunParams) error {
 			actualParams = &params
 			return nil
 		}
-		cmd := NewTestCommand()
+		cmd := NewTestCommand(executeTestJob)
 		err := cmd.ParseFlags([]string{"-f", "../../../../testdata/scenario.yml"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

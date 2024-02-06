@@ -13,10 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// local variable for testing
-var executeTestJob = infra.Run
-
-func NewTestCommand() *cobra.Command {
+func NewTestCommand(run func(params infra.RunParams) error) *cobra.Command {
 	var flags SharedFlags
 
 	cmd := &cobra.Command{
@@ -34,7 +31,7 @@ func NewTestCommand() *cobra.Command {
 
 			processInput(&scenario.Input, nil)
 
-			if err := executeTestJob(infra.RunParams{
+			if err := run(infra.RunParams{
 				CacheDir:            flags.cache,
 				CollectorConfigPath: flags.collectorConfigPath,
 				CollectorImage:      collectorImage,
@@ -77,7 +74,7 @@ func NewTestCommand() *cobra.Command {
 	return cmd
 }
 
-var testCmd = NewTestCommand()
+var testCmd = NewTestCommand(infra.Run)
 
 func readScenarioFile(file string) (*model.Scenario, []byte, error) {
 	var scenario model.Scenario
