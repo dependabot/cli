@@ -1,6 +1,6 @@
 {
   "name": "Dependabot CLI",
-  "image": "mcr.microsoft.com/devcontainers/go:1.21",
+  "image": "mcr.microsoft.com/devcontainers/go:1.22",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker": "latest"
   },
