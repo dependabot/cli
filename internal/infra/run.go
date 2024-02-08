@@ -463,65 +463,60 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 	return nil
 }
 
+// Pull the image from the registry.
+// Always pull the image, even if it's already present locally.
+// This is because container image tags are mutable, and we always want to ensure we have the latest version.
 func pullImage(ctx context.Context, cli *client.Client, image string) error {
-	var inspect types.ImageInspect
+	var imagePullOptions types.ImagePullOptions
 
-	// check if image exists locally
-	inspect, _, err := cli.ImageInspectWithRaw(ctx, image)
-
-	// pull image if necessary
-	if err != nil {
-		var imagePullOptions types.ImagePullOptions
-
-		if strings.HasPrefix(image, "ghcr.io/") {
-
-			token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
-			if token != "" {
-				auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
-				imagePullOptions = types.ImagePullOptions{
-					RegistryAuth: fmt.Sprintf("Basic %s", auth),
-				}
-			} else {
-				log.Println("Failed to find credentials for GitHub container registry.")
-			}
-		} else if strings.Contains(image, ".azurecr.io/") {
-			username := os.Getenv("AZURE_REGISTRY_USERNAME")
-			password := os.Getenv("AZURE_REGISTRY_PASSWORD")
-
-			registryName := strings.Split(image, "/")[0]
-
-			if username != "" && password != "" {
-				authConfig := registry.AuthConfig{
-					Username:      username,
-					Password:      password,
-					ServerAddress: registryName,
-				}
-
-				encodedJSON, _ := json.Marshal(authConfig)
-				authStr := base64.URLEncoding.EncodeToString(encodedJSON)
-
-				imagePullOptions = types.ImagePullOptions{
-					RegistryAuth: authStr,
-				}
-			} else {
-				log.Println("Failed to find credentials for Azure container registry.")
+	if strings.HasPrefix(image, "ghcr.io/") {
+		token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
+		if token != "" {
+			auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
+			imagePullOptions = types.ImagePullOptions{
+				RegistryAuth: fmt.Sprintf("Basic %s", auth),
 			}
 		} else {
-			log.Printf("Failed to find credentials for pulling image: %s\n.", image)
+			log.Println("Failed to find credentials for GitHub container registry.")
 		}
+	} else if strings.Contains(image, ".azurecr.io/") {
+		username := os.Getenv("AZURE_REGISTRY_USERNAME")
+		password := os.Getenv("AZURE_REGISTRY_PASSWORD")
 
-		log.Printf("pulling image: %s\n", image)
-		out, err := cli.ImagePull(ctx, image, imagePullOptions)
-		if err != nil {
-			return fmt.Errorf("failed to pull %v: %w", image, err)
-		}
-		_, _ = io.Copy(io.Discard, out)
-		out.Close()
+		registryName := strings.Split(image, "/")[0]
 
-		inspect, _, err = cli.ImageInspectWithRaw(ctx, image)
-		if err != nil {
-			return fmt.Errorf("failed to inspect %v: %w", image, err)
+		if username != "" && password != "" {
+			authConfig := registry.AuthConfig{
+				Username:      username,
+				Password:      password,
+				ServerAddress: registryName,
+			}
+
+			encodedJSON, _ := json.Marshal(authConfig)
+			authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+
+			imagePullOptions = types.ImagePullOptions{
+				RegistryAuth: authStr,
+			}
+		} else {
+			log.Println("Failed to find credentials for Azure container registry.")
 		}
+	} else {
+		log.Printf("Failed to find credentials for pulling image: %s\n.", image)
+	}
+
+	log.Printf("pulling image: %s\n", image)
+	out, err := cli.ImagePull(ctx, image, imagePullOptions)
+	if err != nil {
+		return fmt.Errorf("failed to pull %v: %w", image, err)
+	}
+	_, _ = io.Copy(io.Discard, out)
+	out.Close()
+
+	var inspect types.ImageInspect
+	inspect, _, err = cli.ImageInspectWithRaw(ctx, image)
+	if err != nil {
+		return fmt.Errorf("failed to inspect %v: %w", image, err)
 	}
 
 	log.Printf("using image %v at %s\n", image, inspect.ID)
