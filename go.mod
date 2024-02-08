@@ -4,9 +4,11 @@ go 1.24
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
+	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v27.3.1+incompatible
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
+	github.com/heroku/docker-registry-client v0.0.0-20211012143308-9463674c8930
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/moby/moby v27.3.1+incompatible
 	github.com/moby/sys/signal v0.7.1
@@ -20,9 +22,10 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/distribution/reference v0.6.0 // indirect
+	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
