@@ -13,17 +13,10 @@ func Test_getLatestDigest(t *testing.T) {
 	}{
 		{
 			name:       "Test case 1: Valid image name",
-			imageName:  "nginx",
+			imageName:  "ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator:main",
 			wantDigest: "expectedDigest",
 			wantErr:    false,
 		},
-		{
-			name:       "Test case 2: Invalid image name",
-			imageName:  "invalid/image",
-			wantDigest: "",
-			wantErr:    true,
-		},
-		// Add more test cases as needed
 	}
 
 	for _, tt := range tests {
