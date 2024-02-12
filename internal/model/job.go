@@ -83,6 +83,7 @@ type Allowed struct {
 
 type Group struct {
 	GroupName string         `json:"name,omitempty" yaml:"name,omitempty"`
+	AppliesTo *string        `json:"applies-to,omitempty" yaml:"applies-to,omitempty"`
 	Rules     map[string]any `json:"rules,omitempty" yaml:"rules,omitempty"`
 }
 
