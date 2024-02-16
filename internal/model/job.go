@@ -29,7 +29,6 @@ type Job struct {
 	PackageManager             string            `json:"package-manager" yaml:"package-manager"`
 	AllowedUpdates             []Allowed         `json:"allowed-updates" yaml:"allowed-updates,omitempty"`
 	Debug                      bool              `json:"debug" yaml:"debug,omitempty"`
-	GroupedUpdate              bool              `json:"grouped-update" yaml:"grouped-update,omitempty"`
 	DependencyGroups           []Group           `json:"dependency-groups" yaml:"dependency-groups,omitempty"`
 	Dependencies               []string          `json:"dependencies" yaml:"dependencies,omitempty"`
 	DependencyGroupToRefresh   *string           `json:"dependency-group-to-refresh" yaml:"dependency-group-to-refresh,omitempty"`
