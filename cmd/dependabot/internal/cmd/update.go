@@ -343,7 +343,22 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 				"host": "dev.azure.com",
 			})
 		}
+	}
 
+	// Calculate the credentials-metadata as it cannot be provided by the user anymore.
+	input.Job.CredentialsMetadata = []model.Credential{}
+	for _, credential := range input.Credentials {
+		entry := make(map[string]any)
+		for k, v := range credential {
+			// Updater does not get credentials.
+			if k != "username" && k != "token" && k != "password" && k != "key" && k != "auth-key" {
+				entry[k] = v
+			}
+		}
+		input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, entry)
+	}
+
+	if hasLocalAzureToken && azureRepo != nil {
 		// Add the Azure Artifacts credentials for each host if the package manager is supported.
 		if _, ok := azureArtifactsPackageManagerCredentialType[input.Job.PackageManager]; ok {
 			// All Azure Artifacts hosts
@@ -362,19 +377,6 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 		} else {
 			log.Printf("Skipping Azure Artifacts credentials for %s package manager.", input.Job.PackageManager)
 		}
-	}
-
-	// Calculate the credentials-metadata as it cannot be provided by the user anymore.
-	input.Job.CredentialsMetadata = []model.Credential{}
-	for _, credential := range input.Credentials {
-		entry := make(map[string]any)
-		for k, v := range credential {
-			// Updater does not get credentials.
-			if k != "username" && k != "token" && k != "password" && k != "key" && k != "auth-key" {
-				entry[k] = v
-			}
-		}
-		input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, entry)
 	}
 }
 
