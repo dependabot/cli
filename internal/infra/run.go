@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"archive/tar"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -48,6 +49,8 @@ type RunParams struct {
 	PullImages bool
 	// run an interactive shell?
 	Debug bool
+	// generate performance metrics?
+	Flamegraph bool
 	// Volumes are used to mount directories in Docker
 	Volumes []string
 	// Timeout specifies an optional maximum duration the CLI will run an update.
@@ -408,9 +411,16 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 			return err
 		}
 	} else {
+		env := userEnv(prox.url, params.ApiUrl)
+		if params.Flamegraph {
+			env = append(env, "FLAMEGRAPH=1")
+		}
 		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
-		if err := updater.RunCmd(ctx, cmd, dependabot, userEnv(prox.url, params.ApiUrl)...); err != nil {
+		if err := updater.RunCmd(ctx, cmd, dependabot, env...); err != nil {
 			return err
+		}
+		if params.Flamegraph {
+			getFromContainer(ctx, cli, updater.containerID, "/tmp/dependabot-flamegraph.html")
 		}
 		// If the exit code is non-zero, error when using the `update` subcommand, but not the `test` subcommand.
 		if params.Expected == nil && *updater.ExitCode != 0 {
@@ -419,6 +429,27 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	}
 
 	return nil
+}
+
+func getFromContainer(ctx context.Context, cli *client.Client, containerID, srcPath string) {
+	reader, _, err := cli.CopyFromContainer(ctx, containerID, srcPath)
+	if err != nil {
+		log.Println("Failed to get from container:", err)
+		return
+	}
+	defer reader.Close()
+	outFile, err := os.Create("flamegraph.html")
+	if err != nil {
+		log.Println("Failed to create file while getting from container:", err)
+		return
+	}
+	defer outFile.Close()
+	tarReader := tar.NewReader(reader)
+	tarReader.Next()
+	_, err = io.Copy(outFile, tarReader)
+	if err != nil {
+		log.Printf("Failed copy while getting from container %v: %v\n", srcPath, err)
+	}
 }
 
 func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir string) error {
