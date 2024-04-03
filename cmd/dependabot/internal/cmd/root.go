@@ -15,6 +15,7 @@ type SharedFlags struct {
 	file                string
 	cache               string
 	debugging           bool
+	flamegraph          bool
 	proxyCertPath       string
 	collectorConfigPath string
 	extraHosts          []string
