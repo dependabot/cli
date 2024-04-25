@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"runtime"
 	"strings"
 	"time"
 
@@ -41,9 +40,6 @@ type API struct {
 // NewAPI creates a new API instance and starts the server
 func NewAPI(expected []model.Output, writer io.Writer) *API {
 	fakeAPIHost := "127.0.0.1"
-	if runtime.GOOS == "linux" {
-		fakeAPIHost = "0.0.0.0"
-	}
 	if os.Getenv("FAKE_API_HOST") != "" {
 		fakeAPIHost = os.Getenv("FAKE_API_HOST")
 	}
