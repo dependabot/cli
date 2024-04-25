@@ -300,6 +300,7 @@ which may cause tests to fail unexpectedly
 
 See the [debugging doc](/docs/debugging.md) for details.
 
+
 ## Troubleshooting
 
 ### "Docker daemon not running"
@@ -332,6 +333,23 @@ Run the following command to remove all unused networks:
 ```console
 docker network prune
 ```
+
+### "POST http://host.docker.internal:(port)/update_jobs/cli/update_dependency_list: No response from server"
+
+When locally running the CLI, if you do not set the `--api-url` argument, the default is
+to connect to `host.docker.internal` which is effectively a "loopback" endpoint that just
+logs the commands set to it. The default IP address used for sending these requests is
+`0.0.0.0` which normally works in Linux.
+
+However, when running under WSL2, for some (currently unknown) reason, the `0.0.0.0` default
+setting does not work. The workaround is to add this to your CLI environment:
+
+`export FAKE_API_HOST=127.0.0.1`
+
+This allows the requests to go through on WSL2.
+
+Security-wise, it would actually be better if *this* was the default. For more background on
+the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-1610129508>
 
 [Docker]: https://docs.docker.com/get-started/
 [contributing]: ./.github/CONTRIBUTING.md
