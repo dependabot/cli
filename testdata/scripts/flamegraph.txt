@@ -2,7 +2,7 @@
 exec docker build -qt flamegraph-updater .
 
 # Run the dependabot command
-dependabot update go_modules dependabot/cli --updater-image flamegraph-updater --flamegraph
+dependabot update go_modules dependabot/cli --updater-image flamegraph-updater --flamegraph --verify-signatures=false
 
 # There should be a flamegraph file in the current directory
 exists flamegraph.html
