@@ -81,26 +81,27 @@ func NewUpdateCommand() *cobra.Command {
 			}
 
 			if err := infra.Run(infra.RunParams{
-				CacheDir:            flags.cache,
-				CollectorConfigPath: flags.collectorConfigPath,
-				CollectorImage:      collectorImage,
-				Creds:               input.Credentials,
-				Debug:               flags.debugging,
-				Flamegraph:          flags.flamegraph,
-				Expected:            nil, // update subcommand doesn't use expectations
-				ExtraHosts:          flags.extraHosts,
-				InputName:           flags.file,
-				Job:                 &input.Job,
-				LocalDir:            flags.local,
-				Output:              flags.output,
-				ProxyCertPath:       flags.proxyCertPath,
-				ProxyImage:          proxyImage,
-				PullImages:          flags.pullImages,
-				Timeout:             flags.timeout,
-				UpdaterImage:        updaterImage,
-				Volumes:             flags.volumes,
-				Writer:              writer,
-				ApiUrl:              flags.apiUrl,
+				CacheDir:              flags.cache,
+				CollectorConfigPath:   flags.collectorConfigPath,
+				CollectorImage:        collectorImage,
+				Creds:                 input.Credentials,
+				Debug:                 flags.debugging,
+				Flamegraph:            flags.flamegraph,
+				Expected:              nil, // update subcommand doesn't use expectations
+				ExtraHosts:            flags.extraHosts,
+				InputName:             flags.file,
+				Job:                   &input.Job,
+				LocalDir:              flags.local,
+				Output:                flags.output,
+				ProxyCertPath:         flags.proxyCertPath,
+				ProxyImage:            proxyImage,
+				PullImages:            flags.pullImages,
+				VerifyImageSignatures: flags.verifyImageSignatures,
+				Timeout:               flags.timeout,
+				UpdaterImage:          updaterImage,
+				Volumes:               flags.volumes,
+				Writer:                writer,
+				ApiUrl:                flags.apiUrl,
 			}); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					log.Fatalf("update timed out after %s", flags.timeout)
@@ -126,6 +127,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringVar(&flags.proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
 	cmd.Flags().StringVar(&flags.collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
 	cmd.Flags().BoolVar(&flags.pullImages, "pull", true, "pull the image if it isn't present")
+	cmd.Flags().BoolVar(&flags.verifyImageSignatures, "verify-signatures", true, "verify image signatures using cosign")
 	cmd.Flags().BoolVar(&flags.debugging, "debug", false, "run an interactive shell inside the updater")
 	cmd.Flags().BoolVar(&flags.flamegraph, "flamegraph", false, "generate a flamegraph and other metrics")
 	cmd.Flags().StringArrayVarP(&flags.volumes, "volume", "v", nil, "mount volumes in Docker")

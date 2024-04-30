@@ -47,6 +47,8 @@ type RunParams struct {
 	ProxyCertPath string
 	// attempt to pull images if they aren't local?
 	PullImages bool
+	// verify image signatures with cosign
+	VerifyImageSignatures bool
 	// run an interactive shell?
 	Debug bool
 	// generate performance metrics?
@@ -338,6 +340,14 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
+	}
+
+	if params.VerifyImageSignatures {
+		// Only the updater image is currently signed.
+		err = verifySignatures(ctx, params.UpdaterImage, DependabotUpdaterCertificateIdentity)
+		if err != nil {
+			return err
+		}
 	}
 
 	if params.PullImages {
