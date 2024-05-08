@@ -117,7 +117,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 		}
 	}
 
-	if err = cli.ContainerStart(ctx, proxyContainer.ID, types.ContainerStartOptions{}); err != nil {
+	if err = cli.ContainerStart(ctx, proxyContainer.ID, container.StartOptions{}); err != nil {
 		_ = proxy.Close()
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
@@ -152,7 +152,7 @@ func putProxyConfig(ctx context.Context, cli *client.Client, config *Config, id 
 }
 
 func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
-	out, err := cli.ContainerLogs(ctx, p.containerID, types.ContainerLogsOptions{
+	out, err := cli.ContainerLogs(ctx, p.containerID, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -170,7 +170,7 @@ func (p *Proxy) TailLogs(ctx context.Context, cli *client.Client) {
 
 func (p *Proxy) Close() (err error) {
 	defer func() {
-		removeErr := p.cli.ContainerRemove(context.Background(), p.containerID, types.ContainerRemoveOptions{Force: true})
+		removeErr := p.cli.ContainerRemove(context.Background(), p.containerID, container.RemoveOptions{Force: true})
 		if removeErr != nil {
 			err = fmt.Errorf("failed to remove proxy container: %w", removeErr)
 		}

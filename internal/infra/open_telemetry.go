@@ -84,7 +84,7 @@ func NewCollector(ctx context.Context, cli *client.Client, net *Networks, params
 		return nil, fmt.Errorf("failed to copy cert to container: %w", err)
 	}
 
-	if err = cli.ContainerStart(ctx, collectorContainer.ID, types.ContainerStartOptions{}); err != nil {
+	if err = cli.ContainerStart(ctx, collectorContainer.ID, container.StartOptions{}); err != nil {
 		collector.Close()
 		return nil, fmt.Errorf("failed to start collector container: %w", err)
 	}
@@ -109,7 +109,7 @@ func (c *Collector) Close() error {
 	timeout := 30
 	_ = c.cli.ContainerStop(context.Background(), c.containerID, container.StopOptions{Timeout: &timeout})
 
-	err := c.cli.ContainerRemove(context.Background(), c.containerID, types.ContainerRemoveOptions{Force: true})
+	err := c.cli.ContainerRemove(context.Background(), c.containerID, container.RemoveOptions{Force: true})
 	if err != nil {
 		return fmt.Errorf("failed to remove collector container: %w", err)
 	}

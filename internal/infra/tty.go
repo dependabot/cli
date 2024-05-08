@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"github.com/docker/docker/api/types/container"
 	"log"
 	"os"
 	gosignal "os/signal"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/streams"
-	"github.com/docker/docker/api/types"
 	"github.com/moby/moby/client"
 	"github.com/moby/sys/signal"
 )
@@ -23,7 +23,7 @@ func resizeTtyTo(ctx context.Context, c *client.Client, id string, height, width
 		return nil
 	}
 
-	options := types.ResizeOptions{
+	options := container.ResizeOptions{
 		Height: height,
 		Width:  width,
 	}
