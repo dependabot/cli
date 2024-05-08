@@ -106,7 +106,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		return nil, err
 	}
 
-	if err = cli.ContainerStart(ctx, updaterContainer.ID, types.ContainerStartOptions{}); err != nil {
+	if err = cli.ContainerStart(ctx, updaterContainer.ID, container.StartOptions{}); err != nil {
 		updater.Close()
 		return nil, fmt.Errorf("failed to start updater container: %w", err)
 	}
@@ -295,7 +295,7 @@ func (u *Updater) Wait(ctx context.Context, condition container.WaitCondition) e
 // Close kills and deletes the container and deletes updater mount paths related to the run.
 func (u *Updater) Close() (err error) {
 	defer func() {
-		removeErr := u.cli.ContainerRemove(context.Background(), u.containerID, types.ContainerRemoveOptions{Force: true})
+		removeErr := u.cli.ContainerRemove(context.Background(), u.containerID, container.RemoveOptions{Force: true})
 		if removeErr != nil {
 			err = fmt.Errorf("failed to remove proxy container: %w", removeErr)
 		}
