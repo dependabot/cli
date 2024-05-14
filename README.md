@@ -99,6 +99,11 @@ and the CLI will pass that token to the proxy
 to authenticate API requests to GitHub
 (for example, to access private repositories or packages).
 
+Note: In case if you get `ensure_equivalent_gemfile_and_lockfile` error then please rebuild your ecosystem, as below
+```
+$ script/build go_modules
+```
+
 ### Job description file
 
 The command-line interface for the `update` subcommand
