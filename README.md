@@ -99,11 +99,6 @@ and the CLI will pass that token to the proxy
 to authenticate API requests to GitHub
 (for example, to access private repositories or packages).
 
-Note: In case if you get `ensure_equivalent_gemfile_and_lockfile` error then please rebuild your ecosystem, as below
-```
-$ script/build go_modules
-```
-
 ### Job description file
 
 The command-line interface for the `update` subcommand
@@ -368,3 +363,17 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 [smoke-tests]: https://github.com/dependabot/smoke-tests/tree/main/tests
 [dependabot-updater-job]: https://github.com/dependabot/dependabot-core/blob/main/updater/lib/dependabot/job.rb
 [PAT]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
+
+### Update/Rebuild cli
+
+Before using the cli, always be sure that your cli and core projects are in sync 
+by rebuilding your cli for your ecosystem as below.
+
+``` console
+$ script/build go_modules
+```
+
+> ***Note***
+> if dependabot core and cli are not in sync
+> then You will be getting 
+> `ensure_equivalent_gemfile_and_lockfile` error 
