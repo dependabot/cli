@@ -366,14 +366,14 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 
 ### Update/Rebuild cli
 
-Before using the cli, always be sure that your cli and core projects are in sync 
-by rebuilding your cli for your ecosystem as below.
+Before running the cli update, always be sure that your cli is in sync with core 
+by rebuilding cli as given below (example given for ecosystem `go_module`).
 
 ``` console
 $ script/build go_modules
 ```
 
 > ***Note***
-> if dependabot core and cli are not in sync
-> then You will be getting 
-> `ensure_equivalent_gemfile_and_lockfile` error 
+> If dependabot cli is not in sync with core
+> then cli update against target repo will raise
+> `ensure_equivalent_gemfile_and_lockfile` error.
