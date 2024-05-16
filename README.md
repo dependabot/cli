@@ -363,3 +363,13 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 [smoke-tests]: https://github.com/dependabot/smoke-tests/tree/main/tests
 [dependabot-updater-job]: https://github.com/dependabot/dependabot-core/blob/main/updater/lib/dependabot/job.rb
 [PAT]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
+
+### `ensure_equivalent_gemfile_and_lockfile` error
+
+This error occurs when using `script/dependabot` and the Updater image is not in sync with dependabot-core. It can be resolved by rebuilding the Updater image. 
+
+For example, to rebuild the Updater image of the Go ecosystem, run this in the dependabot-core repository:
+``` console
+$ script/build go_modules
+```
+
