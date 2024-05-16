@@ -364,16 +364,12 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 [dependabot-updater-job]: https://github.com/dependabot/dependabot-core/blob/main/updater/lib/dependabot/job.rb
 [PAT]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
 
-### Update/Rebuild cli
+### `ensure_equivalent_gemfile_and_lockfile` error
 
-Before running the cli update, always be sure that your cli is in sync with core 
-by rebuilding cli as given below (example given for ecosystem `go_module`).
-
+Above error occurs when cli image is not up to date or cli image is not in sync with core.
+It can be resolved by rebuilding the cli image. 
+below example shows how to rebuild the cli image of `go_module` ecosystem.
 ``` console
 $ script/build go_modules
 ```
 
-> ***Note***
-> If dependabot cli is not in sync with core
-> then cli update against target repo will raise
-> `ensure_equivalent_gemfile_and_lockfile` error.
