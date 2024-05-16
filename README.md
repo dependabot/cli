@@ -366,9 +366,9 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 
 ### `ensure_equivalent_gemfile_and_lockfile` error
 
-Above error occurs when cli image is not up to date or cli image is not in sync with core.
-It can be resolved by rebuilding the cli image. 
-below example shows how to rebuild the cli image of `go_module` ecosystem.
+This error occurs when using `script/dependabot` and the Updater image is not in sync with dependabot-core. It can be resolved by rebuilding the Updater image. 
+
+For example, to rebuild the Updater image of the Go ecosystem, run this in the dependabot-core repository:
 ``` console
 $ script/build go_modules
 ```
