@@ -37,6 +37,8 @@ type RunParams struct {
 	Job *model.Job
 	// expectations asserted at the end of a test
 	Expected []model.Output
+	// if true, the containers will be stopped once the dependencies are listed
+	ListDependencies bool
 	// directory to copy into the updater container as the repo
 	LocalDir string
 	// credentials passed to the proxy
@@ -112,6 +114,19 @@ func Run(params RunParams) error {
 
 	api := server.NewAPI(params.Expected, params.Writer)
 	defer api.Stop()
+
+	if params.ListDependencies {
+		go func() {
+			dependencyList := <-api.UpdateDependencyList
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			err := encoder.Encode(dependencyList.Dependencies)
+			if err != nil {
+				log.Printf("failed to write dependency list: %v\n", err)
+			}
+			cancel()
+		}()
+	}
 
 	var outFile *os.File
 	if params.Output != "" {
