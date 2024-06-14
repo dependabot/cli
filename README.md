@@ -373,3 +373,8 @@ For example, to rebuild the Updater image of the Go ecosystem, run this in the d
 $ script/build go_modules
 ```
 
+## Privacy Note
+
+When you use the Dependabot CLI, please use the sample data from the [smoke-tests](https://github.com/dependabot/smoke-tests) repository. The sample data is designed to test the CLI and does not contain any sensitive information. If you use the CLI with your own data, please be aware that the CLI sends data to the Dependabot API service. The data sent to the API service includes the repository name, the package manager, and the dependencies. The data is used to provide the update information and to improve the Dependabot service. The data is stored in accordance with the GitHub Privacy Statement.
+
+And also, If you are using the customer manifest files, please make sure that you are not sharing any sensitive information in the manifest files. It is advisable not to use customer manifest files in the public repositories.
