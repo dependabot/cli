@@ -63,7 +63,7 @@ func NewListCommand() *cobra.Command {
 				// HACK: we cancel context to stop the containers, so we don't know if there was a failure.
 				// A correct solution would involve changes with dependabot-core, which is good, but
 				// I am just hacking this together right now.
-				// log.Fatalf("updater failure: %v", err)
+				log.Printf("HACK: suppressing updater failure: %v", err)
 				return nil
 			}
 
