@@ -22,7 +22,7 @@ jobs:
             goos: windows
     steps:
       - uses: actions/checkout@v4
-      - uses: wangyoucao577/go-release-action@v1.50
+      - uses: wangyoucao577/go-release-action@v1.51
         with:
           goversion: go.mod
           github_token: ${{ secrets.GITHUB_TOKEN }}
