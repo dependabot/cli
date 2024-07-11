@@ -67,8 +67,9 @@ type Source struct {
 }
 
 type ExistingPR struct {
-	DependencyName    string `json:"dependency-name" yaml:"dependency-name"`
-	DependencyVersion string `json:"dependency-version" yaml:"dependency-version"`
+	DependencyName    string  `json:"dependency-name" yaml:"dependency-name"`
+	DependencyVersion string  `json:"dependency-version" yaml:"dependency-version"`
+	Directory         *string `json:"directory,omitempty" yaml:"directory,omitempty"`
 }
 
 type ExistingGroupPR struct {
@@ -110,6 +111,7 @@ type Dependency struct {
 	Requirements         []Requirement  `json:"requirements"`
 	Version              *string        `json:"version" yaml:"version"`
 	Removed              bool           `json:"removed,omitempty" yaml:"removed,omitempty"`
+	Directory            *string        `json:"directory,omitempty" yaml:"directory,omitempty"`
 }
 
 type Requirement struct {
