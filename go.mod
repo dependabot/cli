@@ -4,12 +4,12 @@ go 1.22.3
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/docker/cli v26.1.4+incompatible
-	github.com/docker/docker v26.1.4+incompatible
+	github.com/docker/cli v27.1.1+incompatible
+	github.com/docker/docker v27.1.1+incompatible
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/moby/moby v26.1.4+incompatible
-	github.com/moby/sys/signal v0.7.0
+	github.com/moby/moby v27.1.1+incompatible
+	github.com/moby/sys/signal v0.7.1
 	github.com/spf13/cobra v1.8.1
 	gopkg.in/yaml.v3 v3.0.1
 	rsc.io/script v0.0.2
@@ -32,8 +32,8 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
-	github.com/moby/sys/sequential v0.5.0 // indirect
-	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/moby/sys/sequential v0.6.0 // indirect
+	github.com/moby/sys/user v0.2.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
