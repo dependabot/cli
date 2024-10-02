@@ -354,7 +354,7 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 [Docker]: https://docs.docker.com/get-started/
 [contributing]: ./.github/CONTRIBUTING.md
 [updater]: https://github.com/dependabot/dependabot-core/pkgs/container/dependabot-updater
-[proxy]: https://github.com/github/dependabot-update-job-proxy/pkgs/container/dependabot-update-job-proxy%2Fdependabot-update-job-proxy
+[proxy]: https://github.com/orgs/github/packages/container/package/dependabot-update-job-proxy%2Fdependabot-update-job-proxy
 [gh]: https://github.com/cli/cli
 [releases]: https://github.com/dependabot/cli/releases
 [dependabot-core]: https://github.com/dependabot/dependabot-core
