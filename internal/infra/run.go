@@ -251,6 +251,7 @@ var packageManagerLookup = map[string]string{
 	"composer":       "composer",
 	"pub":            "pub",
 	"docker":         "docker",
+	"dotnet_sdk":     "dotnet-sdk",
 	"elm":            "elm",
 	"github_actions": "github-actions",
 	"submodules":     "gitsubmodule",
