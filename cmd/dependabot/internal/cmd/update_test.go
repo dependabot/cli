@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -115,16 +117,74 @@ func Test_processInput(t *testing.T) {
 
 		processInput(&input, &flags)
 
-		if len(input.Credentials) != 4 {
-			t.Fatal("expected credentials to be added")
-		}
-		// Ensure all credentials are either git_source or azure
+		// Ensure all credentials are either git_source or nuget
 		for _, cred := range input.Credentials {
 			if cred["type"] != "git_source" && cred["type"] != "nuget_feed" {
 				t.Errorf("expected credentials to be either git_source or nuget_feed, got %s", cred["type"])
 			}
 		}
+
+		// Validate NuGet feeds
+		actualNuGetFeedStrings := []string{}
+		for _, cred := range input.Credentials {
+			if cred["type"] == "nuget_feed" {
+				actualNuGetFeedStrings = append(actualNuGetFeedStrings, fmt.Sprintf("%s|%s", cred["host"], cred["password"]))
+			}
+		}
+
+		expectedNuGetFeeds := []string{
+			"org.pkgs.visualstudio.com|$LOCAL_AZURE_ACCESS_TOKEN",
+			"pkgs.dev.azure.com|$LOCAL_AZURE_ACCESS_TOKEN",
+		}
+
+		assertStringArraysEqual(t, expectedNuGetFeeds, actualNuGetFeedStrings)
+
+		// Validate credentials
+		actualCredentialStrings := []string{}
+		for _, cred := range input.Credentials {
+			if cred["type"] == "git_source" {
+				actualCredentialStrings = append(actualCredentialStrings, fmt.Sprintf("%s|%s|%s", cred["host"], cred["username"], cred["password"]))
+			}
+		}
+
+		expectedGitCredentials := []string{
+			"dev.azure.com|org|$LOCAL_AZURE_ACCESS_TOKEN",
+			"dev.azure.com|x-access-token|$LOCAL_AZURE_ACCESS_TOKEN",
+			"org.visualstudio.com|x-access-token|$LOCAL_AZURE_ACCESS_TOKEN",
+		}
+
+		assertStringArraysEqual(t, expectedGitCredentials, actualCredentialStrings)
+
+		// Validate credentials metadata
+		credentialsMetadataHosts := map[string]string{}
+		for _, cred := range input.Job.CredentialsMetadata {
+			if cred["type"] == "git_source" {
+				// dedup hosts with a map
+				credentialsMetadataHosts[fmt.Sprintf("%s", cred["host"])] = ""
+			}
+		}
+
+		actualCredentialsMetadataHosts := []string{}
+		for host := range credentialsMetadataHosts {
+			actualCredentialsMetadataHosts = append(actualCredentialsMetadataHosts, host)
+		}
+
+		expectedGitCredentalsMetadataHosts := []string{
+			"dev.azure.com",
+			"org.visualstudio.com",
+		}
+
+		assertStringArraysEqual(t, expectedGitCredentalsMetadataHosts, actualCredentialsMetadataHosts)
 	})
+}
+
+func assertStringArraysEqual(t *testing.T, expected, actual []string) {
+	sort.Strings(expected)
+	sort.Strings(actual)
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("expected strings to be\n\t%v\n got\n\t%v", expected, actual)
+	}
 }
 
 func Test_extractInput(t *testing.T) {
