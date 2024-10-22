@@ -6,6 +6,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/dependabot/cli/internal/model"
+	"github.com/dependabot/cli/internal/server"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/pkg/archive"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
+	"github.com/moby/moby/api/types/registry"
+	"github.com/moby/moby/client"
+	"gopkg.in/yaml.v3"
 	"io"
 	"log"
 	"net/http"
@@ -15,17 +26,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/dependabot/cli/internal/model"
-	"github.com/dependabot/cli/internal/server"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/pkg/archive"
-	"github.com/hexops/gotextdiff"
-	"github.com/hexops/gotextdiff/myers"
-	"github.com/hexops/gotextdiff/span"
-	"github.com/moby/moby/api/types/registry"
-	"github.com/moby/moby/client"
-	"gopkg.in/yaml.v3"
 )
 
 type RunParams struct {
@@ -495,32 +495,32 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 	return nil
 }
 
-func pullImage(ctx context.Context, cli *client.Client, image string) error {
+func pullImage(ctx context.Context, cli *client.Client, imageName string) error {
 	var inspect types.ImageInspect
 
 	// check if image exists locally
-	inspect, _, err := cli.ImageInspectWithRaw(ctx, image)
+	inspect, _, err := cli.ImageInspectWithRaw(ctx, imageName)
 
 	// pull image if necessary
 	if err != nil {
-		var imagePullOptions types.ImagePullOptions
+		var imagePullOptions image.PullOptions
 
-		if strings.HasPrefix(image, "ghcr.io/") {
+		if strings.HasPrefix(imageName, "ghcr.io/") {
 
 			token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
 			if token != "" {
 				auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
-				imagePullOptions = types.ImagePullOptions{
+				imagePullOptions = image.PullOptions{
 					RegistryAuth: fmt.Sprintf("Basic %s", auth),
 				}
 			} else {
 				log.Println("Failed to find credentials for GitHub container registry.")
 			}
-		} else if strings.Contains(image, ".azurecr.io/") {
+		} else if strings.Contains(imageName, ".azurecr.io/") {
 			username := os.Getenv("AZURE_REGISTRY_USERNAME")
 			password := os.Getenv("AZURE_REGISTRY_PASSWORD")
 
-			registryName := strings.Split(image, "/")[0]
+			registryName := strings.Split(imageName, "/")[0]
 
 			if username != "" && password != "" {
 				authConfig := registry.AuthConfig{
@@ -532,31 +532,31 @@ func pullImage(ctx context.Context, cli *client.Client, image string) error {
 				encodedJSON, _ := json.Marshal(authConfig)
 				authStr := base64.URLEncoding.EncodeToString(encodedJSON)
 
-				imagePullOptions = types.ImagePullOptions{
+				imagePullOptions = image.PullOptions{
 					RegistryAuth: authStr,
 				}
 			} else {
 				log.Println("Failed to find credentials for Azure container registry.")
 			}
 		} else {
-			log.Printf("Failed to find credentials for pulling image: %s\n.", image)
+			log.Printf("Failed to find credentials for pulling image: %s\n.", imageName)
 		}
 
-		log.Printf("pulling image: %s\n", image)
-		out, err := cli.ImagePull(ctx, image, imagePullOptions)
+		log.Printf("pulling image: %s\n", imageName)
+		out, err := cli.ImagePull(ctx, imageName, imagePullOptions)
 		if err != nil {
-			return fmt.Errorf("failed to pull %v: %w", image, err)
+			return fmt.Errorf("failed to pull %v: %w", imageName, err)
 		}
 		_, _ = io.Copy(io.Discard, out)
 		out.Close()
 
-		inspect, _, err = cli.ImageInspectWithRaw(ctx, image)
+		inspect, _, err = cli.ImageInspectWithRaw(ctx, imageName)
 		if err != nil {
-			return fmt.Errorf("failed to inspect %v: %w", image, err)
+			return fmt.Errorf("failed to inspect %v: %w", imageName, err)
 		}
 	}
 
-	log.Printf("using image %v at %s\n", image, inspect.ID)
+	log.Printf("using image %v at %s\n", imageName, inspect.ID)
 
 	return nil
 }
