@@ -332,19 +332,20 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 	if hasLocalAzureToken && !isGitSourceInCreds && azureRepo != nil {
 		log.Println("Inserting $LOCAL_AZURE_ACCESS_TOKEN into credentials")
 		log.Printf("Inserting artifacts credentials for %s organization.", azureRepo.Org)
+
+		// add both `dev.azure.com` and `org.visualstudio.com` credentials
 		input.Credentials = append(input.Credentials, model.Credential{
 			"type":     "git_source",
 			"host":     "dev.azure.com",
 			"username": "x-access-token",
 			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
 		})
-		if len(input.Job.CredentialsMetadata) > 0 {
-			// Add the metadata since the next section will be skipped.
-			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
-				"type": "git_source",
-				"host": "dev.azure.com",
-			})
-		}
+		input.Credentials = append(input.Credentials, model.Credential{
+			"type":     "git_source",
+			"host":     fmt.Sprintf("%s.visualstudio.com", azureRepo.Org),
+			"username": "x-access-token",
+			"password": "$LOCAL_AZURE_ACCESS_TOKEN",
+		})
 	}
 
 	// Calculate the credentials-metadata as it cannot be provided by the user anymore.
