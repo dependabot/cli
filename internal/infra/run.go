@@ -131,12 +131,15 @@ func Run(params RunParams) error {
 	if params.ApiUrl == "" {
 		params.ApiUrl = fmt.Sprintf("http://host.docker.internal:%v", api.Port())
 	}
-	if err := runContainers(ctx, params); err != nil {
-		return err
-	}
+
+	// run the containers, but don't return the error until AFTER the output is generated.
+	// this ensures that the output is always written in the scenario where there are multiple outputs,
+	// some that succeed and some that fail; we still want to see the output of the successful ones.
+	runContainersErr := runContainers(ctx, params)
 
 	api.Complete()
 
+	// write the output to a file
 	output, err := generateOutput(params, api, outFile)
 	if err != nil {
 		return err
@@ -146,7 +149,7 @@ func Run(params RunParams) error {
 		return diff(params, outFile, output)
 	}
 
-	return nil
+	return runContainersErr
 }
 
 func generateOutput(params RunParams, api *server.API, outFile *os.File) ([]byte, error) {
