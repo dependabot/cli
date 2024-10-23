@@ -150,7 +150,7 @@ func Run(params RunParams) error {
 		return diff(params, outFile, output)
 	}
 
-	// if the containers failed, poperagate the error
+	// if the containers failed, propagate the error
 	if runContainersErr != nil {
 		return runContainersErr
 	}
