@@ -6,6 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"regexp"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
 	"github.com/docker/docker/api/types"
@@ -17,15 +27,6 @@ import (
 	"github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"regexp"
-	"strings"
-	"syscall"
-	"time"
 )
 
 type RunParams struct {
@@ -131,12 +132,15 @@ func Run(params RunParams) error {
 	if params.ApiUrl == "" {
 		params.ApiUrl = fmt.Sprintf("http://host.docker.internal:%v", api.Port())
 	}
-	if err := runContainers(ctx, params); err != nil {
-		return err
-	}
+
+	// run the containers, but don't return the error until AFTER the output is generated.
+	// this ensures that the output is always written in the scenario where there are multiple outputs,
+	// some that succeed and some that fail; we still want to see the output of the successful ones.
+	runContainersErr := runContainers(ctx, params)
 
 	api.Complete()
 
+	// write the output to a file
 	output, err := generateOutput(params, api, outFile)
 	if err != nil {
 		return err
@@ -144,6 +148,11 @@ func Run(params RunParams) error {
 
 	if len(api.Errors) > 0 {
 		return diff(params, outFile, output)
+	}
+
+	// if the containers failed, poperagate the error
+	if runContainersErr != nil {
+		return runContainersErr
 	}
 
 	return nil
