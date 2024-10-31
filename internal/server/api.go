@@ -43,6 +43,10 @@ func NewAPI(expected []model.Output, writer io.Writer) *API {
 	fakeAPIHost := "127.0.0.1"
 	if runtime.GOOS == "linux" {
 		fakeAPIHost = "0.0.0.0"
+		// if running on WSL, 0.0.0.0 doesn't work
+		if version, err := os.ReadFile("/proc/version"); err == nil && strings.Contains(string(version), "Microsoft") {
+			fakeAPIHost = "127.0.0.1"
+		}
 	}
 	if os.Getenv("FAKE_API_HOST") != "" {
 		fakeAPIHost = os.Getenv("FAKE_API_HOST")
