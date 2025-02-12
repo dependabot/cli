@@ -516,7 +516,8 @@ func pullImage(ctx context.Context, cli *client.Client, imageName string) error 
 		// Image exists locally, check if it's up to date
 		latestDigest, err := getLatestDigest(imageName)
 		if err != nil {
-			return fmt.Errorf("failed to get latest digest for %v: %w", imageName, err)
+			log.Printf("failed to get latest digest for image %v: %v", imageName, err)
+			return nil
 		}
 
 		if !isImageUpToDate(inspect, latestDigest) {
