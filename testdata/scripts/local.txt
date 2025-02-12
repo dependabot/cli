@@ -1,11 +1,11 @@
 exec docker build -qt local-updater .
 
 # The ls command in run will fail since this isn't a real updater
-! dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater
+! dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --verify-signatures=false
 stderr 'No such file or directory'
 
 # The local flag should create the repo directory and put my-repo in it
-dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo --verify-signatures=false
 ! stderr 'ls: cannot access '/home/dependabot/dependabot-updater/repo': No such file or directory'
 # The local flag should create the repo directory if it isn't already one
 stderr \.git

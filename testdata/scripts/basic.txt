@@ -2,7 +2,7 @@
 exec docker build -qt dummy-updater .
 
 # Run the dependabot command
-dependabot update go_modules dependabot/cli --updater-image dummy-updater
+dependabot update go_modules dependabot/cli --updater-image dummy-updater --verify-signatures=false
 
 # assert the dummy is working
 stderr 'bin/run arguments: fetch_files'

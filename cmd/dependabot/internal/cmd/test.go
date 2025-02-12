@@ -35,24 +35,25 @@ func NewTestCommand() *cobra.Command {
 			processInput(&scenario.Input, nil)
 
 			if err := executeTestJob(infra.RunParams{
-				CacheDir:            flags.cache,
-				CollectorConfigPath: flags.collectorConfigPath,
-				CollectorImage:      collectorImage,
-				Creds:               scenario.Input.Credentials,
-				Debug:               flags.debugging,
-				Expected:            scenario.Output,
-				ExtraHosts:          flags.extraHosts,
-				InputName:           flags.file,
-				InputRaw:            inputRaw,
-				Job:                 &scenario.Input.Job,
-				LocalDir:            flags.local,
-				Output:              flags.output,
-				ProxyCertPath:       flags.proxyCertPath,
-				ProxyImage:          proxyImage,
-				PullImages:          flags.pullImages,
-				Timeout:             flags.timeout,
-				UpdaterImage:        updaterImage,
-				Volumes:             flags.volumes,
+				CacheDir:              flags.cache,
+				CollectorConfigPath:   flags.collectorConfigPath,
+				CollectorImage:        collectorImage,
+				Creds:                 scenario.Input.Credentials,
+				Debug:                 flags.debugging,
+				Expected:              scenario.Output,
+				ExtraHosts:            flags.extraHosts,
+				InputName:             flags.file,
+				InputRaw:              inputRaw,
+				Job:                   &scenario.Input.Job,
+				LocalDir:              flags.local,
+				Output:                flags.output,
+				ProxyCertPath:         flags.proxyCertPath,
+				ProxyImage:            proxyImage,
+				PullImages:            flags.pullImages,
+				VerifyImageSignatures: flags.verifyImageSignatures,
+				Timeout:               flags.timeout,
+				UpdaterImage:          updaterImage,
+				Volumes:               flags.volumes,
 			}); err != nil {
 				log.Fatal(err)
 			}
@@ -69,6 +70,7 @@ func NewTestCommand() *cobra.Command {
 	cmd.Flags().StringVar(&flags.proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")
 	cmd.Flags().StringVar(&flags.collectorConfigPath, "collector-config", "", "path to an OpenTelemetry collector config file")
 	cmd.Flags().BoolVar(&flags.pullImages, "pull", true, "pull the image if it isn't present")
+	cmd.Flags().BoolVar(&flags.verifyImageSignatures, "verify-signatures", true, "verify image signatures")
 	cmd.Flags().BoolVar(&flags.debugging, "debug", false, "run an interactive shell inside the updater")
 	cmd.Flags().StringArrayVarP(&flags.volumes, "volume", "v", nil, "mount volumes in Docker")
 	cmd.Flags().StringArrayVar(&flags.extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
