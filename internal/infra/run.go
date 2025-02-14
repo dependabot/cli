@@ -514,13 +514,13 @@ func pullImage(ctx context.Context, cli *client.Client, imageName string) error 
 		}
 	} else {
 		// Image exists locally, check if it's up to date
-		latestDigest, err := getLatestDigest(imageName)
+		latestTimestamp, err := getLatestTimestamp(imageName)
 		if err != nil {
 			log.Printf("failed to get latest digest for image %v: %v", imageName, err)
 			return nil
 		}
 
-		if !isImageUpToDate(inspect, latestDigest) {
+		if !isImageUpToDate(inspect, latestTimestamp) {
 			err = pullImageWithAuth(ctx, cli, imageName)
 			if err != nil {
 				return fmt.Errorf("image %v is outdated, failed to pull update: %w", imageName, err)
@@ -585,11 +585,18 @@ func pullImageWithAuth(ctx context.Context, cli *client.Client, imageName string
 	return nil
 }
 
-func isImageUpToDate(inspect types.ImageInspect, latestDigest string) bool {
-	for _, digest := range inspect.RepoDigests {
-		if strings.HasSuffix(digest, latestDigest) {
-			return true
-		}
+func isImageUpToDate(inspect types.ImageInspect, latestTimestamp time.Time) bool {
+	createdTime, err := time.Parse(time.RFC3339, inspect.Created)
+	if err != nil {
+		log.Printf("failed to parse image creation time %v: %v", inspect.Created, err)
+		return false
 	}
-	return false
+
+	if createdTime.Before(latestTimestamp) {
+		log.Printf("local image is older than remote image. local: %v, remote: %v", createdTime, latestTimestamp)
+		return false
+
+	}
+	log.Printf("local image is up to date. local: %v, remote: %v", createdTime, latestTimestamp)
+	return true
 }

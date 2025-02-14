@@ -4,54 +4,49 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/distribution/reference"
-	"github.com/heroku/docker-registry-client/registry"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 const defaultDockerRegistry = "registry-1.docker.io"
 
-func getLatestDigest(imageName string) (string, error) {
-	// Parse the image name using docker reference library
-	ref, err := reference.ParseAnyReference(imageName)
+func getLatestTimestamp(imageName string) (time.Time, error) {
+	ref, err := name.ParseReference(imageName)
 	if err != nil {
-		return "", err
+		return time.Time{}, err
 	}
 
-	named, ok := ref.(reference.Named)
-	if !ok {
-		return "", errors.New("image name must be a named reference")
-	}
-
-	domain := reference.Domain(named)
-	if domain == "docker.io" {
-		domain = defaultDockerRegistry
-	}
+	// Get the domain of the image
+	domain := ref.Context().RegistryStr()
 
 	user, pass, err := getRegistryAuthHeader(domain)
 	if err != nil {
-		return "", err
+		return time.Time{}, err
 	}
 
-	client, err := registry.New("https://"+domain, user, pass)
+	// Create a new registry client using the go-containerregistry library
+	remoteOptions := remote.WithAuth(&authn.Basic{Username: user, Password: pass})
+	descriptor, err := remote.Get(ref, remoteOptions)
 	if err != nil {
-		return "", err
+		return time.Time{}, err
 	}
 
-	path := reference.Path(ref.(reference.Named))
-	var tagName string
-	if tagRef, isTagged := ref.(reference.Tagged); isTagged {
-		tagName = tagRef.Tag()
-	} else {
-		tagName = "latest"
-	}
-
-	res, err := client.ManifestDigest(path, tagName)
+	image, err := descriptor.Image()
 	if err != nil {
-		return "", err
+		return time.Time{}, err
 	}
 
-	return res.String(), nil
+	// Get the config of the image
+	configFile, err := image.ConfigFile()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	timestamp := configFile.Created.Time
+	return timestamp, nil
 }
 
 func getRegistryAuthHeader(image string) (string, string, error) {
