@@ -3,11 +3,12 @@ package server
 import (
 	"bytes"
 	"fmt"
-	"github.com/dependabot/cli/internal/model"
 	"net"
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/dependabot/cli/internal/model"
 )
 
 func TestInput(t *testing.T) {
@@ -27,7 +28,7 @@ func TestInput(t *testing.T) {
 	go func() {
 		input, err := Input(l)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("%s", err.Error())
 		}
 		inputCh <- input
 	}()
