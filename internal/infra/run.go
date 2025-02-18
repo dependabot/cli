@@ -6,6 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"regexp"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
 	"github.com/docker/docker/api/types"
@@ -17,15 +27,6 @@ import (
 	"github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"regexp"
-	"strings"
-	"syscall"
-	"time"
 )
 
 type RunParams struct {
@@ -499,67 +500,112 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 }
 
 func pullImage(ctx context.Context, cli *client.Client, imageName string) error {
-	var inspect types.ImageInspect
-
-	// check if image exists locally
 	inspect, _, err := cli.ImageInspectWithRaw(ctx, imageName)
-
-	// pull image if necessary
 	if err != nil {
-		var imagePullOptions image.PullOptions
-
-		if strings.HasPrefix(imageName, "ghcr.io/") {
-
-			token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
-			if token != "" {
-				auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
-				imagePullOptions = image.PullOptions{
-					RegistryAuth: fmt.Sprintf("Basic %s", auth),
-				}
-			} else {
-				log.Println("Failed to find credentials for GitHub container registry.")
-			}
-		} else if strings.Contains(imageName, ".azurecr.io/") {
-			username := os.Getenv("AZURE_REGISTRY_USERNAME")
-			password := os.Getenv("AZURE_REGISTRY_PASSWORD")
-
-			registryName := strings.Split(imageName, "/")[0]
-
-			if username != "" && password != "" {
-				authConfig := registry.AuthConfig{
-					Username:      username,
-					Password:      password,
-					ServerAddress: registryName,
-				}
-
-				encodedJSON, _ := json.Marshal(authConfig)
-				authStr := base64.URLEncoding.EncodeToString(encodedJSON)
-
-				imagePullOptions = image.PullOptions{
-					RegistryAuth: authStr,
-				}
-			} else {
-				log.Println("Failed to find credentials for Azure container registry.")
-			}
-		} else {
-			log.Printf("Failed to find credentials for pulling image: %s\n.", imageName)
-		}
-
-		log.Printf("pulling image: %s\n", imageName)
-		out, err := cli.ImagePull(ctx, imageName, imagePullOptions)
+		// Image doesn't exist locally, pull it
+		err = pullImageWithAuth(ctx, cli, imageName)
 		if err != nil {
-			return fmt.Errorf("failed to pull %v: %w", imageName, err)
+			return fmt.Errorf("failed to pull image %v: %w", imageName, err)
 		}
-		_, _ = io.Copy(io.Discard, out)
-		out.Close()
 
 		inspect, _, err = cli.ImageInspectWithRaw(ctx, imageName)
 		if err != nil {
-			return fmt.Errorf("failed to inspect %v: %w", imageName, err)
+			return fmt.Errorf("failed to inspect image %v after pull: %w", imageName, err)
+		}
+	} else {
+		// Image doesn't exist remotely, don't bother pulling it
+		if inspect.RepoDigests == nil || len(inspect.RepoDigests) == 0 || inspect.RepoDigests[0] == "" {
+			return nil
+		}
+
+		client := NewRegistryClient(imageName)
+		exists, err := client.DigestExists(inspect.RepoDigests)
+		if err != nil {
+			log.Printf("failed to get digest for image %v: %v", imageName, err)
+			return nil
+		}
+
+		// If the digest doesn't exist remotely, don't bother pulling the image
+		if !exists {
+			log.Printf("digest %v for image %v does not exist remotely\n", inspect.ID, imageName)
+			return nil
+		}
+
+		latestDigest, err := client.GetLatestDigest(imageName)
+		if err != nil {
+			log.Printf("failed to get latest digest for image %v: %v", imageName, err)
+			return nil
+		}
+
+		isLatest := false
+		for _, digest := range inspect.RepoDigests {
+			if strings.HasSuffix(digest, latestDigest) {
+				isLatest = true
+				break
+			}
+		}
+
+		if !isLatest {
+			err = pullImageWithAuth(ctx, cli, imageName)
+			if err != nil {
+				return fmt.Errorf("image %v is outdated, failed to pull update: %w", imageName, err)
+			}
+		} else {
+			log.Printf("image %v is already up to date\n", imageName)
 		}
 	}
 
 	log.Printf("using image %v at %s\n", imageName, inspect.ID)
+	return nil
+}
+
+func pullImageWithAuth(ctx context.Context, cli *client.Client, imageName string) error {
+	var imagePullOptions image.PullOptions
+
+	if strings.HasPrefix(imageName, "ghcr.io/") {
+
+		token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
+		if token != "" {
+			auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
+			imagePullOptions = image.PullOptions{
+				RegistryAuth: fmt.Sprintf("Basic %s", auth),
+			}
+		} else {
+			log.Println("Failed to find credentials for GitHub container registry.")
+		}
+	} else if strings.Contains(imageName, ".azurecr.io/") {
+		username := os.Getenv("AZURE_REGISTRY_USERNAME")
+		password := os.Getenv("AZURE_REGISTRY_PASSWORD")
+
+		registryName := strings.Split(imageName, "/")[0]
+
+		if username != "" && password != "" {
+			authConfig := registry.AuthConfig{
+				Username:      username,
+				Password:      password,
+				ServerAddress: registryName,
+			}
+
+			encodedJSON, _ := json.Marshal(authConfig)
+			authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+
+			imagePullOptions = image.PullOptions{
+				RegistryAuth: authStr,
+			}
+		} else {
+			log.Println("Failed to find credentials for Azure container registry.")
+		}
+	} else {
+		log.Printf("Failed to find credentials for pulling image: %s\n.", imageName)
+	}
+
+	log.Printf("pulling image: %s\n", imageName)
+	out, err := cli.ImagePull(ctx, imageName, imagePullOptions)
+	if err != nil {
+		return fmt.Errorf("failed to pull %v: %w", imageName, err)
+	}
+	_, _ = io.Copy(io.Discard, out)
+	out.Close()
 
 	return nil
 }
