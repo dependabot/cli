@@ -2,4 +2,4 @@
 dependabot --version
 
 # example: dependabot version v1.57.1-0.20250218140044-2f3fdc69ebfd
-stdout 'dependabot version v1.\d+.\d+-0.\d{14}-[a-f0-9]{12}'
+stdout 'dependabot version v\d+.\d+.\d+-0.\d{14}-[a-f0-9]{12}'
