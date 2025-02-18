@@ -12,16 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # To make the `dependabot --version` test succeed we must not be in a detached HEAD state.
-      - run: git checkout -b local-branch-for-testing
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: Build
-        run: go version && go build -v ./...
+        run: go version && go build -v ./... && dependabot --version
 
       - name: Test
         # -count=2 ensures that test fixtures cleanup after themselves
