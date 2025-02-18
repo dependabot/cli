@@ -26,13 +26,8 @@ func TestDependabot(t *testing.T) {
 		Cmds:  Commands(),
 		Quiet: !testing.Verbose(),
 	}
-	// adding this path to the PATH so that the dependabot command we just built is used
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
 	env := []string{
-		"PATH=" + wd + string(os.PathListSeparator) + os.Getenv("PATH"),
+		"PATH=" + os.Getenv("PATH"),
 	}
 	scripttest.Test(t, ctx, engine, env, "../../testdata/scripts/*.txt")
 }
