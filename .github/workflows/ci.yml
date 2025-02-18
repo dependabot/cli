@@ -18,7 +18,10 @@ jobs:
           go-version-file: go.mod
 
       - name: Build
-        run: go version && go build -v ./... && dependabot --version
+        run: go version && go build -v ./...
+
+      - name: Check dependabot version
+        run: go install github.com/dependabot/cli/cmd/dependabot && dependabot --version
 
       - name: Test
         # -count=2 ensures that test fixtures cleanup after themselves
