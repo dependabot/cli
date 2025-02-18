@@ -12,7 +12,7 @@ import (
 )
 
 func TestDependabot(t *testing.T) {
-	err := exec.Command("go", "build", "dependabot.go").Run()
+	err := exec.Command("go", "build", ".").Run()
 	if err != nil {
 		t.Fatal("failed to build dependabot")
 	}
