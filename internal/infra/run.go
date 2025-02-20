@@ -6,6 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"regexp"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
 	"github.com/docker/docker/api/types"
@@ -17,15 +27,6 @@ import (
 	"github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"regexp"
-	"strings"
-	"syscall"
-	"time"
 )
 
 type RunParams struct {
