@@ -18,7 +18,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Build
-        run: go build -v ./...
+        run: go version && go build -v ./...
 
       - name: Test
         # -count=2 ensures that test fixtures cleanup after themselves

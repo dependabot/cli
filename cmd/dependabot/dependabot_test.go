@@ -12,7 +12,7 @@ import (
 )
 
 func TestDependabot(t *testing.T) {
-	err := exec.Command("go", "build", "dependabot.go").Run()
+	err := exec.Command("go", "build", ".").Run()
 	if err != nil {
 		t.Fatal("failed to build dependabot")
 	}
@@ -24,7 +24,7 @@ func TestDependabot(t *testing.T) {
 	engine := &script.Engine{
 		Conds: scripttest.DefaultConds(),
 		Cmds:  Commands(),
-		Quiet: !testing.Verbose(),
+		Quiet: false,
 	}
 	env := []string{
 		"PATH=" + os.Getenv("PATH"),

@@ -1,0 +1,5 @@
+# Run the dependabot command
+dependabot --version
+
+# example: dependabot version v1.57.1-0.20250218140044-2f3fdc69ebfd
+stdout 'dependabot version v\d+.\d+.\d+-(\d+\.)?\d{14}-[a-f0-9]{12}'

@@ -18,11 +18,7 @@ Use any of the following for a pain-free installation:
    ```
    The benefit of this method is that re-running the command will always update to the latest version.
 * You can download a pre-built binary from the [releases] page.
-* If you have the [`gh`][gh] command available, you can install the latest release
-   of `dependabot` using the following command ([gist source](https://gist.github.com/mattt/e09e1ecd76d5573e0517a7622009f06f)):
-   ```shell
-   gh gist view --raw e09e1ecd76d5573e0517a7622009f06f | bash
-   ```
+* On Mac, you can run `brew install dependabot`
 
 ## Requirements
 
