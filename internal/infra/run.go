@@ -250,11 +250,13 @@ func checkCredAccess(ctx context.Context, job *model.Job, creds []model.Credenti
 }
 
 var packageManagerLookup = map[string]string{
+	"bun":            "bun",
 	"bundler":        "bundler",
 	"cargo":          "cargo",
 	"composer":       "composer",
 	"pub":            "pub",
 	"docker":         "docker",
+	"docker_compose": "docker-compose",
 	"dotnet_sdk":     "dotnet-sdk",
 	"elm":            "elm",
 	"github_actions": "github-actions",
