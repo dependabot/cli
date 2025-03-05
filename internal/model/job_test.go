@@ -358,4 +358,15 @@ job:
     include-scope:
   security-updates-only: true
   repo-private: false
+  cooldown:
+    default-days: 3
+    semver-major-days: 7
+    semver-minor-days: 5
+    semver-patch-days: 2
+    include:
+      - dependency-name-1
+      - dependency-name-2
+    exclude:
+      - dependency-name-3
+      - dependency-name-4
 `

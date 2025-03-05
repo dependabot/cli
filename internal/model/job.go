@@ -51,6 +51,7 @@ type Job struct {
 	CommitMessageOptions       *CommitOptions    `json:"commit-message-options" yaml:"commit-message-options,omitempty"`
 	CredentialsMetadata        []Credential      `json:"credentials-metadata" yaml:"-"`
 	MaxUpdaterRunTime          int               `json:"max-updater-run-time" yaml:"max-updater-run-time,omitempty"`
+	UpdateCooldown             *UpdateCooldown   `json:"cooldown,omitempty" yaml:"cooldown,omitempty"`
 }
 
 // Source is a reference to some source code
@@ -134,3 +135,12 @@ type CommitOptions struct {
 }
 
 type Credential map[string]any
+
+type UpdateCooldown struct {
+	DefaultDays     int      `json:"default-days,omitempty" yaml:"default-days,omitempty"`
+	SemverMajorDays int      `json:"semver-major-days,omitempty" yaml:"semver-major-days,omitempty"`
+	SemverMinorDays int      `json:"semver-minor-days,omitempty" yaml:"semver-minor-days,omitempty"`
+	SemverPatchDays int      `json:"semver-patch-days,omitempty" yaml:"semver-patch-days,omitempty"`
+	Include         []string `json:"include,omitempty" yaml:"include,omitempty"`
+	Exclude         []string `json:"exclude,omitempty" yaml:"exclude,omitempty"`
+}
