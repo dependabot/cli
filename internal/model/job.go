@@ -129,9 +129,9 @@ type RequirementSource map[string]any
 type Experiment map[string]any
 
 type CommitOptions struct {
-	Prefix            string  `json:"prefix,omitempty" yaml:"prefix,omitempty"`
-	PrefixDevelopment string  `json:"prefix-development,omitempty" yaml:"prefix-development,omitempty"`
-	IncludeScope      *string `json:"include-scope,omitempty" yaml:"include-scope,omitempty"`
+	Prefix            string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
+	PrefixDevelopment string `json:"prefix-development,omitempty" yaml:"prefix-development,omitempty"`
+	IncludeScope      bool   `json:"include-scope,omitempty" yaml:"include-scope,omitempty"`
 }
 
 type Credential map[string]any
