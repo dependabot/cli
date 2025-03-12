@@ -357,7 +357,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if params.CollectorConfigPath != "" {
 			err = pullImage(ctx, cli, params.CollectorImage)
 			if err != nil {
-				return err
+				fmt.Println("Failed to pull OpenTelemetry collector image:", err)
 			}
 		}
 
@@ -392,7 +392,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	if params.CollectorConfigPath != "" {
 		collector, err = NewCollector(ctx, cli, networks, &params, prox)
 		if err != nil {
-			return err
+			fmt.Println("Failed to create OpenTelemetry collector:", err)
 		}
 		defer collector.Close()
 	}
