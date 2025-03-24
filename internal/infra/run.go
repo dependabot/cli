@@ -394,6 +394,9 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if err != nil {
 			fmt.Println("Failed to create OpenTelemetry collector:", err)
 		}
+		if !params.Debug {
+			go collector.TailLogs(ctx, cli)
+		}
 		defer collector.Close()
 	}
 

@@ -3,15 +3,19 @@ package infra
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
-	"github.com/moby/moby/client"
+	"io"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
+	"github.com/goware/prefixer"
+	"github.com/moby/moby/client"
+	"github.com/moby/moby/pkg/stdcopy"
 )
 
 // CollectorImageName is the default Docker image used
@@ -101,7 +105,23 @@ func NewCollector(ctx context.Context, cli *client.Client, net *Networks, params
 	}
 
 	return collector, nil
+}
 
+func (c *Collector) TailLogs(ctx context.Context, cli *client.Client) {
+	out, err := cli.ContainerLogs(ctx, c.containerID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		return
+	}
+
+	r, w := io.Pipe()
+	go func() {
+		_, _ = io.Copy(os.Stderr, prefixer.New(r, "   otel | "))
+	}()
+	_, _ = stdcopy.StdCopy(w, w, out)
 }
 
 // Close stops and removes the container.
