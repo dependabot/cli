@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -67,6 +68,11 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	}
 
 	hostCfg := &container.HostConfig{}
+	if experimentValue, isBoolean := params.Job.Experiments["nuget_use_case_insensitive_filesystem"].(bool); isBoolean && experimentValue {
+		log.Printf("Adding SYS_ADMIN and DAC_READ_SEARCH capabilities to updater container")
+		hostCfg.CapAdd = []string{"SYS_ADMIN", "DAC_READ_SEARCH"}
+	}
+
 	var err error
 	for _, v := range params.Volumes {
 		var local, remote string
