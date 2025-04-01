@@ -114,6 +114,8 @@ job:
     package-manager: npm_and_yarn
     allowed-updates:
       - update-type: all
+    dependencies: # required arg when `security-updates-only: true` set
+      - 'express'
     security-advisories:
       - dependency-name: express
         affected-versions:
@@ -362,10 +364,9 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 
 ### `ensure_equivalent_gemfile_and_lockfile` error
 
-This error occurs when using `script/dependabot` and the Updater image is not in sync with dependabot-core. It can be resolved by rebuilding the Updater image. 
+This error occurs when using `script/dependabot` and the Updater image is not in sync with dependabot-core. It can be resolved by rebuilding the Updater image.
 
 For example, to rebuild the Updater image of the Go ecosystem, run this in the dependabot-core repository:
 ``` console
 $ script/build go_modules
 ```
-
