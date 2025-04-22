@@ -40,6 +40,6 @@ jobs:
       - uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.3.3
         with:
           subject-path: |
-            "${{ steps.go_release.outputs.release_asset_dir }}/*"
-            "dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
-            "dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
+            ${{ steps.go_release.outputs.release_asset_dir }}/*
+            dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+            dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
