@@ -9,7 +9,9 @@ jobs:
     name: Release Go Binary
     runs-on: ubuntu-latest
     permissions:
+        attestations: write
         contents: write
+        id-token: write
         packages: write
     strategy:
       matrix:
@@ -24,6 +26,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - uses: wangyoucao577/go-release-action@481a2c1a0f1be199722e3e9b74d7199acafc30a8 # v1.53
+        id: go_release
         with:
           goversion: go.mod
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -33,3 +36,10 @@ jobs:
           project_path: cmd/dependabot
           ldflags: >-
             -X github.com/dependabot/cli/cmd/dependabot/internal/cmd.version=${{ github.event.release.tag_name }}
+
+      - uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.3.3
+        with:
+          subject-path: |
+            ${{ steps.go_release.outputs.release_asset_dir }}/*
+            dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+            dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
