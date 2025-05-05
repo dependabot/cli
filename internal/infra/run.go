@@ -495,7 +495,7 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 		"git config user.email 'dependabot@github.com'",
 		"git config user.name 'dependabot'",
 		"git add .",
-		"git commit --quiet -m 'initial commit'",
+		"git commit --quiet -m 'Dependabot CLI automated commit'",
 	}
 	err = updater.RunCmd(ctx, strings.Join(commands, " && "), dependabot)
 	if err != nil {
