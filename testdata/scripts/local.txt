@@ -1,45 +1,63 @@
 exec docker build -qt local-updater .
 
-# The ls command in run will fail since this isn't a real updater
+# The ls command in run will fail since the repo directory doesn't exist yet.
 ! dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater
 stderr 'No such file or directory'
 
 # The local flag should create the repo directory and put my-repo in it
 dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
-! stderr 'ls: cannot access '/home/dependabot/dependabot-updater/repo': No such file or directory'
+! stderr 'No such file or directory'
+
 # The local flag should create the repo directory if it isn't already one
 stderr \.git
 stderr hello.txt
+# CLI injects a dummy commit
+stderr 'Dependabot CLI automated commit'
+
+# When my-repo is a git repo, and it's clean, the CLI should not commit to it
+exec git -C my-repo init
+exec git -C my-repo config user.name "Test User"
+exec git -C my-repo config user.email "test@example.com"
+exec git -C my-repo add hello.txt
+exec git -C my-repo commit -m 'assert this in the test'
+
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
+stderr 'hello.txt'
+stderr 'assert this in the test'
+
+# When my-repo is a git repo, and it's dirty, the CLI should commit to it so it's clean.
+# Otherwise changes would be lost during the update.
+exec echo 'make an uncommited change' >> my-repo/hello.txt
+exec touch my-repo/goodbye.txt
+
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
+stderr 'hello.txt'
+stderr 'goodbye.txt'
+# check the CLI has made a commit
+stderr 'Dependabot CLI automated commit'
 
 exec docker rmi -f local-updater
 
 -- Dockerfile --
 FROM ubuntu:22.04
 
-RUN useradd dependabot
+RUN apt-get update && apt-get install -y git
+
+RUN useradd dependabot && chgrp dependabot /etc/ssl/certs && chmod g+w /etc/ssl/certs
 USER dependabot
 WORKDIR /home/dependabot
 RUN mkdir -p /home/dependabot/dependabot-updater
 
-COPY --chown=dependabot --chmod=755 git /usr/bin/git
-COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
 COPY --chown=dependabot --chmod=755 run bin/run
-
--- update-ca-certificates --
-#!/usr/bin/env bash
-
-echo "Updated those certificates for ya"
-
--- git --
-#!/usr/bin/env bash
-
-# Fake git command that just creates a .git directory
-mkdir -p .git
 
 -- run --
 #!/usr/bin/env bash
 
+# output the repo contents for assertion in tests above
 ls -a /home/dependabot/dependabot-updater/repo
+
+# output the message of the last commit for assertion in tests above
+git -C /home/dependabot/dependabot-updater/repo log -1 --pretty=format:%s
 
 -- my-repo/hello.txt --
 Hello, world!
