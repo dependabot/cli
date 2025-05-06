@@ -190,7 +190,7 @@ func assertStringArraysEqual(t *testing.T, expected, actual []string) {
 func Test_extractInput(t *testing.T) {
 	t.Run("test arguments", func(t *testing.T) {
 		cmd := NewUpdateCommand()
-		if err := cmd.ParseFlags([]string{"go_modules", "rsc/quote"}); err != nil {
+		if err := cmd.ParseFlags([]string{"go_modules", "dependabot/cli"}); err != nil {
 			t.Fatal(err)
 		}
 		input, err := extractInput(cmd, &UpdateFlags{})

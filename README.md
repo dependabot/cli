@@ -39,7 +39,7 @@ Usage:
   dependabot [command]
 
 Examples:
-  $ dependabot update go_modules rsc/quote
+  $ dependabot update go_modules dependabot/cli
   $ dependabot test -f input.yml
 
 Available Commands:
@@ -63,7 +63,7 @@ Run the `update` subcommand to run a Dependabot update job for the provided ecos
 This does not create PRs, but outputs data that could be used to create PRs.
 
 ```console
-$ dependabot update go_modules rsc/quote
+$ dependabot update go_modules dependabot/cli
 # ...
 +----------------------------------------------------+
 |        Changes to Dependabot Pull Requests         |
@@ -269,7 +269,7 @@ To produce a scenario file that tests Dependabot behavior for a given repo,
 run the `update` subcommand and set the `--output` / `-o` option to a file path.
 
 ```console
-dependabot update go_modules rsc/quote -o go-scenario.yml
+dependabot update go_modules dependabot/cli -o go-scenario.yml
 ```
 
 Run the `test` subcommand for the generated scenario file,
