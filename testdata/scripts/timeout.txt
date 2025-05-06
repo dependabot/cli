@@ -1,6 +1,6 @@
 exec docker build -t sleepy-updater .
 
-! dependabot update go_modules dependabot/cli --timeout 1s --updater-image sleepy-updater
+! dependabot update go_modules dependabot/cli --timeout 1s --updater-image sleepy-updater --verify-signatures=false
 stderr 'update timed out after 1s'
 
 exec docker rmi -f sleepy-updater
