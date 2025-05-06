@@ -54,7 +54,7 @@ func NewUpdateCommand() *cobra.Command {
 		Use:   "update [<package_manager> <repo> | -f <input.yml>] [flags]",
 		Short: "Perform an update job",
 		Example: heredoc.Doc(`
-		    $ dependabot update go_modules rsc/quote
+		    $ dependabot update go_modules dependabot/cli
 		    $ dependabot update -f input.yml
 	    `),
 		RunE: func(cmd *cobra.Command, args []string) error {

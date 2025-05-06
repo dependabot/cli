@@ -6,5 +6,5 @@ input:
         update-type: all
     source:
       provider: github
-      repo: rsc/quote
+      repo: dependabot/cli
       directory: /
