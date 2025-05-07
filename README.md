@@ -6,7 +6,7 @@
     </picture>
 </h1>
 
-The `dependabot` CLI is a tool for testing and debugging Dependabot update jobs.
+The `dependabot` CLI is a tool for running Dependabot update jobs.
 
 ## Installation
 
@@ -60,7 +60,8 @@ Use "dependabot [command] --help" for more information about a command.
 ### `dependabot update`
 
 Run the `update` subcommand to run a Dependabot update job for the provided ecosystem and repo.
-This does not create PRs, but outputs data that could be used to create PRs.
+This does not create PRs, but outputs data that could be used to create PRs. For an example of how to do that see
+the [example CLI usage](https://github.com/dependabot/example-cli-usage) repo.
 
 ```console
 $ dependabot update go_modules dependabot/cli
@@ -149,9 +150,9 @@ with values from the environment.
 
 > **Note**
 >
-> The job description file format isn't documented publicly,
-> but you can find examples in the [`testdata` directory](testdata/)
-> and check out [the `Job` class in `dependabot-core`][dependabot-updater-job].
+> The job description file format isn't documented formally yet,
+> but you can find examples in the [smoke tests](https://github.com/dependabot/smoke-tests/tree/main/tests)
+> and look at the [model directory](/internal/model) for how the CLI models the job. 
 
 ### How it works
 
