@@ -235,6 +235,8 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 		actual.Data, err = decode[model.MarkAsProcessed](data)
 	case "record_ecosystem_versions":
 		actual.Data, err = decode[model.RecordEcosystemVersions](data)
+	case "record_ecosystem_meta":
+		actual.Data, err = decode[[]model.RecordEcosystemMeta](data)
 	case "record_update_job_error":
 		actual.Data, err = decode[model.RecordUpdateJobError](data)
 	case "record_update_job_unknown_error":

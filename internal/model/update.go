@@ -55,6 +55,10 @@ type RecordEcosystemVersions struct {
 	EcosystemVersions map[string]any `json:"ecosystem_versions" yaml:"ecosystem_versions"`
 }
 
+type RecordEcosystemMeta struct {
+	Ecosystem Ecosystem `json:"ecosystem" yaml:"ecosystem"`
+}
+
 type RecordUpdateJobError struct {
 	ErrorType    string         `json:"error-type" yaml:"error-type"`
 	ErrorDetails map[string]any `json:"error-details" yaml:"error-details"`
@@ -68,4 +72,17 @@ type RecordUpdateJobUnknownError struct {
 type IncrementMetric struct {
 	Metric string         `json:"metric" yaml:"metric"`
 	Tags   map[string]any `json:"tags" yaml:"tags"`
+}
+
+type Ecosystem struct {
+	Name           string         `json:"name" yaml:"name"`
+	PackageManager VersionManager `json:"package_manager,omitempty" yaml:"package_manager,omitempty"`
+	Language       VersionManager `json:"language,omitempty" yaml:"language,omitempty"`
+}
+
+type VersionManager struct {
+	Name        string         `json:"name" yaml:"name"`
+	Version     string         `json:"version" yaml:"version"`
+	RawVersion  string         `json:"raw_version" yaml:"raw_version"`
+	Requirement map[string]any `json:"requirement,omitempty" yaml:"requirement,omitempty"`
 }
