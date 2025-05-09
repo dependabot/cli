@@ -63,6 +63,8 @@ func generateCert(key *rsa.PrivateKey) (string, error) {
 		Subject:               CertSubject,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign | x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny, x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
