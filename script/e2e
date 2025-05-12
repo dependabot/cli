@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -e
+
+if ! command -v go &> /dev/null
+then
+    echo "Go needs to be installed to run these tests"
+    exit
+fi
+
+if ! command -v dependabot &> /dev/null
+then
+    echo "Dependabot CLI needs to be installed to run these tests"
+    exit
+fi
+
+# If there's 1 argument, use it as a regex to match the test name.
+if [ $# -eq 1 ]
+then
+    # count=1 is used to prevent Go from caching test results.
+    # It can occasionally be confusing without this.
+    go test cmd/dependabot/dependabot_test.go -count=1 -test.run "/.*$1.*/"
+else
+    go test cmd/dependabot/dependabot_test.go -count=1
+fi
