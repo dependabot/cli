@@ -264,6 +264,7 @@ var packageManagerLookup = map[string]string{
 	"go_modules":     "gomod",
 	"gradle":         "gradle",
 	"maven":          "maven",
+	"helm":           "helm",
 	"hex":            "mix",
 	"nuget":          "nuget",
 	"npm_and_yarn":   "npm",
