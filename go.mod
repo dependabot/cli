@@ -4,12 +4,12 @@ go 1.24.0
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/docker/cli v28.1.1+incompatible
-	github.com/docker/docker v28.1.1+incompatible
+	github.com/docker/cli v28.2.1+incompatible
+	github.com/docker/docker v28.2.1+incompatible
 	github.com/google/go-containerregistry v0.20.5
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/moby/moby v28.1.1+incompatible
+	github.com/moby/moby v28.2.1+incompatible
 	github.com/moby/sys/signal v0.7.1
 	github.com/spf13/cobra v1.9.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -20,6 +20,8 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
+	github.com/containerd/errdefs v1.0.0 // indirect
+	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
