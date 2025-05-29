@@ -3,15 +3,14 @@ package infra
 import (
 	"context"
 	"fmt"
-
-	"github.com/docker/docker/api/types"
-	"github.com/moby/moby/client"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 	"github.com/moby/moby/pkg/namesgenerator"
 )
 
 type Networks struct {
-	NoInternet     types.NetworkCreateResponse
-	Internet       types.NetworkCreateResponse
+	NoInternet     network.CreateResponse
+	Internet       network.CreateResponse
 	cli            *client.Client
 	noInternetName string
 	internetName   string
@@ -21,7 +20,7 @@ func NewNetworks(ctx context.Context, cli *client.Client) (*Networks, error) {
 	const bridge = "bridge"
 
 	noInternetName := namesgenerator.GetRandomName(1)
-	noInternet, err := cli.NetworkCreate(ctx, noInternetName, types.NetworkCreate{
+	noInternet, err := cli.NetworkCreate(ctx, noInternetName, network.CreateOptions{
 		Internal: true,
 		Driver:   bridge,
 	})
@@ -30,7 +29,7 @@ func NewNetworks(ctx context.Context, cli *client.Client) (*Networks, error) {
 	}
 
 	internetName := namesgenerator.GetRandomName(1)
-	internet, err := cli.NetworkCreate(ctx, internetName, types.NetworkCreate{
+	internet, err := cli.NetworkCreate(ctx, internetName, network.CreateOptions{
 		Driver: bridge,
 	})
 	if err != nil {

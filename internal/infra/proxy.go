@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 	"github.com/goware/prefixer"
-	"github.com/moby/moby/client"
 	"github.com/moby/moby/pkg/namesgenerator"
 	"github.com/moby/moby/pkg/stdcopy"
 	"io"
@@ -137,7 +136,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 }
 
 func putProxyConfig(ctx context.Context, cli *client.Client, config *Config, id string) error {
-	opt := types.CopyToContainerOptions{}
+	opt := container.CopyToContainerOptions{}
 
 	data, err := json.Marshal(config)
 	if err != nil {
