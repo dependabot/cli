@@ -14,12 +14,11 @@ import (
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/cli/cli/streams"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 	"github.com/goware/prefixer"
-	"github.com/moby/moby/client"
 	"github.com/moby/moby/pkg/stdcopy"
 )
 
@@ -115,7 +114,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 }
 
 func putUpdaterInputs(ctx context.Context, cli *client.Client, cert, id string, job *model.Job) error {
-	opt := types.CopyToContainerOptions{}
+	opt := container.CopyToContainerOptions{}
 	if t, err := tarball(dbotCert, cert); err != nil {
 		return fmt.Errorf("failed to create cert tarball: %w", err)
 	} else if err = cli.CopyToContainer(ctx, id, "/", t, opt); err != nil {
@@ -177,7 +176,7 @@ func userEnv(proxyURL string, apiUrl string) []string {
 
 // RunShell executes an interactive shell, blocks until complete.
 func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string) error {
-	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, types.ExecConfig{
+	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, container.ExecOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -192,7 +191,7 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string) 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	execResp, err := u.cli.ContainerExecAttach(ctx, execCreate.ID, types.ExecStartCheck{})
+	execResp, err := u.cli.ContainerExecAttach(ctx, execCreate.ID, container.ExecAttachOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to start exec: %w", err)
 	}
@@ -233,7 +232,7 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string) 
 
 // RunCmd executes the update scripts as the dependabot user, blocks until complete.
 func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) error {
-	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, types.ExecConfig{
+	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, container.ExecOptions{
 		AttachStdout: true,
 		AttachStderr: true,
 		User:         user,
@@ -244,7 +243,7 @@ func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) e
 		return fmt.Errorf("failed to create exec: %w", err)
 	}
 
-	execResp, err := u.cli.ContainerExecAttach(ctx, execCreate.ID, types.ExecStartCheck{})
+	execResp, err := u.cli.ContainerExecAttach(ctx, execCreate.ID, container.ExecAttachOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to start exec: %w", err)
 	}

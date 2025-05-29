@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
 	"io"
 	"log"
 	"net/http"
@@ -18,14 +19,13 @@ import (
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
 	"github.com/moby/moby/api/types/registry"
-	"github.com/moby/moby/client"
 	"gopkg.in/yaml.v3"
 )
 
@@ -477,7 +477,7 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir 
 		return fmt.Errorf("failed to tar clone dir: %w", err)
 	}
 
-	opt := types.CopyToContainerOptions{}
+	opt := container.CopyToContainerOptions{}
 	err = cli.CopyToContainer(ctx, updater.containerID, guestRepoDir, r, opt)
 	if err != nil {
 		return fmt.Errorf("failed to copy clone dir to container: %w", err)

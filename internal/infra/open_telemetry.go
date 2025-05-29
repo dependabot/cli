@@ -9,12 +9,11 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 	"github.com/goware/prefixer"
-	"github.com/moby/moby/client"
 	"github.com/moby/moby/pkg/stdcopy"
 )
 
@@ -81,7 +80,7 @@ func NewCollector(ctx context.Context, cli *client.Client, net *Networks, params
 		containerID: collectorContainer.ID,
 	}
 
-	opt := types.CopyToContainerOptions{}
+	opt := container.CopyToContainerOptions{}
 	if t, err := tarball(sslCertificates, proxy.ca.Cert); err != nil {
 		return nil, fmt.Errorf("failed to create cert tarball: %w", err)
 	} else if err = cli.CopyToContainer(ctx, collector.containerID, "/", t, opt); err != nil {

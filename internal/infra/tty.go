@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/streams"
-	"github.com/moby/moby/client"
+	"github.com/docker/docker/client"
 	"github.com/moby/sys/signal"
 )
 
