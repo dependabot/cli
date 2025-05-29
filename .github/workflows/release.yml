@@ -37,7 +37,7 @@ jobs:
           ldflags: >-
             -X github.com/dependabot/cli/cmd/dependabot/internal/cmd.version=${{ github.event.release.tag_name }}
 
-      - uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.3.3
+      - uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.3
         with:
           subject-path: |
             ${{ steps.go_release.outputs.release_asset_dir }}/*
