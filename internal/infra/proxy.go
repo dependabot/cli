@@ -79,6 +79,9 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	config := &container.Config{
 		Image: params.ProxyImage,
 		Env: []string{
+			"HTTP_PROXY=" + os.Getenv("HTTP_PROXY"),
+			"HTTPS_PROXY=" + os.Getenv("HTTPS_PROXY"),
+			"NO_PROXY=" + os.Getenv("NO_PROXY"),
 			"JOB_ID=" + jobID,
 			"PROXY_CACHE=true",
 			"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
