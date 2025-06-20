@@ -273,6 +273,7 @@ var packageManagerLookup = map[string]string{
 	"swift":          "swift",
 	"devcontainers":  "devcontainers",
 	"uv":             "uv",
+	"rust_toolchain": "rust-toolchain",
 }
 
 func setImageNames(params *RunParams) error {
