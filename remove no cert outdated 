@@ -1,0 +1,104 @@
+You've posted the full text of the Internet-Draft draft-sparks-genarea-mailarch-07, which outlines requirements for archiving IETF email lists, including web-based browsing and search tools. This draft ultimately became RFC 6778, and it documents in detail what the IETF needs from a modern email list archiving and search system.
+
+✅ Key Takeaways from the Draft:
+
+📌 Purpose:
+
+To improve the efficiency, accessibility, and searchability of archived IETF email lists for contributors, working groups, and leadership.
+
+📚 Main Requirements:
+
+1. Search and Browsing:
+
+Web interface for browsing and searching by thread/date.
+
+Advanced boolean search (AND, OR, NOT).
+
+Stable, shareable URIs for messages and search queries.
+
+Browsing without login (for open archives).
+
+Authentication for restricted list archives via the IETF datatracker system.
+
+
+
+2. Archiving and Importing:
+
+Must support email inputs from systems like Mailman.
+
+Should support import/export in mbox, optionally maildir.
+
+Archive migration support from external systems (via mbox/maildir formats).
+
+
+
+3. Export Functionality:
+
+Export entire list, date range, or search results.
+
+Must be accessible to both users and admins.
+
+
+
+4. Redundancy & Replication:
+
+Support for active/standby and multi-active configurations.
+
+Efficient synchronization methods like rsync or built-in DB replication.
+
+
+
+5. Security:
+
+Protection against brute-force search or DoS attacks.
+
+Controlled administrative access for adding/removing/deleting messages.
+
+Clear distinction between public and restricted content in search results.
+
+
+
+6. Transition Support:
+
+Backward compatibility for old links (e.g., MHonArc links).
+
+
+
+7. IMAP Access:
+
+While not a direct requirement, it’s expected the system will integrate with IMAP-based archive viewers (see draft-sparks-genarea-imaparch).
+
+
+
+
+
+---
+
+🔗 RFC Reference:
+
+Final RFC: RFC 6778 – "Requirements for Archiving IETF Email Lists and for Providing Web-Based Browsing and Searching"
+
+
+
+---
+
+📌 Why This Matters:
+
+If you're working on IETF tools, mail systems, or archiving infrastructure (e.g. datatracker, mailarch, etc.), this is the blueprint for aligning your system with community needs and ensuring long-term utility for research, documentation, and standards development.
+
+
+---
+
+Let me know if you'd like:
+
+A summary diagram of the system requirements
+
+A checklist version of these requirements for a project manager
+
+A sample architecture sketch (e.g. Django/Flask + ElasticSearch stack)
+
+IMAP access integration plan per the follow-up draft
+
+
+🛠️
+
