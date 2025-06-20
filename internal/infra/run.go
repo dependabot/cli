@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
@@ -273,6 +274,7 @@ var packageManagerLookup = map[string]string{
 	"swift":          "swift",
 	"devcontainers":  "devcontainers",
 	"uv":             "uv",
+	"vcpkg":          "vcpkg",
 }
 
 func setImageNames(params *RunParams) error {
