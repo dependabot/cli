@@ -426,11 +426,17 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 			return err
 		}
 	} else {
+		// First, update CA certificates as root
+		if err := updater.RunCmd(ctx, "update-ca-certificates", root); err != nil {
+			return err
+		}
+
+		// Then run the dependabot commands as the dependabot user
 		env := userEnv(prox.url, params.ApiUrl)
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
 		}
-		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
+		const cmd = "bin/run fetch_files && bin/run update_files"
 		if err := updater.RunCmd(ctx, cmd, dependabot, env...); err != nil {
 			return err
 		}

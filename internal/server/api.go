@@ -121,6 +121,9 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(r.URL.String(), "/")
 	kind := parts[len(parts)-1]
+
+	a.outputRequestData(kind, data)
+
 	actual, err := decodeWrapper(kind, data)
 	if err != nil {
 		a.pushError(err)
@@ -134,7 +137,6 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if kind == "increment_metric" {
 		// Let's just output the metrics data and stop
-		a.outputRequestData(kind, actual)
 		return
 	}
 
@@ -144,7 +146,6 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !a.hasExpectations {
-		a.outputRequestData(kind, actual)
 		return
 	}
 
@@ -178,12 +179,12 @@ func (a *API) assertExpectation(kind string, actual *model.UpdateWrapper) {
 	}
 }
 
-func (a *API) outputRequestData(kind string, actual *model.UpdateWrapper) {
+func (a *API) outputRequestData(kind string, data []byte) {
 	if a.writer != nil {
 		// output the data received to stdout
 		if err := json.NewEncoder(a.writer).Encode(map[string]any{
 			"type": kind,
-			"data": actual.Data,
+			"data": string(data),
 		}); err != nil {
 			// Fail so the user knows stdout is not working
 			log.Panicln("Failed to write to stdout: ", err)
