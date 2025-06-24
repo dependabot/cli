@@ -126,7 +126,6 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	actual, err := decodeWrapper(kind, data)
 	if err != nil {
-		log.Println(err)
 		a.pushError(err)
 	}
 
