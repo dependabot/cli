@@ -275,6 +275,7 @@ var packageManagerLookup = map[string]string{
 	"devcontainers":  "devcontainers",
 	"uv":             "uv",
 	"vcpkg":          "vcpkg",
+	"rust_toolchain": "rust-toolchain",
 }
 
 func setImageNames(params *RunParams) error {
