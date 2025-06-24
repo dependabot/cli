@@ -122,11 +122,19 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.String(), "/")
 	kind := parts[len(parts)-1]
 
-	a.outputRequestData(kind, data)
-
 	actual, err := decodeWrapper(kind, data)
 	if err != nil {
 		a.pushError(err)
+	}
+
+	a.outputRequestData(kind, actual)
+
+	if kind == "create_pull_request" && actual != nil {
+		createPR := actual.Data.(model.CreatePullRequest)
+		createPR.UpdatedDependencyFiles = replaceBinaryWithHash(createPR.UpdatedDependencyFiles)
+	} else if kind == "update_pull_request" && actual != nil {
+		updatePR := actual.Data.(model.UpdatePullRequest)
+		updatePR.UpdatedDependencyFiles = replaceBinaryWithHash(updatePR.UpdatedDependencyFiles)
 	}
 
 	if actual == nil {
@@ -179,12 +187,12 @@ func (a *API) assertExpectation(kind string, actual *model.UpdateWrapper) {
 	}
 }
 
-func (a *API) outputRequestData(kind string, data []byte) {
+func (a *API) outputRequestData(kind string, data *model.UpdateWrapper) {
 	if a.writer != nil {
 		// output the data received to stdout
 		if err := json.NewEncoder(a.writer).Encode(map[string]any{
 			"type": kind,
-			"data": string(data),
+			"data": data.Data,
 		}); err != nil {
 			// Fail so the user knows stdout is not working
 			log.Panicln("Failed to write to stdout: ", err)
@@ -221,15 +229,9 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 	case "update_dependency_list":
 		actual.Data, err = decode[model.UpdateDependencyList](data)
 	case "create_pull_request":
-		var createPR model.CreatePullRequest
-		createPR, err = decode[model.CreatePullRequest](data)
-		createPR.UpdatedDependencyFiles = replaceBinaryWithHash(createPR.UpdatedDependencyFiles)
-		actual.Data = createPR
+		actual.Data, err = decode[model.CreatePullRequest](data)
 	case "update_pull_request":
-		var updatePR model.UpdatePullRequest
-		updatePR, err = decode[model.UpdatePullRequest](data)
-		updatePR.UpdatedDependencyFiles = replaceBinaryWithHash(updatePR.UpdatedDependencyFiles)
-		actual.Data = updatePR
+		actual.Data, err = decode[model.UpdatePullRequest](data)
 	case "close_pull_request":
 		actual.Data, err = decode[model.ClosePullRequest](data)
 	case "mark_as_processed":
