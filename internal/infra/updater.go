@@ -42,10 +42,7 @@ type Updater struct {
 	ExitCode *int
 }
 
-const (
-	certsPath = "/etc/ssl/certs"
-	dbotCert  = "/usr/local/share/ca-certificates/dbot-ca.crt"
-)
+const dbotCert = "/etc/ssl/certs/ca-certificates.crt"
 
 // NewUpdater starts the update container interactively running /bin/sh, so it does not stop.
 func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy, collector *Collector) (*Updater, error) {
@@ -168,7 +165,7 @@ func userEnv(proxyURL string, apiUrl string) []string {
 		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", guestOutput),
 		fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%v", guestRepoDir),
 		fmt.Sprintf("DEPENDABOT_API_URL=%s", apiUrl),
-		fmt.Sprintf("SSL_CERT_FILE=%v/ca-certificates.crt", certsPath),
+		fmt.Sprintf("SSL_CERT_FILE=%v", dbotCert),
 		"UPDATER_ONE_CONTAINER=true",
 		"UPDATER_DETERMINISTIC=true",
 	}
@@ -183,7 +180,7 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string) 
 		Tty:          true,
 		User:         dependabot,
 		Env:          append(userEnv(proxyURL, apiUrl), "DEBUG=1"),
-		Cmd:          []string{"/bin/bash", "-c", "update-ca-certificates && /bin/bash"},
+		Cmd:          []string{"/bin/bash"},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create exec: %w", err)

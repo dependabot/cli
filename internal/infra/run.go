@@ -428,7 +428,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
 		}
-		const cmd = "update-ca-certificates && bin/run fetch_files && bin/run update_files"
+		const cmd = "bin/run fetch_files && bin/run update_files"
 		if err := updater.RunCmd(ctx, cmd, dependabot, env...); err != nil {
 			return err
 		}

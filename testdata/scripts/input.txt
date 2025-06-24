@@ -28,13 +28,7 @@ FROM ubuntu:22.04
 
 RUN useradd dependabot
 
-COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
 COPY --chown=dependabot --chmod=755 run bin/run
-
--- update-ca-certificates --
-#!/usr/bin/env bash
-
-echo "Updated those certificates for ya"
 
 -- run --
 #!/usr/bin/env bash
