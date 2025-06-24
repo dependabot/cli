@@ -10,7 +10,6 @@ import (
 	"github.com/dependabot/cli/internal/model"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -35,6 +34,10 @@ func TestAPI_ServeHTTP(t *testing.T) {
 			t.Errorf("expected status code %d, got %d", http.StatusNotImplemented, response.Code)
 		}
 	})
+}
+
+type Wrapper[T any] struct {
+	Data T `json:"data"`
 }
 
 func TestAPI_CreatePullRequest_ReplacesBinaryWithHash(t *testing.T) {
@@ -92,7 +95,11 @@ func TestAPI_CreatePullRequest_ReplacesBinaryWithHash(t *testing.T) {
 	}
 
 	// stdout should contain the original content so folks can create PRs
-	if !strings.Contains(stdout.String(), content) {
+	var wrapper Wrapper[model.CreatePullRequest]
+	if err := json.NewDecoder(&stdout).Decode(&wrapper); err != nil {
+		t.Fatalf("failed to decode stdout: %v", err)
+	}
+	if wrapper.Data.UpdatedDependencyFiles[0].Content != content {
 		t.Errorf("expected stdout to contain the original content, got '%s'", stdout.String())
 	}
 }
