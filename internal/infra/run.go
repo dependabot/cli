@@ -274,6 +274,7 @@ var packageManagerLookup = map[string]string{
 	"swift":          "swift",
 	"devcontainers":  "devcontainers",
 	"uv":             "uv",
+	"vcpkg":          "vcpkg",
 	"rust_toolchain": "rust-toolchain",
 }
 
