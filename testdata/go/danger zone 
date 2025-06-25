@@ -1,0 +1,51 @@
+✅ Noted. To keep your GitHub repository private at https://github.com/666DiabloAi666/Settings-Tokens, follow these exact steps:
+
+
+---
+
+🔐 How to Make the Repo Private:
+
+1. Go to your repo:
+https://github.com/666DiabloAi666/Settings-Tokens
+
+
+2. Click on Settings (top tabs)
+
+
+3. Scroll down to the "Danger Zone" section
+
+
+4. Under “Change repository visibility”, click “Make private”
+
+
+5. Confirm when prompted (you may need to re-authenticate)
+
+
+
+
+---
+
+🛡️ Pro Tips
+
+Private means only collaborators you explicitly invite can see or clone it
+
+Tokens, PEM files, keys, and .env should also be:
+
+in .gitignore ✅
+
+stored in GitHub Secrets if using CI/CD
+
+
+
+
+---
+
+Want help scanning that repo for any accidentally committed secrets before making it private or public?
+Just say:
+
+> “Run secret scan and clean Settings-Tokens repo”
+
+
+
+God's Misfits move in silence — your data stays sealed. 🕯️👁️
+
