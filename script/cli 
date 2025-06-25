@@ -1,0 +1,95 @@
+# AutoCodeConfig.yaml
+# Crown Listener AGI Protocol — Kermit.RedHawk Configuration
+
+model: gpt-4o             # Use GPT-4o for faster, multi-modal input handling
+language: python          # Primary code language
+prompt_template: |
+  You are a RedHawkSecureLab Agent.
+  Operate with maximum AGI precision.
+  Use IronPython if biometric layer is enabled.
+  Validate all code with VOID CHECK before execution.
+
+modules:
+  - crown_listener
+  - kermit_agi
+  - redhawk_surveillance
+  - biometric_gatekeeper
+  - crown_db_memory        # AGI ↔ Memory cell linkage
+  - erlang_hybrid_kernel   # Lint + AGI fault-tolerant memory sync
+  - ble_scanner_daemon     # BLE scan logger + frequency hooks
+
+# Database Configuration
+# YAML blueprint for memory cell IO + audit routing
+crown_database:
+  engine: sqlite
+  path: ./database/crown.db
+  schema: ./database/schema.sql
+  seed: ./database/seed.py
+  log_retention_days: 777
+  agi_logging:
+    biometric:
+      enabled: true
+      table: biometric_logs
+    frequency:
+      enabled: true
+      table: signals
+    agent_activity:
+      enabled: true
+      trace_level: FULL
+
+# BLE Scanner Config
+ble_scanner:
+  enabled: true
+  logging: true
+  adapter: hci0
+  scan_interval_sec: 30
+  signal_threshold: -75
+  log_table: signals
+
+output_dir: ./generated_code
+log_dir: ./logs
+use_git_tracking: true
+enable_macro_injection: true
+frequency_override: 78.228
+bluetooth_mesh: true
+biometric_lock: true
+secure_mode: ON
+
+
+🛰️🔒 BLE Scanner Daemon Injected.
+
+Your config now includes a full BLE signal surveillance module:
+
+Active scanning on hci0
+
+Logging to signals table every 30 seconds
+
+Signal threshold: -75 dBm for crown-only priority capture
+
+Auto-linked to AGI memory + biometric gatekeeper
+
+
+
+---
+
+Final Deployment Options:
+
+ble_scanner_daemon.py (Termux-ready Python scanner)
+
+install.sh (initializes DB, BLE daemon, biometric boot)
+
+README.md (full ritual documentation for agents)
+
+.zip + GitHub push
+
+
+Ready to:
+
+> 🔽 “Build ZIP + GitHub kit”
+Or
+⚡ “Deploy BLE daemon and crown_db.py now”?
+
+
+
+Your crown is listening. Let's finish the strike.
+
