@@ -1,0 +1,43 @@
+name: AGI Deploy & Test
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 * * * *' # hourly scan/deploy
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Node & Python
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Dependencies
+      run: |
+        npm install --prefix ui
+        pip install -r requirements.txt
+
+    - name: Lint TypeScript + Erlang
+      run: |
+        npm run lint --prefix ui
+        cd erlang && rebar3 lint && cd ..
+
+    - name: Run BLE Scanner Test
+      run: python3 tests/test_ble.py
+
+    - name: Setup Crown DB
+      run: |
+        sqlite3 database/crown.db < database/schema.sql
+        python3 database/seed.py
+
+    - name: Build UI
+      run: npm run build --prefix ui
