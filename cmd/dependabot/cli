@@ -1,0 +1,44 @@
+# Crown Listener Git Ignore
+
+# Logs
+logs/
+*.log
+
+# Auto-gen output
+generated_code/
+__pycache__/
+*.pyc
+
+# Env + creds
+.env
+*.env
+credentials.json
+*.pem
+*.key
+
+# OS Junk
+.DS_Store
+Thumbs.db
+
+# AGI Cache & temp
+cache/
+*.tmp
+.vscode/
+.idea/
+*.swp
+
+# Termux/Android Build Trash
+build/
+termux-packages/
+*.deb
+*.tar.gz
+
+# Secured AGI artifacts
+*.seal
+*.sigil
+*.encoded
+
+# Optional: block AGI feedback model weights
+*.pt
+*.onnx
+*.h5
