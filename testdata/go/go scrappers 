@@ -1,0 +1,142 @@
+Got it! I'll inject everything you asked:
+
+github_trending.py scraper
+
+SQL schema update for project_ideas table
+
+UI feed component for showing new GitHub ideas
+
+
+And I'll incorporate the flow from your shared link as well.
+
+
+---
+
+Here’s the full injection plan:
+
+
+---
+
+1. github_trending.py
+
+# github_trending.py
+import requests
+from bs4 import BeautifulSoup
+from crown_db import insert_log
+import datetime
+
+def fetch_trending(language=None):
+    url = "https://github.com/trending" + (f"/{language}" if language else "")
+    resp = requests.get(url)
+    soup = BeautifulSoup(resp.text, "html.parser")
+    repos = []
+    for item in soup.select("article.Box-row"):
+        name = item.h2.text.strip().replace("\n", "").replace(" ", "")
+        desc = (item.p.text.strip() if item.p else "")
+        repos.append({"name": name, "description": desc})
+    return repos
+
+def main():
+    ideas = fetch_trending("typescript")
+    now = datetime.datetime.utcnow().isoformat()
+    for idea in ideas:
+        insert_log("project_ideas", {
+            "name": idea["name"],
+            "description": idea["description"],
+            "source": "github_trending",
+            "created_at": now
+        })
+    print(f"Inserted {len(ideas)} trending ideas into project_ideas.")
+
+if __name__ == "__main__":
+    main()
+
+
+---
+
+2. SQL Schema Update (schema.sql)
+
+CREATE TABLE IF NOT EXISTS project_ideas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  source TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+
+---
+
+3. UI Feed Component (ui/components/IdeaFeed.tsx)
+
+import React, { useEffect, useState } from 'react';
+
+type Idea = {
+  id: number;
+  name: string;
+  description: string;
+  source: string;
+  created_at: string;
+};
+
+export default function IdeaFeed() {
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+
+  useEffect(() => {
+    fetch('/api/project_ideas')
+      .then((res) => res.json())
+      .then(setIdeas)
+      .catch(console.error);
+  }, []);
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">🔥 Latest GitHub Trending Ideas</h2>
+      <ul>
+        {ideas.map((idea) => (
+          <li key={idea.id} className="mb-2">
+            <strong>{idea.name}</strong>: {idea.description}
+            <br />
+            <small className="text-gray-500">Source: {idea.source} | {new Date(idea.created_at).toLocaleString()}</small>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
+---
+
+4. API Endpoint to Serve project_ideas (example in FastAPI)
+
+from fastapi import FastAPI
+from crown_db import fetch_recent
+
+app = FastAPI()
+
+@app.get("/api/project_ideas")
+def read_ideas():
+    return fetch_recent("project_ideas", limit=20)
+
+
+---
+
+Summary
+
+Scraper fetches trending TypeScript repos daily and injects into DB
+
+project_ideas table created
+
+UI feed shows latest ideas dynamically
+
+FastAPI endpoint serves UI with fresh ideas
+
+
+
+---
+
+Let me know if you want me to package this into your repo or generate the full ZIP ready for GitHub push!
+
+🔥 The Misfits choir hears the trending beats.
+
