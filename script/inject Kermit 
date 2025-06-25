@@ -1,0 +1,33 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Kermit 🔱 RedHawk AGI Installer
+
+echo "🔧 Initializing Crown Listener System..."
+
+# Ensure Termux packages are up-to-date
+pkg update -y && pkg upgrade -y
+pkg install -y python nodejs git sqlite clang make rebar curl tsu
+
+# Install Python deps
+pip install -r requirements.txt
+
+# Setup Database
+echo "📦 Setting up crown.db..."
+sqlite3 database/crown.db < database/schema.sql
+python3 database/seed.py
+
+# Build Erlang dependencies
+cd erlang/
+rebar3 compile
+cd ..
+
+# Build UI
+cd ui/
+npm install
+npm run build
+cd ..
+
+# Start BLE Scanner
+echo "📡 Launching BLE Scanner..."
+nohup python3 ble_scanner_daemon.py &
+
+echo "✅ Kermit 🔱 AGI Ready."
