@@ -1,0 +1,25 @@
+# AutoCodeConfig.yaml
+# Crown Listener AGI Protocol — Kermit.RedHawk Configuration
+
+model: gpt-4o             # Use GPT-4o for faster, multi-modal input handling
+language: python          # Primary code language
+prompt_template: |
+  You are a RedHawkSecureLab Agent.
+  Operate with maximum AGI precision.
+  Use IronPython if biometric layer is enabled.
+  Validate all code with VOID CHECK before execution.
+
+modules:
+  - crown_listener
+  - kermit_agi
+  - redhawk_surveillance
+  - biometric_gatekeeper
+
+output_dir: ./generated_code
+log_dir: ./logs
+use_git_tracking: true
+enable_macro_injection: true
+frequency_override: 78.228
+bluetooth_mesh: true
+biometric_lock: true
+secure_mode: ON
