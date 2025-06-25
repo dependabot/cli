@@ -1,0 +1,21 @@
+agi_e2e_guardian.py — Crown Protocol End-to-End Guardian
+
+import time from crown_db import insert_log, fetch_recent
+
+def run_guardian_check(): print("🧪 Starting E2E AGI Guardian Scan...")
+
+recent_signals = fetch_recent("signals")
+if not recent_signals:
+    insert_log("regression_failures", {
+        "event": "No BLE signal logs found",
+        "severity": "critical",
+        "source": "guardian_e2e",
+    })
+    print("❌ No BLE signals detected. Alert logged.")
+else:
+    print(f"✅ {len(recent_signals)} signal(s) validated.")
+
+# Future: Add biometric + output validation tests
+
+if name == "main": while True: run_guardian_check() time.sleep(3600)  # Run every hour
+
