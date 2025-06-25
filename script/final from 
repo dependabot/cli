@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.tmp
+
+# OS + Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# AGI Output
+logs/
+generated_code/
+*.seal
+*.sigil
+*.encoded
+
+# Secrets
+.env
+*.key
+*.pem
+*.env
+credentials.json
+
+# Database
+database/crown.db
+*.sqlite
+*.db
+
+# Erlang Hybrid
+_build/
+deps/
+erl_crash.dump
+*.beam
+*.app
+*.boot
+*.rel
+*.script
+rebar.lock
+
+# UI / TypeScript
+ui/node_modules/
+ui/dist/
+ui/.next/
