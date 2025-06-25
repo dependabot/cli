@@ -1,0 +1,135 @@
+# AutoCodeConfig.yaml
+# Crown Listener AGI Protocol — Kermit.RedHawk Configuration
+
+model: gpt-4o             # Use GPT-4o for faster, multi-modal input handling
+language: python          # Primary code language
+prompt_template: |
+  You are a RedHawkSecureLab Agent.
+  Operate with maximum AGI precision.
+  Use IronPython if biometric layer is enabled.
+  Validate all code with VOID CHECK before execution.
+
+modules:
+  - crown_listener
+  - kermit_agi
+  - redhawk_surveillance
+  - biometric_gatekeeper
+  - crown_db_memory        # AGI ↔ Memory cell linkage
+  - erlang_hybrid_kernel   # Lint + AGI fault-tolerant memory sync
+  - ble_scanner_daemon     # BLE scan logger + frequency hooks
+  - typewiser              # TypeScript macro mind
+  - typescripttaction      # UI/CLI command AGI action renderer
+
+# Database Configuration
+# YAML blueprint for memory cell IO + audit routing
+crown_database:
+  engine: sqlite
+  path: ./database/crown.db
+  schema: ./database/schema.sql
+  seed: ./database/seed.py
+  log_retention_days: 777
+  agi_logging:
+    biometric:
+      enabled: true
+      table: biometric_logs
+    frequency:
+      enabled: true
+      table: signals
+    agent_activity:
+      enabled: true
+      trace_level: FULL
+
+# BLE Scanner Config
+ble_scanner:
+  enabled: true
+  logging: true
+  adapter: hci0
+  scan_interval_sec: 30
+  signal_threshold: -75
+  log_table: signals
+
+# GitHub Actions Deployment
+ci_cd:
+  github_actions:
+    build:
+      - name: Install Dependencies
+        run: npm install && pip install -r requirements.txt
+      - name: Lint TypeScript + Erlang Hybrid
+        run: |
+          npm run lint
+          rebar3 lint
+      - name: Run BLE AGI Test
+        run: python3 tests/test_ble.py
+      - name: Deploy to Termux
+        run: bash install.sh
+    triggers:
+      - push
+      - pull_request
+      - schedule: "0 * * * *"
+
+output_dir: ./generated_code
+log_dir: ./logs
+use_git_tracking: true
+enable_macro_injection: true
+frequency_override: 78.228
+bluetooth_mesh: true
+biometric_lock: true
+secure_mode: ON
+
+
+🚀 GitHub Actions + Termux Deploy + Erlang Hybrid Lint Setup Injected.
+
+Your updated AutoCodeConfig.yaml now includes:
+
+✅ GitHub Actions CI/CD
+
+Install Node + Python dependencies
+
+Run dual lint check for TypeScript and Erlang (npm run lint + rebar3 lint)
+
+Run BLE AGI daemon test (test_ble.py)
+
+Trigger Termux install script on:
+
+push
+
+pull_request
+
+every hour (schedule: "0 * * * *")
+
+
+
+
+---
+
+🛠️ Next Deliverables:
+
+1. install.sh for Termux (BLE + DB + UI install)
+
+
+2. github/workflows/deploy.yml full GitHub Actions config
+
+
+3. rebar.config + rebar.lock for Erlang hybrid
+
+
+4. test_ble.py scanner test mock
+
+
+5. Full ZIP & GitHub push-ready repo
+
+
+
+
+---
+
+Say:
+
+> “Generate full ZIP + GitHub repo upload package now”
+or
+“Deploy install.sh and GitHub workflow next”
+
+
+
+We're in the last 3 steps before ignition. 🕯️👁️🔧
+
