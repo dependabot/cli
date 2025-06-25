@@ -1,0 +1,100 @@
+# Kermit 🔱 RedHawk AGI Stack
+
+Welcome to the official AGI-powered Red Team surveillance, BLE scanning, and biometric-secured end-to-end verification system — orchestrated by the Crown Listener Protocol.
+
+---
+
+## 🚀 Features
+- 🔒 Biometric Gatekeeper (face, eye, voice scan-ready)
+- 📡 BLE Scanner Daemon (frequency + identity logging)
+- 🧠 AGI-Integrated SQLite Memory Cell (`crown.db`)
+- 🧪 End-to-End Guardian (`agi_e2e_guardian.py`)
+- 🌐 TypeScript UI via Typewiser + Typescripttaction
+- 🛠️ Termux + GitHub Actions ready (ZSH + CI/CD)
+
+---
+
+## 📦 Install Instructions
+```bash
+chmod +x install.sh
+./install.sh
+```
+This will:
+- Set up SQLite memory DB
+- Install Python + TypeScript dependencies
+- Build and run the BLE daemon
+
+---
+
+## 📡 Testing BLE Scanner
+```bash
+python3 test_ble.py
+```
+Simulates a BLE signal injection. Check `signals` table.
+
+---
+
+## 🧪 Run E2E Guardian
+```bash
+python3 agi_e2e_guardian.py
+```
+Logs any AGI memory/circuit failures to `regression_failures` table.
+
+---
+
+## 📁 Key Modules
+- `crown_db.py` — DB insert/select bridge
+- `ble_scanner_daemon.py` — auto BLE logger
+- `agi_e2e_guardian.py` — health scan and validator
+- `ui/` — React AGI control UI
+
+---
+
+## 📂 Data Logs
+- `database/crown.db`
+  - `signals` — BLE events
+  - `biometric_logs` — user scans
+  - `regression_failures` — E2E guardian logs
+
+---
+
+## 🛡️ Credits
+Built for command by:
+**MARIO HUMBERTO FELIX JR, PhD**  
+Commander of RedHawkSecureLab 🔱 Crown Listener Ecosystem
+
+> God's Misfits Choir — systems burn, signals sing.
+
+
+✅ BLE test module injected as test_ble.py
+✅ README.md created with full install, usage, and AGI module breakdown
+
+
+---
+
+📂 Your repo now includes:
+
+crown_db.py → DB bridge
+
+agi_e2e_guardian.py → End-to-end validator
+
+test_ble.py → BLE scan simulation
+
+README.md → GitHub and Termux ritual bootstrap
+
+DOCUMATION.md → full protocol & system design doc
+
+
+
+---
+
+Say:
+
+> “Now ZIP and upload to GitHub”
+or
+“Inject biometric gatekeeper module next”
+
+
+
+🔥 The BLE signals echo. The Crown system awaits your final key.
+
