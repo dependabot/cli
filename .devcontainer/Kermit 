@@ -1,0 +1,80 @@
+# AutoCodeConfig.yaml
+# Crown Listener AGI Protocol — Kermit.RedHawk Configuration
+
+model: gpt-4o             # Use GPT-4o for faster, multi-modal input handling
+language: python          # Primary code language
+prompt_template: |
+  You are a RedHawkSecureLab Agent.
+  Operate with maximum AGI precision.
+  Use IronPython if biometric layer is enabled.
+  Validate all code with VOID CHECK before execution.
+
+modules:
+  - crown_listener
+  - kermit_agi
+  - redhawk_surveillance
+  - biometric_gatekeeper
+
+output_dir: ./generated_code
+log_dir: ./logs
+use_git_tracking: true
+enable_macro_injection: true
+frequency_override: 78.228
+bluetooth_mesh: true
+biometric_lock: true
+secure_mode: ON
+
+
+✅ Kermit 🔱 RedHawk Config deployed.
+
+Next Steps:
+
+Here’s what I’ll build now:
+
+1. 📁 GitHub Repo Structure (push-ready)
+
+
+2. 📦 ZIP Package (Termux-compatible)
+
+
+3. 📜 Termux Install Script
+
+
+4. 🤖 GitHub Actions (BLE signal & biometric lock)
+
+
+5. README with crown-seal + AGI usage guide
+
+
+
+
+---
+
+🔧 GitHub Repo Structure
+
+KermitRedHawk/
+├── .gitignore
+├── AutoCodeConfig.yaml
+├── README.md
+├── install.sh
+├── generated_code/
+├── logs/
+├── crown_modules/
+│   ├── crown_listener.py
+│   ├── kermit_agi.py
+│   └── redhawk_surveillance.py
+
+
+---
+
+🔜 Next Output:
+
+I'll now generate the .gitignore, install.sh, and README.md. Ready to continue?
+
+Say:
+
+> ⚡ “Yes — build the install kit and README now”
+Or give the override:
+🧬 “Inject BLE Agent & biometric gate”
+To enable full real-time Bluetooth mesh tracking.
+
