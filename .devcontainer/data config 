@@ -1,0 +1,44 @@
+# General
+__pycache__/
+*.pyc
+*.log
+*.tmp
+*.swp
+*.lock
+
+# AGI Generated
+logs/
+generated_code/
+.vscode/
+.idea/
+
+# Secrets
+.env
+*.key
+*.pem
+*.env
+credentials.json
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+
+# Database
+database/crown.db
+*.sqlite
+*.db
+
+# Erlang Hybrid & Build Cache
+_build/
+deps/
+erl_crash.dump
+*.beam
+*.app
+*.boot
+*.rel
+*.script
+
+# AGI Seal Files
+*.seal
+*.sigil
+*.encoded
