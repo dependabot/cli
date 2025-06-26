@@ -43,7 +43,7 @@ const (
 	caseInsensitiveContainerRoot    = "/nocase"
 	caseInsensitiveRepoContentsPath = "/nocase/repo"
 
-	storageImageName = "ghcr.io/dependabot/dependabot-storage"
+	StorageImageName = "ghcr.io/dependabot/dependabot-storage"
 	storageUser      = "dpduser"
 	storagePass      = "dpdpass"
 )
@@ -102,7 +102,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	storageContainerID := ""
 	storageVolumes := []string{}
 	if params.Job.UseCaseInsensitiveFileSystem() {
-		storageContainerID, storageVolumes, err = createStorageVolumes(hostCfg, ctx, cli, net)
+		storageContainerID, storageVolumes, err = createStorageVolumes(hostCfg, ctx, cli, net, params.StorageImage)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create storage volumes: %w", err)
 		}
@@ -141,7 +141,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	return updater, nil
 }
 
-func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cli *client.Client, net *Networks) (storageContainerID string, volumeNames []string, err error) {
+func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cli *client.Client, net *Networks, storageImageName string) (storageContainerID string, volumeNames []string, err error) {
 	log.Printf("Preparing case insensitive filesystem")
 
 	// create container hosting the storage

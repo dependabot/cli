@@ -31,6 +31,7 @@ var (
 	updaterImage   string
 	proxyImage     string
 	collectorImage string
+	storageImage   string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -59,4 +60,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&updaterImage, "updater-image", "", "container image to use for the updater")
 	rootCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", infra.ProxyImageName, "container image to use for the proxy")
 	rootCmd.PersistentFlags().StringVar(&collectorImage, "collector-image", infra.CollectorImageName, "container image to use for the OpenTelemetry collector")
+	rootCmd.PersistentFlags().StringVar(&storageImage, "storage-image", infra.StorageImageName, "container image to use for the storage service")
 }

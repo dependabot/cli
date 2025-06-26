@@ -68,6 +68,8 @@ type RunParams struct {
 	CollectorImage string
 	// CollectorConfigPath is the path to the OpenTelemetry collector configuration file
 	CollectorConfigPath string
+	// StorageImage is the image to use for the storage service
+	StorageImage string
 	// Writer is where API calls will be written to
 	Writer    io.Writer
 	InputName string
@@ -368,6 +370,13 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		err = pullImage(ctx, cli, params.UpdaterImage)
 		if err != nil {
 			return err
+		}
+
+		if params.Job.UseCaseInsensitiveFileSystem() {
+			err = pullImage(ctx, cli, params.StorageImage)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
