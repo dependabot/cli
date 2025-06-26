@@ -168,11 +168,16 @@ func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cl
 	caseInsensitiveVolumeName := "dpdbot-nocase-" + storageContainer.ID[:12]
 	volumeNames = []string{caseSensitiveVolumeName, caseInsensitiveVolumeName}
 
+	defer func() {
+		if err != nil {
+			removeStorageVolume(cli, ctx, caseSensitiveVolumeName)
+			removeStorageVolume(cli, ctx, caseInsensitiveVolumeName)
+		}
+	}()
+
 	// start storage container
 	if err = cli.ContainerStart(ctx, storageContainer.ID, container.StartOptions{}); err != nil {
-		tryRemoveStorageVolume(cli, ctx, caseSensitiveVolumeName)
-		tryRemoveStorageVolume(cli, ctx, caseInsensitiveVolumeName)
-		err = fmt.Errorf("failed to start updater container: %w", err)
+		err = fmt.Errorf("failed to start storage container: %w", err)
 		return
 	}
 
@@ -180,8 +185,6 @@ func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cl
 	log.Printf("  waiting for storage container port 445 to be ready")
 	err = waitForPort(ctx, cli, storageContainer.ID, 445)
 	if err != nil {
-		tryRemoveStorageVolume(cli, ctx, caseSensitiveVolumeName)
-		tryRemoveStorageVolume(cli, ctx, caseInsensitiveVolumeName)
 		err = fmt.Errorf("failed to wait for storage container port 445: %w", err)
 		return
 	}
@@ -189,8 +192,6 @@ func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cl
 	// add volume mounts from the storage container; container IP is needed because the host is making a direct connection and it has not been given internet access
 	inspect, err := cli.ContainerInspect(ctx, storageContainerID)
 	if err != nil {
-		tryRemoveStorageVolume(cli, ctx, caseSensitiveVolumeName)
-		tryRemoveStorageVolume(cli, ctx, caseInsensitiveVolumeName)
 		err = fmt.Errorf("failed to inspect storage container: %w", err)
 		return
 	}
@@ -199,7 +200,7 @@ func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cl
 	return
 }
 
-func tryRemoveStorageVolume(cli *client.Client, ctx context.Context, name string) error {
+func removeStorageVolume(cli *client.Client, ctx context.Context, name string) error {
 	listOptions := volume.ListOptions{
 		Filters: filters.NewArgs(
 			filters.KeyValuePair{Key: "name", Value: name},
@@ -223,7 +224,7 @@ func tryRemoveStorageVolume(cli *client.Client, ctx context.Context, name string
 }
 
 func addStorageMounts(hostCfg *container.HostConfig, storageContainerAddress string, caseSensitiveVolumeName, caseSensitiveContainerRoot, caseInsensitiveVolumeName, caseInsensitiveContainerRoot string) {
-	cifs := "cifs"
+	const cifsVolumeType = "cifs"
 	localShareName := fmt.Sprintf("//%s/dpdbot", storageContainerAddress)
 	connectionOptions := fmt.Sprintf("username=%s,password=%s,uid=1000,gid=1000", storageUser, storagePass)
 
@@ -236,7 +237,7 @@ func addStorageMounts(hostCfg *container.HostConfig, storageContainerAddress str
 			DriverConfig: &mount.Driver{
 				Name: "local",
 				Options: map[string]string{
-					"type":   cifs,
+					"type":   cifsVolumeType,
 					"device": localShareName,
 					"o":      connectionOptions,
 				},
@@ -253,7 +254,7 @@ func addStorageMounts(hostCfg *container.HostConfig, storageContainerAddress str
 			DriverConfig: &mount.Driver{
 				Name: "local",
 				Options: map[string]string{
-					"type":   cifs,
+					"type":   cifsVolumeType,
 					"device": localShareName,
 					"o":      fmt.Sprintf("nocase,%s", connectionOptions),
 				},
