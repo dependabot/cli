@@ -7,16 +7,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/goware/prefixer"
 	"github.com/moby/moby/pkg/stdcopy"
@@ -32,11 +36,23 @@ const (
 	guestInputDir = "/home/dependabot/dependabot-updater/job.json"
 	guestOutput   = "/home/dependabot/dependabot-updater/output.json"
 	guestRepoDir  = "/home/dependabot/dependabot-updater/repo"
+
+	caseSensitiveContainerRoot    = "/dpdbot"
+	caseSensitiveRepoContentsPath = "/dpdbot/repo"
+
+	caseInsensitiveContainerRoot    = "/nocase"
+	caseInsensitiveRepoContentsPath = "/nocase/repo"
+
+	storageImageName = "ghcr.io/dependabot/dependabot-storage"
+	storageUser      = "dpduser"
+	storagePass      = "dpdpass"
 )
 
 type Updater struct {
-	cli         *client.Client
-	containerID string
+	cli                *client.Client
+	containerID        string
+	storageContainerID string
+	storageVolumes     []string
 
 	// ExitCode is set once an Updater command has completed.
 	ExitCode *int
@@ -82,6 +98,16 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 			ReadOnly: readOnly,
 		})
 	}
+
+	storageContainerID := ""
+	storageVolumes := []string{}
+	if params.Job.UseCaseInsensitiveFileSystem() {
+		storageContainerID, storageVolumes, err = createStorageVolumes(hostCfg, ctx, cli, net)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create storage volumes: %w", err)
+		}
+	}
+
 	netCfg := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			net.noInternetName: {
@@ -96,8 +122,10 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	}
 
 	updater := &Updater{
-		cli:         cli,
-		containerID: updaterContainer.ID,
+		cli:                cli,
+		containerID:        updaterContainer.ID,
+		storageContainerID: storageContainerID,
+		storageVolumes:     storageVolumes,
 	}
 
 	if err = putUpdaterInputs(ctx, cli, prox.ca.Cert, updaterContainer.ID, params.Job); err != nil {
@@ -111,6 +139,127 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	}
 
 	return updater, nil
+}
+
+func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cli *client.Client, net *Networks) (storageContainerID string, volumeNames []string, err error) {
+	log.Printf("Preparing case insensitive filesystem")
+
+	// create container hosting the storage
+	storageContainerCfg := &container.Config{
+		User:  root,
+		Image: storageImageName,
+		Tty:   true, // prevent container from stopping
+	}
+	storageHostCfg := &container.HostConfig{}
+	storageNetCfg := &network.NetworkingConfig{
+		EndpointsConfig: map[string]*network.EndpointSettings{
+			net.noInternetName: {
+				NetworkID: net.NoInternet.ID, // no external access for this container
+			},
+		},
+	}
+	storageContainer, err := cli.ContainerCreate(ctx, storageContainerCfg, storageHostCfg, storageNetCfg, nil, "")
+	if err != nil {
+		err = fmt.Errorf("failed to create storage container: %w", err)
+		return
+	}
+	storageContainerID = storageContainer.ID
+	caseSensitiveVolumeName := "dpdbot-storage-" + storageContainer.ID[:12]
+	caseInsensitiveVolumeName := "dpdbot-nocase-" + storageContainer.ID[:12]
+	volumeNames = []string{caseSensitiveVolumeName, caseInsensitiveVolumeName}
+
+	// start storage container
+	if err = cli.ContainerStart(ctx, storageContainer.ID, container.StartOptions{}); err != nil {
+		tryRemoveStorageVolume(cli, ctx, caseSensitiveVolumeName)
+		tryRemoveStorageVolume(cli, ctx, caseInsensitiveVolumeName)
+		err = fmt.Errorf("failed to start updater container: %w", err)
+		return
+	}
+
+	// wait for port 445 to be listening on the storage container
+	log.Printf("  waiting for storage container port 445 to be ready")
+	err = waitForPort(ctx, cli, storageContainer.ID, 445)
+	if err != nil {
+		tryRemoveStorageVolume(cli, ctx, caseSensitiveVolumeName)
+		tryRemoveStorageVolume(cli, ctx, caseInsensitiveVolumeName)
+		err = fmt.Errorf("failed to wait for storage container port 445: %w", err)
+		return
+	}
+
+	// add volume mounts from the storage container; container IP is needed because the host is making a direct connection and it has not been given internet access
+	inspect, err := cli.ContainerInspect(ctx, storageContainerID)
+	if err != nil {
+		tryRemoveStorageVolume(cli, ctx, caseSensitiveVolumeName)
+		tryRemoveStorageVolume(cli, ctx, caseInsensitiveVolumeName)
+		err = fmt.Errorf("failed to inspect storage container: %w", err)
+		return
+	}
+	storageContainerAddress := inspect.NetworkSettings.Networks[net.noInternetName].IPAddress
+	addStorageMounts(hostCfg, storageContainerAddress, caseSensitiveVolumeName, caseSensitiveContainerRoot, caseInsensitiveVolumeName, caseInsensitiveContainerRoot)
+	return
+}
+
+func tryRemoveStorageVolume(cli *client.Client, ctx context.Context, name string) error {
+	listOptions := volume.ListOptions{
+		Filters: filters.NewArgs(
+			filters.KeyValuePair{Key: "name", Value: name},
+		),
+	}
+	ls, err := cli.VolumeList(ctx, listOptions)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range ls.Volumes {
+		if v.Name == name {
+			err = cli.VolumeRemove(ctx, v.Name, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func addStorageMounts(hostCfg *container.HostConfig, storageContainerAddress string, caseSensitiveVolumeName, caseSensitiveContainerRoot, caseInsensitiveVolumeName, caseInsensitiveContainerRoot string) {
+	cifs := "cifs"
+	localShareName := fmt.Sprintf("//%s/dpdbot", storageContainerAddress)
+	connectionOptions := fmt.Sprintf("username=%s,password=%s,uid=1000,gid=1000", storageUser, storagePass)
+
+	// create case-sensitive layer
+	hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
+		Type:   mount.TypeVolume,
+		Source: caseSensitiveVolumeName,
+		Target: caseSensitiveContainerRoot,
+		VolumeOptions: &mount.VolumeOptions{
+			DriverConfig: &mount.Driver{
+				Name: "local",
+				Options: map[string]string{
+					"type":   cifs,
+					"device": localShareName,
+					"o":      connectionOptions,
+				},
+			},
+		},
+	})
+
+	// create case-insensitive layer
+	hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
+		Type:   mount.TypeVolume,
+		Source: caseInsensitiveVolumeName,
+		Target: caseInsensitiveContainerRoot,
+		VolumeOptions: &mount.VolumeOptions{
+			DriverConfig: &mount.Driver{
+				Name: "local",
+				Options: map[string]string{
+					"type":   cifs,
+					"device": localShareName,
+					"o":      fmt.Sprintf("nocase,%s", connectionOptions),
+				},
+			},
+		},
+	})
 }
 
 func putUpdaterInputs(ctx context.Context, cli *client.Client, cert, id string, job *model.Job) error {
@@ -155,8 +304,8 @@ func mountOptions(v string) (local, remote string, readOnly bool, err error) {
 	return local, remote, readOnly, nil
 }
 
-func userEnv(proxyURL string, apiUrl string) []string {
-	return []string{
+func userEnv(proxyURL string, apiUrl string, job *model.Job) []string {
+	envVars := []string{
 		"GITHUB_ACTIONS=true", // sets exit code when fetch fails
 		fmt.Sprintf("http_proxy=%s", proxyURL),
 		fmt.Sprintf("HTTP_PROXY=%s", proxyURL),
@@ -166,23 +315,31 @@ func userEnv(proxyURL string, apiUrl string) []string {
 		fmt.Sprintf("DEPENDABOT_JOB_TOKEN=%v", ""),
 		fmt.Sprintf("DEPENDABOT_JOB_PATH=%v", guestInputDir),
 		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", guestOutput),
-		fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%v", guestRepoDir),
 		fmt.Sprintf("DEPENDABOT_API_URL=%s", apiUrl),
 		fmt.Sprintf("SSL_CERT_FILE=%v/ca-certificates.crt", certsPath),
 		"UPDATER_ONE_CONTAINER=true",
 		"UPDATER_DETERMINISTIC=true",
 	}
+
+	if job.UseCaseInsensitiveFileSystem() {
+		envVars = append(envVars, fmt.Sprintf("DEPENDABOT_CASE_INSENSITIVE_REPO_CONTENTS_PATH=%s", caseInsensitiveRepoContentsPath))
+		envVars = append(envVars, fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%s", caseSensitiveRepoContentsPath))
+	} else {
+		envVars = append(envVars, fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%s", guestRepoDir))
+	}
+
+	return envVars
 }
 
 // RunShell executes an interactive shell, blocks until complete.
-func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string) error {
+func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string, job *model.Job) error {
 	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, container.ExecOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
 		User:         dependabot,
-		Env:          append(userEnv(proxyURL, apiUrl), "DEBUG=1"),
+		Env:          append(userEnv(proxyURL, apiUrl, job), "DEBUG=1"),
 		Cmd:          []string{"/bin/bash", "-c", "update-ca-certificates && /bin/bash"},
 	})
 	if err != nil {
@@ -298,6 +455,20 @@ func (u *Updater) Close() (err error) {
 		if removeErr != nil {
 			err = fmt.Errorf("failed to remove proxy container: %w", removeErr)
 		}
+
+		for _, v := range u.storageVolumes {
+			removeErr = u.cli.VolumeRemove(context.Background(), v, true)
+			if removeErr != nil {
+				err = fmt.Errorf("failed to remove storage volume %s: %w", v, removeErr)
+			}
+		}
+
+		if u.storageContainerID != "" {
+			removeErr = u.cli.ContainerRemove(context.Background(), u.storageContainerID, container.RemoveOptions{Force: true})
+			if removeErr != nil {
+				err = fmt.Errorf("failed to remove storage container: %w", removeErr)
+			}
+		}
 	}()
 
 	// Handle non-zero exit codes.
@@ -359,4 +530,52 @@ func firstNonEmpty(values ...string) string {
 	}
 
 	return ""
+}
+
+func waitForPort(ctx context.Context, cli *client.Client, containerID string, port int) error {
+	const maxAttempts = 5
+	const sleepDuration = time.Second
+
+	// check /proc/net/tcp for the requested port; n.b., it is hex encoded and 4 characters wide
+	testCmd := fmt.Sprintf("test -f /proc/net/tcp && grep ' *\\d+: [A-F0-9]{8}:%04X ' /proc/net/tcp >/dev/null 2>&1", port)
+
+	for i := range maxAttempts {
+		execCreate, err := cli.ContainerExecCreate(ctx, containerID, container.ExecOptions{
+			AttachStdout: false,
+			AttachStderr: false,
+			User:         root,
+			Cmd:          []string{"/bin/sh", "-c", testCmd},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create exec for port check: %w", err)
+		}
+
+		execResp, err := cli.ContainerExecAttach(ctx, execCreate.ID, container.ExecAttachOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to attach to exec for port check: %w", err)
+		}
+
+		// wait for completion and check the exit code
+		execResp.Close()
+		execInspect, err := cli.ContainerExecInspect(ctx, execCreate.ID)
+		if err != nil {
+			return fmt.Errorf("failed to inspect exec: %w", err)
+		}
+
+		if execInspect.ExitCode == 0 {
+			// port is listening
+			log.Printf("  port %d is listening after %d attempts", port, i+1)
+
+			// in a few instances, the port is open but the service isn't yet ready for connections
+			// no more reliable method has been found, other than a short delay
+			time.Sleep(sleepDuration)
+			return nil
+		}
+
+		if i < maxAttempts-1 {
+			time.Sleep(sleepDuration)
+		}
+	}
+
+	return fmt.Errorf("port %d is not listening after %d attempts", port, maxAttempts)
 }
