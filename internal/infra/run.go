@@ -427,6 +427,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	if params.LocalDir != "" {
 		containerDir := guestRepoDir
 		if params.Job.UseCaseInsensitiveFileSystem() {
+			// since the updater is using the storage container, we need to populate the repo on that device because that's the directory that will be used for the update
 			containerDir = caseSensitiveRepoContentsPath
 		}
 		if err = putCloneDir(ctx, cli, updater, params.LocalDir, containerDir); err != nil {
