@@ -1,0 +1,49 @@
+# Build the dummy Dockerfile
+exec docker build -qt dummy-nocase-updater .
+
+# Run the dependabot command
+dependabot update -f job.yml --updater-image dummy-nocase-updater
+
+# assert the dummy is working
+stderr 'case-insensitive storage is working'
+
+exec docker rmi -f dummy-nocase-updater
+
+-- Dockerfile --
+FROM ubuntu:22.04
+
+RUN useradd dependabot
+
+COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
+COPY --chown=dependabot --chmod=755 run bin/run
+
+-- update-ca-certificates --
+#!/usr/bin/env bash
+
+echo "Updated those certificates for ya"
+
+-- run --
+#!/usr/bin/env bash
+
+if [ "$1" = "fetch_files" ]; then
+  # git clone would have created this directory
+  mkdir -p "$DEPENDABOT_REPO_CONTENTS_PATH"
+  exit 0
+fi
+
+echo "test file" > "$DEPENDABOT_REPO_CONTENTS_PATH/test.txt"
+if [ -e "$DEPENDABOT_CASE_INSENSITIVE_REPO_CONTENTS_PATH/TEST.TXT" ]; then
+  echo "case-insensitive storage is working"
+else
+  echo "case-insensitive storage is not working"
+fi
+
+-- job.yml --
+job:
+  experiments:
+    use_case_insensitive_filesystem: true
+  source:
+    provider: github
+    repo: test/repo
+    directory: /
+  package-manager: nuget

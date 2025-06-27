@@ -68,6 +68,8 @@ type RunParams struct {
 	CollectorImage string
 	// CollectorConfigPath is the path to the OpenTelemetry collector configuration file
 	CollectorConfigPath string
+	// StorageImage is the image to use for the storage service
+	StorageImage string
 	// Writer is where API calls will be written to
 	Writer    io.Writer
 	InputName string
@@ -369,6 +371,13 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if err != nil {
 			return err
 		}
+
+		if params.Job.UseCaseInsensitiveFileSystem() {
+			err = pullImage(ctx, cli, params.StorageImage)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	networks, err := NewNetworks(ctx, cli)
@@ -416,13 +425,18 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 
 	// put the clone dir in the updater container to be used by during the update
 	if params.LocalDir != "" {
-		if err = putCloneDir(ctx, cli, updater, params.LocalDir); err != nil {
+		containerDir := guestRepoDir
+		if params.Job.UseCaseInsensitiveFileSystem() {
+			// since the updater is using the storage container, we need to populate the repo on that device because that's the directory that will be used for the update
+			containerDir = caseSensitiveRepoContentsPath
+		}
+		if err = putCloneDir(ctx, cli, updater, params.LocalDir, containerDir); err != nil {
 			return err
 		}
 	}
 
 	if params.Debug {
-		if err := updater.RunShell(ctx, prox.url, params.ApiUrl); err != nil {
+		if err := updater.RunShell(ctx, prox.url, params.ApiUrl, params.Job); err != nil {
 			return err
 		}
 	} else {
@@ -432,7 +446,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 
 		// Then run the dependabot commands as the dependabot user
-		env := userEnv(prox.url, params.ApiUrl)
+		env := userEnv(prox.url, params.ApiUrl, params.Job)
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
 		}
@@ -473,33 +487,33 @@ func getFromContainer(ctx context.Context, cli *client.Client, containerID, srcP
 	}
 }
 
-func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, dir string) error {
+func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, localDir, containerDir string) error {
 	// Docker won't create the directory, so we have to do it first.
-	const cmd = "mkdir -p " + guestRepoDir
+	cmd := fmt.Sprintf("mkdir -p %s", containerDir)
 	err := updater.RunCmd(ctx, cmd, dependabot)
 	if err != nil {
 		return fmt.Errorf("failed to create clone dir: %w", err)
 	}
 
-	r, err := archive.TarWithOptions(dir, &archive.TarOptions{})
+	r, err := archive.TarWithOptions(localDir, &archive.TarOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to tar clone dir: %w", err)
 	}
 
 	opt := container.CopyToContainerOptions{}
-	err = cli.CopyToContainer(ctx, updater.containerID, guestRepoDir, r, opt)
+	err = cli.CopyToContainer(ctx, updater.containerID, containerDir, r, opt)
 	if err != nil {
 		return fmt.Errorf("failed to copy clone dir to container: %w", err)
 	}
 
-	err = updater.RunCmd(ctx, "chown -R dependabot "+guestRepoDir, root)
+	err = updater.RunCmd(ctx, "chown -R dependabot "+containerDir, root)
 	if err != nil {
 		return fmt.Errorf("failed to initialize clone dir: %w", err)
 	}
 
 	// The directory needs to be a git repo, so we need to initialize it.
 	commands := []string{
-		"cd " + guestRepoDir,
+		"cd " + containerDir,
 		"git config --global init.defaultBranch main",
 		"git init",
 		"git config user.email 'dependabot@github.com'",
