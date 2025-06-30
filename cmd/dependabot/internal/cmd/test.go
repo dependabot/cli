@@ -50,6 +50,7 @@ func NewTestCommand() *cobra.Command {
 				ProxyCertPath:       flags.proxyCertPath,
 				ProxyImage:          proxyImage,
 				PullImages:          flags.pullImages,
+				StorageImage:        storageImage,
 				Timeout:             flags.timeout,
 				UpdaterImage:        updaterImage,
 				Volumes:             flags.volumes,

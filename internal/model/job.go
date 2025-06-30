@@ -54,6 +54,14 @@ type Job struct {
 	UpdateCooldown             *UpdateCooldown   `json:"cooldown,omitempty" yaml:"cooldown,omitempty"`
 }
 
+func (j *Job) UseCaseInsensitiveFileSystem() bool {
+	if experimentValue, isBoolean := j.Experiments["use_case_insensitive_filesystem"].(bool); isBoolean && experimentValue {
+		return true
+	}
+
+	return false
+}
+
 // Source is a reference to some source code
 type Source struct {
 	Provider    string   `json:"provider" yaml:"provider,omitempty"`
