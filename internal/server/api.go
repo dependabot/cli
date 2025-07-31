@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/dependabot/cli/internal/model"
@@ -254,6 +255,11 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 
 // to avoid having massive base64 encoded strings in the test fixtures, replace the content with a hash
 func replaceBinaryWithHash(files []model.DependencyFile) []model.DependencyFile {
+	if !testing.Testing() {
+		// no change for production
+		return files
+	}
+
 	for i := range files {
 		file := &files[i]
 		if file.ContentEncoding == "base64" {
