@@ -109,7 +109,7 @@ func Test_generateIgnoreConditions(t *testing.T) {
 			Output: outputFileName,
 		}
 		v := "1.0.0"
-		actual := &model.Scenario{
+		actual := &model.SmokeTest{
 			Output: []model.Output{{
 				Type: "create_pull_request",
 				Expect: model.UpdateWrapper{Data: model.CreatePullRequest{
@@ -140,7 +140,7 @@ func Test_generateIgnoreConditions(t *testing.T) {
 		runParams := &RunParams{
 			Output: outputFileName,
 		}
-		actual := &model.Scenario{
+		actual := &model.SmokeTest{
 			Output: []model.Output{{
 				Type: "create_pull_request",
 				Expect: model.UpdateWrapper{Data: model.CreatePullRequest{

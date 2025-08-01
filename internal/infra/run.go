@@ -137,7 +137,7 @@ func Run(params RunParams) error {
 	}
 
 	// run the containers, but don't return the error until AFTER the output is generated.
-	// this ensures that the output is always written in the scenario where there are multiple outputs,
+	// this ensures that the output is always written in the smoke test where there are multiple outputs,
 	// some that succeed and some that fail; we still want to see the output of the successful ones.
 	runContainersErr := runContainers(ctx, params)
 
@@ -322,7 +322,7 @@ func expandEnvironmentVariables(api *server.API, params *RunParams) {
 	}
 }
 
-func generateIgnoreConditions(params *RunParams, actual *model.Scenario) error {
+func generateIgnoreConditions(params *RunParams, actual *model.SmokeTest) error {
 	for _, out := range actual.Output {
 		if out.Type == "create_pull_request" {
 			createPR, ok := out.Expect.Data.(model.CreatePullRequest)
