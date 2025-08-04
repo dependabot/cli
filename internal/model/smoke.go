@@ -1,7 +1,7 @@
 package model
 
-// Scenario is a way to test a job by asserting the outputs.
-type Scenario struct {
+// SmokeTest is a way to test a job by asserting the outputs.
+type SmokeTest struct {
 	// Input is the input parameters
 	Input Input `yaml:"input"`
 	// Output is the list of expected outputs

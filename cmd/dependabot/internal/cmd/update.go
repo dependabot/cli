@@ -121,7 +121,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&flags.commit, "commit", "", "", "commit to update")
 	cmd.Flags().StringArrayVarP(&flags.dependencies, "dep", "", nil, "dependencies to update")
 
-	cmd.Flags().StringVarP(&flags.output, "output", "o", "", "write scenario to file")
+	cmd.Flags().StringVarP(&flags.output, "output", "o", "", "write a smoke test file")
 	cmd.Flags().StringVar(&flags.cache, "cache", "", "cache import/export directory")
 	cmd.Flags().StringVar(&flags.local, "local", "", "local directory to use as fetched source")
 	cmd.Flags().StringVar(&flags.proxyCertPath, "proxy-cert", "", "path to a certificate the proxy will trust")

@@ -7,3 +7,9 @@ job:
     provider: github
     repo: dependabot/cli
     directory: /
+credentials:
+  - type: git_source
+    host: github.com
+    username: x-access-token
+    password: $LOCAL_GITHUB_ACCESS_TOKEN
+

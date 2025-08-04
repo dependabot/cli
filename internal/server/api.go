@@ -28,8 +28,8 @@ type API struct {
 	Expectations []model.Output
 	// Errors is the error list populated by doing a Dependabot run
 	Errors []error
-	// Actual will contain the scenario output that actually happened after the run is Complete
-	Actual model.Scenario
+	// Actual will contain the smoke test output that actually happened after the run is Complete
+	Actual model.SmokeTest
 
 	server          *http.Server
 	cursor          int
