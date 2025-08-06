@@ -6,18 +6,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log"
-	"net"
-	"net/url"
-	"os"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/dependabot/cli/internal/infra"
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+	"io"
+	"log"
+	"net"
+	"net/url"
+	"os"
+	"regexp"
+	"strings"
 )
 
 var updateCmd = NewUpdateCommand()
@@ -55,6 +56,8 @@ func NewUpdateCommand() *cobra.Command {
 		Short: "Perform an update job",
 		Example: heredoc.Doc(`
 		    $ dependabot update go_modules dependabot/cli
+		    $ dependabot update go_modules git@github.com:dependabot/cli.git
+		    $ dependabot update go_modules https://github.com/dependabot/cli.git
 		    $ dependabot update -f input.yml
 	    `),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -208,6 +211,34 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 		return nil, errors.New("requires a repo argument")
 	}
 
+	var hostname, apiEndpoint string
+	// if the repo is a git URL, extract the hostname
+	// accepts org/repo, git@host:org/repo.git, and https://host/org/repo.git
+	if u, err := url.Parse(repo); err == nil {
+		hostname = u.Hostname()
+		apiEndpoint = fmt.Sprintf("%s://%s/api/v3", u.Scheme, hostname)
+		repo = u.Path
+	} else {
+		// at this point, it may be org/repo or username@host:org/repo.git
+		re := regexp.MustCompile(`^(?:(?:[a-zA-Z0-9._%+-]+@|https?://)?([^:/]+):)?([^/]+)/([^/]+)(?:\.git)?$`)
+		matches := re.FindStringSubmatch(repo)
+		if len(matches) < 4 {
+			return nil, fmt.Errorf("invalid repo format: %s", repo)
+		}
+		if matches[1] != "" {
+			hostname = matches[1]
+			apiEndpoint = fmt.Sprintf("https://%s/api/v3", hostname)
+		}
+		repo = fmt.Sprintf("%s/%s", matches[2], matches[3])
+	}
+	repo = strings.TrimPrefix(strings.TrimSuffix(repo, ".git"), "/")
+	if hostname == "" {
+		hostname = "github.com"
+		apiEndpoint = "https://api.github.com"
+	}
+
+	log.Println("Using hostname:", hostname, "api endpoint:", apiEndpoint)
+
 	allowed := []model.Allowed{{UpdateType: "all"}}
 	if len(flags.dependencies) > 0 {
 		allowed = allowed[:0]
@@ -238,8 +269,8 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 				Directory:   flags.directory,
 				Commit:      flags.commit,
 				Branch:      flags.branch,
-				Hostname:    nil,
-				APIEndpoint: nil,
+				Hostname:    &hostname,
+				APIEndpoint: &apiEndpoint,
 			},
 			UpdateSubdependencies: false,
 			UpdatingAPullRequest:  false,
@@ -315,9 +346,13 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 
 	if hasLocalToken && !isGitSourceInCreds {
 		log.Println("Inserting $LOCAL_GITHUB_ACCESS_TOKEN into credentials")
+		host := "github.com"
+		if input.Job.Source.Hostname != nil && *input.Job.Source.Hostname != "" {
+			host = *input.Job.Source.Hostname
+		}
 		input.Credentials = append(input.Credentials, model.Credential{
 			"type":     "git_source",
-			"host":     "github.com",
+			"host":     host,
 			"username": "x-access-token",
 			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
 		})
@@ -325,7 +360,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			// Add the metadata since the next section will be skipped.
 			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
 				"type": "git_source",
-				"host": "github.com",
+				"host": host,
 			})
 		}
 	}
