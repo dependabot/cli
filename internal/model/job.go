@@ -52,6 +52,7 @@ type Job struct {
 	CredentialsMetadata        []Credential      `json:"credentials-metadata" yaml:"-"`
 	MaxUpdaterRunTime          int               `json:"max-updater-run-time" yaml:"max-updater-run-time,omitempty"`
 	UpdateCooldown             *UpdateCooldown   `json:"cooldown,omitempty" yaml:"cooldown,omitempty"`
+	ExcludePaths               []string          `json:"exclude-paths" yaml:"exclude-paths,omitempty"`
 }
 
 func (j *Job) UseCaseInsensitiveFileSystem() bool {
