@@ -63,6 +63,33 @@ func Test_processInput(t *testing.T) {
 		}
 	})
 
+	t.Run("adds git_source to credentials with specific hostname when local token is present", func(t *testing.T) {
+		var input model.Input
+		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "token")
+		host := "github.example.com"
+		input.Job.Source.Hostname = &host
+
+		processInput(&input, nil)
+
+		if len(input.Credentials) != 1 {
+			t.Fatal("expected credentials to be added")
+		}
+		if !reflect.DeepEqual(input.Credentials[0], model.Credential{
+			"type":     "git_source",
+			"host":     host,
+			"username": "x-access-token",
+			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
+		}) {
+			t.Error("expected credentials to be added")
+		}
+		if !reflect.DeepEqual(input.Job.CredentialsMetadata[0], model.Credential{
+			"type": "git_source",
+			"host": host,
+		}) {
+			t.Error("expected credentials metadata to be added")
+		}
+	})
+
 	t.Run("adds metadata when credentials are provided", func(t *testing.T) {
 		var input model.Input
 		input.Credentials = []model.Credential{
@@ -199,6 +226,53 @@ func Test_extractInput(t *testing.T) {
 		}
 		if input.Job.PackageManager != "go_modules" {
 			t.Errorf("expected package manager to be go_modules, got %s", input.Job.PackageManager)
+		}
+		if input.Job.Source.Repo != "dependabot/cli" {
+			t.Errorf("expected repo to be dependabot/cli, got %s", input.Job.Source.Repo)
+		}
+	})
+	t.Run("test arguments with https URL", func(t *testing.T) {
+		cmd := NewUpdateCommand()
+		if err := cmd.ParseFlags([]string{"go_modules", "https://example.com/org/repo.git"}); err != nil {
+			t.Fatal(err)
+		}
+		input, err := extractInput(cmd, &UpdateFlags{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if input.Job.PackageManager != "go_modules" {
+			t.Errorf("expected package manager to be go_modules, got %s", input.Job.PackageManager)
+		}
+		if input.Job.Source.Repo != "org/repo" {
+			t.Errorf("expected repo to be dependabot/cli, got %s", input.Job.Source.Repo)
+		}
+		if *input.Job.Source.Hostname != "example.com" {
+			t.Errorf("expected hostname to be example.com, got %s", *input.Job.Source.Hostname)
+		}
+		if *input.Job.Source.APIEndpoint != "https://example.com/api/v3" {
+			t.Errorf("unexpected API Endpoint %s", *input.Job.Source.APIEndpoint)
+		}
+	})
+	t.Run("test arguments with git ssh", func(t *testing.T) {
+		cmd := NewUpdateCommand()
+		if err := cmd.ParseFlags([]string{"go_modules", "user@example.com:org/repo.git"}); err != nil {
+			t.Fatal(err)
+		}
+		input, err := extractInput(cmd, &UpdateFlags{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if input.Job.PackageManager != "go_modules" {
+			t.Errorf("expected package manager to be go_modules, got %s", input.Job.PackageManager)
+		}
+		if input.Job.Source.Repo != "org/repo" {
+			t.Errorf("expected repo to be dependabot/cli, got %s", input.Job.Source.Repo)
+		}
+		if *input.Job.Source.Hostname != "example.com" {
+			t.Errorf("expected hostname to be example.com, got %s", *input.Job.Source.Hostname)
+		}
+		if *input.Job.Source.APIEndpoint != "https://example.com/api/v3" {
+			t.Errorf("unexpected API Endpoint %s", *input.Job.Source.APIEndpoint)
 		}
 	})
 	t.Run("test file", func(t *testing.T) {
