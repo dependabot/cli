@@ -20,11 +20,11 @@ func NewListCommand() *cobra.Command {
 	var flags UpdateFlags
 
 	cmd := &cobra.Command{
-		Use:   "ls [<package_manager> <repo>] [flags]",
+		Use:   "graph [<package_manager> <repo>] [flags]",
 		Short: "List the dependencies of a manifest/lockfile",
 		Example: heredoc.Doc(`
-		    $ dependabot ls go_modules rsc/quote
-		    $ dependabot ls go_modules --local .
+		    $ dependabot graph go_modules rsc/quote
+		    $ dependabot graph go_modules --local .
 	    `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			input, err := readArguments(cmd, &flags)
