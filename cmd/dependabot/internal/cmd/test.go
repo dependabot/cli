@@ -74,6 +74,7 @@ func NewTestCommand() *cobra.Command {
 	cmd.Flags().StringArrayVarP(&flags.volumes, "volume", "v", nil, "mount volumes in Docker")
 	cmd.Flags().StringArrayVar(&flags.extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
 	cmd.Flags().DurationVarP(&flags.timeout, "timeout", "t", 0, "max time to run an update")
+	cmd.Flags().StringArrayVarP(&flags.updaterEnvironmentVariables, "updater-env", "e", nil, "additional environment variables to set in the update container")
 
 	return cmd
 }

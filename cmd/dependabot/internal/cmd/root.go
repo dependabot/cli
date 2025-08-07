@@ -12,18 +12,19 @@ import (
 )
 
 type SharedFlags struct {
-	file                string
-	cache               string
-	debugging           bool
-	flamegraph          bool
-	proxyCertPath       string
-	collectorConfigPath string
-	extraHosts          []string
-	output              string
-	pullImages          bool
-	volumes             []string
-	timeout             time.Duration
-	local               string
+	file                        string
+	cache                       string
+	debugging                   bool
+	flamegraph                  bool
+	proxyCertPath               string
+	collectorConfigPath         string
+	extraHosts                  []string
+	output                      string
+	pullImages                  bool
+	volumes                     []string
+	timeout                     time.Duration
+	local                       string
+	updaterEnvironmentVariables []string
 }
 
 // root flags

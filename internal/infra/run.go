@@ -75,6 +75,8 @@ type RunParams struct {
 	InputName string
 	InputRaw  []byte
 	ApiUrl    string
+	// UpdaterEnvironmentVariables are additional environment variables to set in the update container
+	UpdaterEnvironmentVariables []string
 }
 
 var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -436,7 +438,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	}
 
 	if params.Debug {
-		if err := updater.RunShell(ctx, prox.url, params.ApiUrl, params.Job); err != nil {
+		if err := updater.RunShell(ctx, prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables); err != nil {
 			return err
 		}
 	} else {
@@ -446,7 +448,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 
 		// Then run the dependabot commands as the dependabot user
-		env := userEnv(prox.url, params.ApiUrl, params.Job)
+		env := userEnv(prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
 		}

@@ -305,7 +305,7 @@ func mountOptions(v string) (local, remote string, readOnly bool, err error) {
 	return local, remote, readOnly, nil
 }
 
-func userEnv(proxyURL string, apiUrl string, job *model.Job) []string {
+func userEnv(proxyURL string, apiUrl string, job *model.Job, additionalEnvVars []string) []string {
 	envVars := []string{
 		"GITHUB_ACTIONS=true", // sets exit code when fetch fails
 		fmt.Sprintf("http_proxy=%s", proxyURL),
@@ -329,18 +329,20 @@ func userEnv(proxyURL string, apiUrl string, job *model.Job) []string {
 		envVars = append(envVars, fmt.Sprintf("DEPENDABOT_REPO_CONTENTS_PATH=%s", guestRepoDir))
 	}
 
+	envVars = append(envVars, additionalEnvVars...)
+
 	return envVars
 }
 
 // RunShell executes an interactive shell, blocks until complete.
-func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string, job *model.Job) error {
+func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string, job *model.Job, additionalEnvVars []string) error {
 	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, container.ExecOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
 		Tty:          true,
 		User:         dependabot,
-		Env:          append(userEnv(proxyURL, apiUrl, job), "DEBUG=1"),
+		Env:          append(userEnv(proxyURL, apiUrl, job, additionalEnvVars), "DEBUG=1"),
 		Cmd:          []string{"/bin/bash", "-c", "update-ca-certificates && /bin/bash"},
 	})
 	if err != nil {
