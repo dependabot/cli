@@ -6,12 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MakeNowJust/heredoc"
-	"github.com/dependabot/cli/internal/infra"
-	"github.com/dependabot/cli/internal/model"
-	"github.com/dependabot/cli/internal/server"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"io"
 	"log"
 	"net"
@@ -19,6 +13,13 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/MakeNowJust/heredoc"
+	"github.com/dependabot/cli/internal/infra"
+	"github.com/dependabot/cli/internal/model"
+	"github.com/dependabot/cli/internal/server"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var updateCmd = NewUpdateCommand()
@@ -84,27 +85,28 @@ func NewUpdateCommand() *cobra.Command {
 			}
 
 			if err := infra.Run(infra.RunParams{
-				CacheDir:            flags.cache,
-				CollectorConfigPath: flags.collectorConfigPath,
-				CollectorImage:      collectorImage,
-				Creds:               input.Credentials,
-				Debug:               flags.debugging,
-				Flamegraph:          flags.flamegraph,
-				Expected:            nil, // update subcommand doesn't use expectations
-				ExtraHosts:          flags.extraHosts,
-				InputName:           flags.file,
-				Job:                 &input.Job,
-				LocalDir:            flags.local,
-				Output:              flags.output,
-				ProxyCertPath:       flags.proxyCertPath,
-				ProxyImage:          proxyImage,
-				PullImages:          flags.pullImages,
-				StorageImage:        storageImage,
-				Timeout:             flags.timeout,
-				UpdaterImage:        updaterImage,
-				Volumes:             flags.volumes,
-				Writer:              writer,
-				ApiUrl:              flags.apiUrl,
+				CacheDir:                    flags.cache,
+				CollectorConfigPath:         flags.collectorConfigPath,
+				CollectorImage:              collectorImage,
+				Creds:                       input.Credentials,
+				Debug:                       flags.debugging,
+				Flamegraph:                  flags.flamegraph,
+				Expected:                    nil, // update subcommand doesn't use expectations
+				ExtraHosts:                  flags.extraHosts,
+				InputName:                   flags.file,
+				Job:                         &input.Job,
+				LocalDir:                    flags.local,
+				Output:                      flags.output,
+				ProxyCertPath:               flags.proxyCertPath,
+				ProxyImage:                  proxyImage,
+				PullImages:                  flags.pullImages,
+				StorageImage:                storageImage,
+				Timeout:                     flags.timeout,
+				UpdaterImage:                updaterImage,
+				Volumes:                     flags.volumes,
+				Writer:                      writer,
+				ApiUrl:                      flags.apiUrl,
+				UpdaterEnvironmentVariables: flags.updaterEnvironmentVariables,
 			}); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					log.Fatalf("update timed out after %s", flags.timeout)
@@ -137,6 +139,7 @@ func NewUpdateCommand() *cobra.Command {
 	cmd.Flags().DurationVarP(&flags.timeout, "timeout", "t", 0, "max time to run an update")
 	cmd.Flags().IntVar(&flags.inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
 	cmd.Flags().StringVarP(&flags.apiUrl, "api-url", "a", "", "the api dependabot should connect to.")
+	cmd.Flags().StringArrayVarP(&flags.updaterEnvironmentVariables, "updater-env", "e", nil, "additional environment variables to set in the update container")
 
 	return cmd
 }
