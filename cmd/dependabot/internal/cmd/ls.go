@@ -3,10 +3,11 @@ package cmd
 import (
 	"context"
 	"errors"
+	"log"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/dependabot/cli/internal/infra"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 var listCmd = NewListCommand()
@@ -36,6 +37,7 @@ func NewListCommand() *cobra.Command {
 			input.Job.Source.Provider = "github" // TODO why isn't this being set?
 
 			if err := infra.Run(infra.RunParams{
+				Command:             infra.AnalyseCommand,
 				CacheDir:            flags.cache,
 				CollectorConfigPath: flags.collectorConfigPath,
 				CollectorImage:      collectorImage,
