@@ -369,4 +369,8 @@ job:
     exclude:
       - dependency-name-3
       - dependency-name-4
+  exclude-paths:
+    - "docs/"
+    - "examples/"
+    - "test/"
 `
