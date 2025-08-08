@@ -3,7 +3,10 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log"
+	"os"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/dependabot/cli/internal/infra"
@@ -20,21 +23,35 @@ func NewGraphCommand() *cobra.Command {
 	var flags UpdateFlags
 
 	cmd := &cobra.Command{
-		Use:   "graph [<package_manager> <repo>] [flags]",
+		Use:   "graph [<package_manager> <repo> | -f <input.yml>] [flags]",
 		Short: "List the dependencies of a manifest/lockfile",
 		Example: heredoc.Doc(`
-		    $ dependabot graph go_modules rsc/quote
-		    $ dependabot graph go_modules --local .
+		    $ dependabot graph bundler dependabot/dependabot-core
+		    $ dependabot graph bundler --local .
+		    $ dependabot graph -f input.yml
 	    `),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			input, err := readArguments(cmd, &flags)
+			var outFile *os.File
+			if flags.output != "" {
+				var err error
+				outFile, err = os.Create(flags.output)
+				if err != nil {
+					return fmt.Errorf("failed to create output file: %w", err)
+				}
+				defer outFile.Close()
+			}
+
+			input, err := extractInput(cmd, &flags)
 			if err != nil {
 				return err
 			}
 
 			processInput(input, &flags)
 
-			input.Job.Source.Provider = "github" // TODO why isn't this being set?
+			var writer io.Writer
+			if !flags.debugging {
+				writer = os.Stdout
+			}
 
 			if err := infra.Run(infra.RunParams{
 				Command:             infra.UpdateGraphCommand,
@@ -44,7 +61,7 @@ func NewGraphCommand() *cobra.Command {
 				Creds:               input.Credentials,
 				Debug:               flags.debugging,
 				Flamegraph:          flags.flamegraph,
-				Expected:            nil, // update subcommand doesn't use expectations
+				Expected:            nil, // graph subcommand doesn't use expectations
 				ExtraHosts:          flags.extraHosts,
 				InputName:           flags.file,
 				Job:                 &input.Job,
@@ -56,22 +73,22 @@ func NewGraphCommand() *cobra.Command {
 				Timeout:             flags.timeout,
 				UpdaterImage:        updaterImage,
 				Volumes:             flags.volumes,
-				Writer:              nil, // prevent outputting all API responses to stdout, we only want dependencies
+				Writer:              writer,
+				ApiUrl:              flags.apiUrl,
 			}); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					log.Fatalf("update timed out after %s", flags.timeout)
 				}
-				// HACK: we cancel context to stop the containers, so we don't know if there was a failure.
-				// A correct solution would involve changes with dependabot-core, which is good, but
-				// I am just hacking this together right now.
-				// log.Fatalf("updater failure: %v", err)
-				return nil
+				log.Fatalf("updater failure: %v", err)
 			}
 
 			return nil
 		},
 	}
 
+	cmd.Flags().StringVarP(&flags.file, "file", "f", "", "path to input file")
+
+	cmd.Flags().StringVarP(&flags.provider, "provider", "p", "github", "provider of the repository")
 	cmd.Flags().StringVarP(&flags.branch, "branch", "b", "", "target branch to update")
 	cmd.Flags().StringVarP(&flags.directory, "directory", "d", "/", "directory to update")
 	cmd.Flags().StringVarP(&flags.commit, "commit", "", "", "commit to update")
@@ -87,6 +104,8 @@ func NewGraphCommand() *cobra.Command {
 	cmd.Flags().StringArrayVarP(&flags.volumes, "volume", "v", nil, "mount volumes in Docker")
 	cmd.Flags().StringArrayVar(&flags.extraHosts, "extra-hosts", nil, "Docker extra hosts setting on the proxy")
 	cmd.Flags().DurationVarP(&flags.timeout, "timeout", "t", 0, "max time to run an update")
+	cmd.Flags().IntVar(&flags.inputServerPort, "input-port", 0, "port to use for securely passing input to the updater")
+	cmd.Flags().StringVarP(&flags.apiUrl, "api-url", "a", "", "the api dependabot should connect to.")
 
 	return cmd
 }
