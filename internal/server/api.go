@@ -36,9 +36,6 @@ type API struct {
 	hasExpectations bool
 	port            int
 	writer          io.Writer
-
-	// UpdateDependencyList is a channel you can listen on to get the dependencies as soon as they're published
-	UpdateDependencyList chan model.UpdateDependencyList
 }
 
 // NewAPI creates a new API instance and starts the server
@@ -70,13 +67,12 @@ func NewAPI(expected []model.Output, writer io.Writer) *API {
 		IdleTimeout:       60 * time.Second,
 	}
 	api := &API{
-		server:               server,
-		Expectations:         expected,
-		writer:               writer,
-		cursor:               0,
-		hasExpectations:      len(expected) > 0,
-		port:                 l.Addr().(*net.TCPAddr).Port,
-		UpdateDependencyList: make(chan model.UpdateDependencyList, 1), // buffer of 1 to prevent blocking
+		server:          server,
+		Expectations:    expected,
+		writer:          writer,
+		cursor:          0,
+		hasExpectations: len(expected) > 0,
+		port:            l.Addr().(*net.TCPAddr).Port,
 	}
 	server.Handler = api
 
