@@ -7,11 +7,17 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/dependabot/cli/internal/infra"
 	"github.com/spf13/cobra"
 )
+
+var graphSupportedEcosystems = []string{
+	"bundler",
+	"go_modules",
+}
 
 var graphCmd = NewGraphCommand()
 
@@ -24,8 +30,13 @@ func NewGraphCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "graph [<package_manager> <repo> | -f <input.yml>] [flags]",
-		Short: "List the dependencies of a manifest/lockfile",
+		Short: "[Experimental] List the dependencies of a manifest/lockfile",
 		Example: heredoc.Doc(`
+		    NOTE: This command is a work in progress.
+
+		    It will only work with some package managers and the dependency list
+		    may be incomplete.
+
 		    $ dependabot graph bundler dependabot/dependabot-core
 		    $ dependabot graph bundler --local .
 		    $ dependabot graph -f input.yml
@@ -47,6 +58,14 @@ func NewGraphCommand() *cobra.Command {
 			}
 
 			processInput(input, &flags)
+
+			if !slices.Contains(graphSupportedEcosystems, input.Job.PackageManager) {
+				return fmt.Errorf(
+					"package manager '%s' is not supported for graphing. Supported ecosystems: %v",
+					input.Job.PackageManager,
+					graphSupportedEcosystems,
+				)
+			}
 
 			var writer io.Writer
 			if !flags.debugging {
