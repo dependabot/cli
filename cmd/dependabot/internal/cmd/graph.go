@@ -10,13 +10,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var listCmd = NewListCommand()
+var graphCmd = NewGraphCommand()
 
 func init() {
-	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(graphCmd)
 }
 
-func NewListCommand() *cobra.Command {
+func NewGraphCommand() *cobra.Command {
 	var flags UpdateFlags
 
 	cmd := &cobra.Command{
@@ -48,7 +48,6 @@ func NewListCommand() *cobra.Command {
 				ExtraHosts:          flags.extraHosts,
 				InputName:           flags.file,
 				Job:                 &input.Job,
-				ListDependencies:    true, // list dependencies, then exit
 				LocalDir:            flags.local,
 				Output:              flags.output,
 				ProxyCertPath:       flags.proxyCertPath,
