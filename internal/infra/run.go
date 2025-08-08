@@ -45,7 +45,7 @@ var runCmds = map[RunCommand]string{
 type RunParams struct {
 	// Input file
 	Input string
-	// Which command to use, this will default to UpdateCommand
+	// Which command to use, this will default to UpdateFilesCommand
 	Command RunCommand
 	// job definition passed to the updater
 	Job *model.Job
