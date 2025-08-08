@@ -33,13 +33,13 @@ import (
 type RunCommand int
 
 const (
-	UpdateCommand RunCommand = iota
-	AnalyseCommand
+	UpdateFilesCommand RunCommand = iota
+	UpdateGraphCommand
 )
 
 var runCmds = map[RunCommand]string{
-	UpdateCommand:  "bin/run fetch_files && bin/run update_files",
-	AnalyseCommand: "bin/run fetch_files && bin/run analyse_files",
+	UpdateFilesCommand: "bin/run fetch_files && bin/run update_files",
+	UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
 }
 
 type RunParams struct {

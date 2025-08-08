@@ -37,7 +37,7 @@ func NewListCommand() *cobra.Command {
 			input.Job.Source.Provider = "github" // TODO why isn't this being set?
 
 			if err := infra.Run(infra.RunParams{
-				Command:             infra.AnalyseCommand,
+				Command:             infra.UpdateGraphCommand,
 				CacheDir:            flags.cache,
 				CollectorConfigPath: flags.collectorConfigPath,
 				CollectorImage:      collectorImage,
