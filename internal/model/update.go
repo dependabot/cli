@@ -29,6 +29,16 @@ type UpdatePullRequest struct {
 	DependencyGroup        map[string]any   `json:"dependency-group" yaml:"dependency-group,omitempty"`
 }
 
+type DependencySubmissionRequest struct {
+	Version   int8           `json:"version" yaml:"version"`
+	Sha       string         `json:"sha" yaml:"sha"`
+	Ref       string         `json:"ref" yaml:"ref"`
+	Job       map[string]any `json:"job" yaml:"job"`
+	Detector  map[string]any `json:"detector" yaml:"detector"`
+	Scanned   string         `json:"scanned" yaml:"scanned"`
+	Manifests map[string]any `json:"manifests" yaml:"manifests"`
+}
+
 type DependencyFile struct {
 	Content         string `json:"content" yaml:"content"`
 	ContentEncoding string `json:"content_encoding" yaml:"content_encoding"`
