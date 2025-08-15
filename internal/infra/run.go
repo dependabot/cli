@@ -30,9 +30,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type RunCommand int
+
+const (
+	UpdateFilesCommand RunCommand = iota
+	UpdateGraphCommand
+)
+
+var runCmds = map[RunCommand]string{
+	UpdateFilesCommand: "bin/run fetch_files && bin/run update_files",
+	UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
+}
+
 type RunParams struct {
 	// Input file
 	Input string
+	// Which command to use, this will default to UpdateFilesCommand
+	Command RunCommand
 	// job definition passed to the updater
 	Job *model.Job
 	// expectations asserted at the end of a test
@@ -452,8 +466,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
 		}
-		const cmd = "bin/run fetch_files && bin/run update_files"
-		if err := updater.RunCmd(ctx, cmd, dependabot, env...); err != nil {
+		if err := updater.RunCmd(ctx, runCmds[params.Command], dependabot, env...); err != nil {
 			return err
 		}
 		if params.Flamegraph {

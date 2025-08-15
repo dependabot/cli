@@ -230,6 +230,8 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 		actual.Data, err = decode[model.UpdateDependencyList](data)
 	case "create_pull_request":
 		actual.Data, err = decode[model.CreatePullRequest](data)
+	case "create_dependency_submission":
+		actual.Data, err = decode[model.DependencySubmissionRequest](data)
 	case "update_pull_request":
 		actual.Data, err = decode[model.UpdatePullRequest](data)
 	case "close_pull_request":
@@ -280,6 +282,11 @@ func decode[T any](data []byte) (T, error) {
 	return wrapper.Data, nil
 }
 
+// TODO(brrygrdn): Add model.DependencySubmissionRequest to support smoke tests
+//
+// The test command only expects to run with `update` operations right now so
+// we will need to incorporate which run command is expected as well, but we
+// don't need regression coverage yet.
 func compare(expect, actual *model.UpdateWrapper) error {
 	switch v := expect.Data.(type) {
 	case model.UpdateDependencyList:
