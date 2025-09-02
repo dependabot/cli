@@ -451,17 +451,17 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 	}
 
+	// update CA certificates as root prior to start debug shell or running dependabot commands
+	if err := updater.RunCmd(ctx, "update-ca-certificates", root); err != nil {
+		return err
+	}
+
 	if params.Debug {
 		if err := updater.RunShell(ctx, prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables); err != nil {
 			return err
 		}
 	} else {
-		// First, update CA certificates as root
-		if err := updater.RunCmd(ctx, "update-ca-certificates", root); err != nil {
-			return err
-		}
-
-		// Then run the dependabot commands as the dependabot user
+		// Run dependabot commands as a dependabot user
 		env := userEnv(prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
