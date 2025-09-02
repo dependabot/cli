@@ -7,7 +7,7 @@ dependabot graph go_modules dependabot/cli --updater-image graph-updater
 # assert the dummy is working
 stderr 'bin/run arguments: fetch_files'
 stderr 'bin/run arguments: update_graph'
-stderr '"enable_dependency_submission_poc": true'
+stderr '"enable_dependency_submission_poc":true'
 
 exec docker rmi -f graph-updater
 
