@@ -10,6 +10,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/dependabot/cli/internal/infra"
+	"github.com/dependabot/cli/internal/model"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +67,7 @@ func NewGraphCommand() *cobra.Command {
 			}
 
 			if err := infra.Run(infra.RunParams{
-				Command:             infra.UpdateGraphCommand,
+				Command:             model.UpdateGraphCommand,
 				CacheDir:            flags.cache,
 				CollectorConfigPath: flags.collectorConfigPath,
 				CollectorImage:      collectorImage,

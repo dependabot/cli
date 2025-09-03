@@ -282,13 +282,13 @@ func decode[T any](data []byte) (T, error) {
 	return wrapper.Data, nil
 }
 
-// TODO(brrygrdn): Add model.DependencySubmissionRequest to support smoke tests
-//
 // The test command only expects to run with `update` operations right now so
 // we will need to incorporate which run command is expected as well, but we
 // don't need regression coverage yet.
 func compare(expect, actual *model.UpdateWrapper) error {
 	switch v := expect.Data.(type) {
+	case model.DependencySubmissionRequest:
+		return compareDependencySubmissionRequest(v, actual.Data.(model.DependencySubmissionRequest))
 	case model.UpdateDependencyList:
 		return compareUpdateDependencyList(v, actual.Data.(model.UpdateDependencyList))
 	case model.CreatePullRequest:
@@ -312,6 +312,13 @@ func compare(expect, actual *model.UpdateWrapper) error {
 
 func unexpectedBody(kind string) error {
 	return fmt.Errorf("unexpected body for %s", kind)
+}
+
+func compareDependencySubmissionRequest(expect, actual model.DependencySubmissionRequest) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return unexpectedBody("dependency_submission_request")
 }
 
 func compareUpdateDependencyList(expect, actual model.UpdateDependencyList) error {
