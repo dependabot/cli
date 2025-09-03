@@ -53,6 +53,7 @@ type Job struct {
 	MaxUpdaterRunTime          int               `json:"max-updater-run-time" yaml:"max-updater-run-time,omitempty"`
 	UpdateCooldown             *UpdateCooldown   `json:"cooldown,omitempty" yaml:"cooldown,omitempty"`
 	ExcludePaths               []string          `json:"exclude-paths" yaml:"exclude-paths,omitempty"`
+	MultiEcosystemUpdate       bool              `json:"multi-ecosystem-update" yaml:"multi-ecosystem-update,omitempty"`
 }
 
 func (j *Job) UseCaseInsensitiveFileSystem() bool {
