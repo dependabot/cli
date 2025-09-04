@@ -373,4 +373,5 @@ job:
     - "docs/"
     - "examples/"
     - "test/"
+  multi-ecosystem-update: false
 `
