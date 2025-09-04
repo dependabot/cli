@@ -7,17 +7,11 @@ import (
 	"io"
 	"log"
 	"os"
-	"slices"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/dependabot/cli/internal/infra"
 	"github.com/spf13/cobra"
 )
-
-var graphSupportedEcosystems = []string{
-	"bundler",
-	"go_modules",
-}
 
 var graphCmd = NewGraphCommand()
 
@@ -59,13 +53,12 @@ func NewGraphCommand() *cobra.Command {
 
 			processInput(input, &flags)
 
-			if !slices.Contains(graphSupportedEcosystems, input.Job.PackageManager) {
-				return fmt.Errorf(
-					"package manager '%s' is not supported for graphing. Supported ecosystems: %v",
-					input.Job.PackageManager,
-					graphSupportedEcosystems,
-				)
+			// It doesn't make sense to suppress the graph output when running the graph command,
+			// so forcing the experiment to true.
+			if input.Job.Experiments == nil {
+				input.Job.Experiments = make(map[string]any)
 			}
+			input.Job.Experiments["enable_dependency_submission_poc"] = true
 
 			var writer io.Writer
 			if !flags.debugging {
