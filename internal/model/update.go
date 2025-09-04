@@ -35,7 +35,6 @@ type DependencySubmissionRequest struct {
 	Ref       string         `json:"ref" yaml:"ref"`
 	Job       map[string]any `json:"job" yaml:"job"`
 	Detector  map[string]any `json:"detector" yaml:"detector"`
-	Scanned   string         `json:"scanned" yaml:"scanned"`
 	Manifests map[string]any `json:"manifests" yaml:"manifests"`
 }
 

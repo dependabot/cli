@@ -1,7 +1,16 @@
 package model
 
+type RunCommand string
+
+const (
+	UpdateFilesCommand RunCommand = "update"
+	UpdateGraphCommand RunCommand = "graph"
+)
+
 // SmokeTest is a way to test a job by asserting the outputs.
 type SmokeTest struct {
+	// Command is the command to run for testing a smoke test (update, graph)
+	Command RunCommand `yaml:"command"`
 	// Input is the input parameters
 	Input Input `yaml:"input"`
 	// Output is the list of expected outputs

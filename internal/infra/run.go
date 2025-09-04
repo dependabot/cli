@@ -30,23 +30,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type RunCommand int
-
-const (
-	UpdateFilesCommand RunCommand = iota
-	UpdateGraphCommand
-)
-
-var runCmds = map[RunCommand]string{
-	UpdateFilesCommand: "bin/run fetch_files && bin/run update_files",
-	UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
+var runCmds = map[model.RunCommand]string{
+	model.UpdateFilesCommand: "bin/run fetch_files && bin/run update_files",
+	model.UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
 }
 
 type RunParams struct {
 	// Input file
 	Input string
 	// Which command to use, this will default to UpdateFilesCommand
-	Command RunCommand
+	Command model.RunCommand
 	// job definition passed to the updater
 	Job *model.Job
 	// expectations asserted at the end of a test
@@ -101,6 +94,10 @@ func (p *RunParams) Validate() error {
 	}
 	if p.Job.Source.Commit != "" && !gitShaRegex.MatchString(p.Job.Source.Commit) {
 		return fmt.Errorf("commit must be a SHA, or not provided")
+	}
+	// Allows for older smoke tests without the command field to keep working.
+	if p.Command == "" {
+		p.Command = model.UpdateFilesCommand
 	}
 	return nil
 }
@@ -177,6 +174,7 @@ func generateOutput(params RunParams, api *server.API, outFile *os.File) ([]byte
 		// store the SHA we worked with for reproducible tests
 		params.Job.Source.Commit = api.Actual.Input.Job.Source.Commit
 	}
+	api.Actual.Command = params.Command
 	api.Actual.Input.Job = *params.Job
 
 	// ignore conditions help make tests reproducible, so they are generated if there aren't any yet
