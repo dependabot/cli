@@ -146,18 +146,25 @@ func NewUpdateCommand() *cobra.Command {
 
 func extractInput(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error) {
 	hasFile := flags.file != ""
-	hasArguments := len(cmd.Flags().Args()) > 0
+	args := cmd.Flags().Args()
+	filteredArgs := []string{}
+	for i := 0; i < len(args); i++ {
+		if args[i] != "-f" && args[i] != "--file" {
+			filteredArgs = append(filteredArgs, args[i])
+		}
+	}
+	hasArguments := len(filteredArgs) > 0
 	hasServer := flags.inputServerPort != 0
 	hasStdin := doesStdinHaveData()
 
 	var count int
-	for _, b := range []bool{hasFile, hasArguments, hasServer, hasStdin} {
+	for _, b := range []bool{hasFile, hasArguments, hasStdin} {
 		if b {
 			count++
 		}
 	}
 	if count > 1 {
-		return nil, errors.New("can only use one of: input file, arguments, server, or stdin")
+		return nil, errors.New("can only use one of: input file, arguments, or stdin")
 	}
 
 	if hasFile {
