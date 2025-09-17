@@ -28,6 +28,7 @@ reasons.
 
 // Job is the data that is passed to the updater.
 type Job struct {
+	Command                    string            `json:"command" yaml:"command,omitempty"`
 	PackageManager             string            `json:"package-manager" yaml:"package-manager"`
 	AllowedUpdates             []Allowed         `json:"allowed-updates" yaml:"allowed-updates,omitempty"`
 	Debug                      bool              `json:"debug" yaml:"debug,omitempty"`

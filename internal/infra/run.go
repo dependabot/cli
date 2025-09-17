@@ -99,6 +99,7 @@ func (p *RunParams) Validate() error {
 	if p.Command == "" {
 		p.Command = model.UpdateFilesCommand
 	}
+	p.Job.Command = string(p.Command)
 	return nil
 }
 
