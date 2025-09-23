@@ -82,6 +82,7 @@ type ExistingPR struct {
 	DependencyName    string  `json:"dependency-name" yaml:"dependency-name"`
 	DependencyVersion string  `json:"dependency-version" yaml:"dependency-version"`
 	Directory         *string `json:"directory,omitempty" yaml:"directory,omitempty"`
+	PRNumber          *int    `json:"pr-number,omitempty" yaml:"pr-number,omitempty"`
 }
 
 type ExistingGroupPR struct {
