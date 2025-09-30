@@ -4,6 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path"
+	"path/filepath"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
@@ -11,11 +17,6 @@ import (
 	"github.com/goware/prefixer"
 	"github.com/moby/moby/pkg/namesgenerator"
 	"github.com/moby/moby/pkg/stdcopy"
-	"io"
-	"log"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
@@ -85,6 +86,8 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 			"JOB_ID=" + jobID,
 			"PROXY_CACHE=true",
 			"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
+			"ACTIONS_ID_TOKEN_REQUEST_TOKEN=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
+			"ACTIONS_ID_TOKEN_REQUEST_URL=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"),
 		},
 		Entrypoint: []string{
 			"sh", "-c", "update-ca-certificates && /update-job-proxy",
