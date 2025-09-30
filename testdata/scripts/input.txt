@@ -19,7 +19,7 @@ dependabot update go_modules dependabot/cli --dep golang.org/x/image --updater-i
 stderr '"allowed-updates":\[\{"dependency-name":"golang.org/x/image"\}\]'
 
 dependabot update go_modules dependabot/cli --directory /code --updater-image input-verify-updater
-stderr '"directory":"\/code"'
+stderr '"directories":\["\/code"\]'
 
 exec docker rmi -f input-verify-updater
 

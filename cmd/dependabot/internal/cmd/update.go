@@ -269,7 +269,7 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 			Source: model.Source{
 				Provider:    flags.provider,
 				Repo:        repo,
-				Directory:   flags.directory,
+				Directories: []string{flags.directory},
 				Commit:      flags.commit,
 				Branch:      flags.branch,
 				Hostname:    &hostname,
