@@ -7,10 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/dependabot/cli/internal/model"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/dependabot/cli/internal/model"
 )
 
 func Test_decodeWrapper(t *testing.T) {
@@ -102,4 +103,29 @@ func TestAPI_CreatePullRequest_ReplacesBinaryWithHash(t *testing.T) {
 	if wrapper.Data.UpdatedDependencyFiles[0].Content != content {
 		t.Errorf("expected stdout to contain the original content, got '%s'", stdout.String())
 	}
+}
+
+func TestAPI_compareDependencySubmissionRequest(t *testing.T) {
+	t.Run("ignores detector version", func(t *testing.T) {
+		expect := model.DependencySubmissionRequest{
+			Detector: map[string]any{
+				"version": "1.2.3",
+			},
+		}
+		actual := model.DependencySubmissionRequest{
+			Detector: map[string]any{
+				"version": "4.5.6",
+			},
+		}
+
+		if compareDependencySubmissionRequest(expect, actual) != nil {
+			t.Error("expected detector version to be ignored")
+		}
+		if expect.Detector["version"] != "1.2.3" {
+			t.Error("expected expect detector version to be unchanged")
+		}
+		if actual.Detector["version"] != "4.5.6" {
+			t.Error("expected actual detector version to be unchanged")
+		}
+	})
 }

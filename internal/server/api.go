@@ -315,6 +315,11 @@ func unexpectedBody(kind string) error {
 }
 
 func compareDependencySubmissionRequest(expect, actual model.DependencySubmissionRequest) error {
+	// since the detector version will change all the time, ignore that in the comparison
+	tmp := expect.Detector["version"]
+	defer func() { expect.Detector["version"] = tmp }()
+	expect.Detector["version"] = actual.Detector["version"]
+
 	if reflect.DeepEqual(expect, actual) {
 		return nil
 	}
