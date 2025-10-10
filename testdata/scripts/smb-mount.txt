@@ -25,11 +25,8 @@ echo "Updated those certificates for ya"
 -- run --
 #!/usr/bin/env bash
 
-if [ "$1" = "fetch_files" ]; then
-  # git clone would have created this directory
-  mkdir -p "$DEPENDABOT_REPO_CONTENTS_PATH"
-  exit 0
-fi
+# git clone would have created this directory
+mkdir -p "$DEPENDABOT_REPO_CONTENTS_PATH"
 
 echo "test file" > "$DEPENDABOT_REPO_CONTENTS_PATH/test.txt"
 if [ -e "$DEPENDABOT_CASE_INSENSITIVE_REPO_CONTENTS_PATH/TEST.TXT" ]; then

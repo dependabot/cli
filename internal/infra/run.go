@@ -31,8 +31,8 @@ import (
 )
 
 var runCmds = map[model.RunCommand]string{
-	model.UpdateFilesCommand: "bin/run fetch_files && bin/run update_files",
-	model.UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
+	model.UpdateFilesCommand: "bin/run update_files",
+	model.UpdateGraphCommand: "bin/run update_graph",
 }
 
 type RunParams struct {
