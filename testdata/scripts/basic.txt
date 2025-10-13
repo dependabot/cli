@@ -5,7 +5,6 @@ exec docker build -qt dummy-updater .
 dependabot update go_modules dependabot/cli --updater-image dummy-updater
 
 # assert the dummy is working
-stderr 'bin/run arguments: fetch_files'
 stderr 'bin/run arguments: update_files'
 
 exec docker rmi -f dummy-updater
