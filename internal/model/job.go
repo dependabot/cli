@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 /*
 Updating Models
@@ -32,12 +36,12 @@ type Job struct {
 	PackageManager             string            `json:"package-manager" yaml:"package-manager"`
 	AllowedUpdates             []Allowed         `json:"allowed-updates" yaml:"allowed-updates,omitempty"`
 	Debug                      bool              `json:"debug" yaml:"debug,omitempty"`
-	DependencyGroups           []Group           `json:"dependency-groups" yaml:"dependency-groups,omitempty"`
-	Dependencies               []string          `json:"dependencies" yaml:"dependencies,omitempty"`
-	DependencyGroupToRefresh   *string           `json:"dependency-group-to-refresh" yaml:"dependency-group-to-refresh,omitempty"`
-	ExistingPullRequests       [][]ExistingPR    `json:"existing-pull-requests" yaml:"existing-pull-requests,omitempty"`
-	ExistingGroupPullRequests  []ExistingGroupPR `json:"existing-group-pull-requests" yaml:"existing-group-pull-requests,omitempty"`
-	Experiments                Experiment        `json:"experiments" yaml:"experiments,omitempty"`
+	DependencyGroups           []Group              `json:"dependency-groups" yaml:"dependency-groups,omitempty"`
+	Dependencies               []string             `json:"dependencies" yaml:"dependencies,omitempty"`
+	DependencyGroupToRefresh   *string              `json:"dependency-group-to-refresh" yaml:"dependency-group-to-refresh,omitempty"`
+	ExistingPullRequests       ExistingPullRequests `json:"existing-pull-requests" yaml:"existing-pull-requests,omitempty"`
+	ExistingGroupPullRequests  []ExistingGroupPR    `json:"existing-group-pull-requests" yaml:"existing-group-pull-requests,omitempty"`
+	Experiments                Experiment           `json:"experiments" yaml:"experiments,omitempty"`
 	IgnoreConditions           []Condition       `json:"ignore-conditions" yaml:"ignore-conditions,omitempty"`
 	LockfileOnly               bool              `json:"lockfile-only" yaml:"lockfile-only,omitempty"`
 	RequirementsUpdateStrategy *string           `json:"requirements-update-strategy" yaml:"requirements-update-strategy,omitempty"`
@@ -79,10 +83,71 @@ type Source struct {
 }
 
 type ExistingPR struct {
+	DependencyName    string  `json:"dependency-name,omitempty" yaml:"dependency-name,omitempty"`
+	DependencyVersion string  `json:"dependency-version,omitempty" yaml:"dependency-version,omitempty"`
+	Directory         *string `json:"directory,omitempty" yaml:"directory,omitempty"`
+	PRNumber          *int    `json:"pr-number,omitempty" yaml:"pr-number,omitempty"`
+	Dependencies      *[]ExistingPRDependency `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+}
+
+type ExistingPRDependency struct {
 	DependencyName    string  `json:"dependency-name" yaml:"dependency-name"`
 	DependencyVersion string  `json:"dependency-version" yaml:"dependency-version"`
 	Directory         *string `json:"directory,omitempty" yaml:"directory,omitempty"`
-	PRNumber          *int    `json:"pr-number,omitempty" yaml:"pr-number,omitempty"`
+}
+
+type ExistingPullRequests []ExistingPR
+
+func (e *ExistingPullRequests) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// First try the new format (array of ExistingPR objects)
+	var newFormat []ExistingPR
+	if err := unmarshal(&newFormat); err == nil {
+		*e = newFormat
+		return nil
+	}
+
+	// Fallback: try old format (array of arrays of ExistingPR)
+	// Each inner array represents a separate PR
+	var oldFormat [][]ExistingPR
+	if err := unmarshal(&oldFormat); err == nil {
+		for _, prArray := range oldFormat {
+			// Each inner array is a separate PR entry
+			// For backward compatibility, we take each dependency from the inner array
+			// as a separate PR entry in the flattened list
+			for _, pr := range prArray {
+				*e = append(*e, pr)
+			}
+		}
+		return nil
+	}
+
+	return fmt.Errorf("ExistingPullRequests: unrecognized YAML format")
+}
+
+func (e *ExistingPullRequests) UnmarshalJSON(data []byte) error {
+    // First try the new format (array of ExistingPR objects)
+    var newFormat []ExistingPR
+    if err := json.Unmarshal(data, &newFormat); err == nil {
+        *e = newFormat
+        return nil
+    }
+
+    // Fallback: try old format (array of arrays of ExistingPR)
+    // Each inner array represents a separate PR
+    var oldFormat [][]ExistingPR
+    if err := json.Unmarshal(data, &oldFormat); err == nil {
+        for _, prArray := range oldFormat {
+            // Each inner array is a separate PR entry
+            // For backward compatibility, we take each dependency from the inner array
+            // as a separate PR entry in the flattened list
+            for _, pr := range prArray {
+                *e = append(*e, pr)
+            }
+        }
+        return nil
+    }
+
+    return fmt.Errorf("ExistingPullRequests: unrecognized JSON format")
 }
 
 type ExistingGroupPR struct {
