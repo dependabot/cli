@@ -32,33 +32,33 @@ reasons.
 
 // Job is the data that is passed to the updater.
 type Job struct {
-	Command                    string            `json:"command" yaml:"command,omitempty"`
-	PackageManager             string            `json:"package-manager" yaml:"package-manager"`
-	AllowedUpdates             []Allowed         `json:"allowed-updates" yaml:"allowed-updates,omitempty"`
-	Debug                      bool              `json:"debug" yaml:"debug,omitempty"`
+	Command                    string               `json:"command" yaml:"command,omitempty"`
+	PackageManager             string               `json:"package-manager" yaml:"package-manager"`
+	AllowedUpdates             []Allowed            `json:"allowed-updates" yaml:"allowed-updates,omitempty"`
+	Debug                      bool                 `json:"debug" yaml:"debug,omitempty"`
 	DependencyGroups           []Group              `json:"dependency-groups" yaml:"dependency-groups,omitempty"`
 	Dependencies               []string             `json:"dependencies" yaml:"dependencies,omitempty"`
 	DependencyGroupToRefresh   *string              `json:"dependency-group-to-refresh" yaml:"dependency-group-to-refresh,omitempty"`
 	ExistingPullRequests       ExistingPullRequests `json:"existing-pull-requests" yaml:"existing-pull-requests,omitempty"`
 	ExistingGroupPullRequests  []ExistingGroupPR    `json:"existing-group-pull-requests" yaml:"existing-group-pull-requests,omitempty"`
 	Experiments                Experiment           `json:"experiments" yaml:"experiments,omitempty"`
-	IgnoreConditions           []Condition       `json:"ignore-conditions" yaml:"ignore-conditions,omitempty"`
-	LockfileOnly               bool              `json:"lockfile-only" yaml:"lockfile-only,omitempty"`
-	RequirementsUpdateStrategy *string           `json:"requirements-update-strategy" yaml:"requirements-update-strategy,omitempty"`
-	SecurityAdvisories         []Advisory        `json:"security-advisories" yaml:"security-advisories,omitempty"`
-	SecurityUpdatesOnly        bool              `json:"security-updates-only" yaml:"security-updates-only,omitempty"`
-	Source                     Source            `json:"source" yaml:"source"`
-	UpdateSubdependencies      bool              `json:"update-subdependencies" yaml:"update-subdependencies,omitempty"`
-	UpdatingAPullRequest       bool              `json:"updating-a-pull-request" yaml:"updating-a-pull-request,omitempty"`
-	VendorDependencies         bool              `json:"vendor-dependencies" yaml:"vendor-dependencies,omitempty"`
-	RejectExternalCode         bool              `json:"reject-external-code" yaml:"reject-external-code,omitempty"`
-	RepoPrivate                bool              `json:"repo-private" yaml:"repo-private,omitempty"`
-	CommitMessageOptions       *CommitOptions    `json:"commit-message-options" yaml:"commit-message-options,omitempty"`
-	CredentialsMetadata        []Credential      `json:"credentials-metadata" yaml:"-"`
-	MaxUpdaterRunTime          int               `json:"max-updater-run-time" yaml:"max-updater-run-time,omitempty"`
-	UpdateCooldown             *UpdateCooldown   `json:"cooldown,omitempty" yaml:"cooldown,omitempty"`
-	ExcludePaths               []string          `json:"exclude-paths" yaml:"exclude-paths,omitempty"`
-	MultiEcosystemUpdate       bool              `json:"multi-ecosystem-update" yaml:"multi-ecosystem-update,omitempty"`
+	IgnoreConditions           []Condition          `json:"ignore-conditions" yaml:"ignore-conditions,omitempty"`
+	LockfileOnly               bool                 `json:"lockfile-only" yaml:"lockfile-only,omitempty"`
+	RequirementsUpdateStrategy *string              `json:"requirements-update-strategy" yaml:"requirements-update-strategy,omitempty"`
+	SecurityAdvisories         []Advisory           `json:"security-advisories" yaml:"security-advisories,omitempty"`
+	SecurityUpdatesOnly        bool                 `json:"security-updates-only" yaml:"security-updates-only,omitempty"`
+	Source                     Source               `json:"source" yaml:"source"`
+	UpdateSubdependencies      bool                 `json:"update-subdependencies" yaml:"update-subdependencies,omitempty"`
+	UpdatingAPullRequest       bool                 `json:"updating-a-pull-request" yaml:"updating-a-pull-request,omitempty"`
+	VendorDependencies         bool                 `json:"vendor-dependencies" yaml:"vendor-dependencies,omitempty"`
+	RejectExternalCode         bool                 `json:"reject-external-code" yaml:"reject-external-code,omitempty"`
+	RepoPrivate                bool                 `json:"repo-private" yaml:"repo-private,omitempty"`
+	CommitMessageOptions       *CommitOptions       `json:"commit-message-options" yaml:"commit-message-options,omitempty"`
+	CredentialsMetadata        []Credential         `json:"credentials-metadata" yaml:"-"`
+	MaxUpdaterRunTime          int                  `json:"max-updater-run-time" yaml:"max-updater-run-time,omitempty"`
+	UpdateCooldown             *UpdateCooldown      `json:"cooldown,omitempty" yaml:"cooldown,omitempty"`
+	ExcludePaths               []string             `json:"exclude-paths" yaml:"exclude-paths,omitempty"`
+	MultiEcosystemUpdate       bool                 `json:"multi-ecosystem-update" yaml:"multi-ecosystem-update,omitempty"`
 }
 
 func (j *Job) UseCaseInsensitiveFileSystem() bool {
@@ -83,10 +83,10 @@ type Source struct {
 }
 
 type ExistingPR struct {
-	DependencyName    string  `json:"dependency-name,omitempty" yaml:"dependency-name,omitempty"`
-	DependencyVersion string  `json:"dependency-version,omitempty" yaml:"dependency-version,omitempty"`
-	Directory         *string `json:"directory,omitempty" yaml:"directory,omitempty"`
-	PRNumber          *int    `json:"pr-number,omitempty" yaml:"pr-number,omitempty"`
+	DependencyName    string                  `json:"dependency-name,omitempty" yaml:"dependency-name,omitempty"`
+	DependencyVersion string                  `json:"dependency-version,omitempty" yaml:"dependency-version,omitempty"`
+	Directory         *string                 `json:"directory,omitempty" yaml:"directory,omitempty"`
+	PRNumber          *int                    `json:"pr-number,omitempty" yaml:"pr-number,omitempty"`
 	Dependencies      *[]ExistingPRDependency `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 }
 
@@ -125,29 +125,29 @@ func (e *ExistingPullRequests) UnmarshalYAML(unmarshal func(interface{}) error) 
 }
 
 func (e *ExistingPullRequests) UnmarshalJSON(data []byte) error {
-    // First try the new format (array of ExistingPR objects)
-    var newFormat []ExistingPR
-    if err := json.Unmarshal(data, &newFormat); err == nil {
-        *e = newFormat
-        return nil
-    }
+	// First try the new format (array of ExistingPR objects)
+	var newFormat []ExistingPR
+	if err := json.Unmarshal(data, &newFormat); err == nil {
+		*e = newFormat
+		return nil
+	}
 
-    // Fallback: try old format (array of arrays of ExistingPR)
-    // Each inner array represents a separate PR
-    var oldFormat [][]ExistingPR
-    if err := json.Unmarshal(data, &oldFormat); err == nil {
-        for _, prArray := range oldFormat {
-            // Each inner array is a separate PR entry
-            // For backward compatibility, we take each dependency from the inner array
-            // as a separate PR entry in the flattened list
-            for _, pr := range prArray {
-                *e = append(*e, pr)
-            }
-        }
-        return nil
-    }
+	// Fallback: try old format (array of arrays of ExistingPR)
+	// Each inner array represents a separate PR
+	var oldFormat [][]ExistingPR
+	if err := json.Unmarshal(data, &oldFormat); err == nil {
+		for _, prArray := range oldFormat {
+			// Each inner array is a separate PR entry
+			// For backward compatibility, we take each dependency from the inner array
+			// as a separate PR entry in the flattened list
+			for _, pr := range prArray {
+				*e = append(*e, pr)
+			}
+		}
+		return nil
+	}
 
-    return fmt.Errorf("ExistingPullRequests: unrecognized JSON format")
+	return fmt.Errorf("ExistingPullRequests: unrecognized JSON format")
 }
 
 type ExistingGroupPR struct {
