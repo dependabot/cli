@@ -260,7 +260,7 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 			AllowedUpdates:             allowed,
 			DependencyGroups:           nil,
 			Dependencies:               nil,
-			ExistingPullRequests:       [][]model.ExistingPR{},
+			ExistingPullRequests:       model.ExistingPullRequests{},
 			IgnoreConditions:           []model.Condition{},
 			LockfileOnly:               false,
 			RequirementsUpdateStrategy: nil,
@@ -308,7 +308,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 		}}
 	}
 	if job.ExistingPullRequests == nil {
-		job.ExistingPullRequests = [][]model.ExistingPR{}
+		job.ExistingPullRequests = model.ExistingPullRequests{}
 	}
 	if job.IgnoreConditions == nil {
 		job.IgnoreConditions = []model.Condition{}
