@@ -150,6 +150,52 @@ func (e *ExistingPullRequests) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("ExistingPullRequests: unrecognized JSON format")
 }
 
+func (e ExistingPullRequests) MarshalJSON() ([]byte, error) {
+	// Check if this is using the new grouped format (has pr-number or dependencies)
+	hasNewFormat := false
+	for _, pr := range e {
+		if pr.PRNumber != nil || pr.Dependencies != nil {
+			hasNewFormat = true
+			break
+		}
+	}
+
+	if hasNewFormat {
+		// Send new format as-is (array of ExistingPR objects)
+		return json.Marshal([]ExistingPR(e))
+	}
+
+	// For old flat format, wrap in arrays for backward compatibility
+	oldFormat := make([][]ExistingPR, 0, len(e))
+	for _, pr := range e {
+		oldFormat = append(oldFormat, []ExistingPR{pr})
+	}
+	return json.Marshal(oldFormat)
+}
+
+func (e ExistingPullRequests) MarshalYAML() (interface{}, error) {
+	// Check if this is using the new grouped format (has pr-number or dependencies)
+	hasNewFormat := false
+	for _, pr := range e {
+		if pr.PRNumber != nil || pr.Dependencies != nil {
+			hasNewFormat = true
+			break
+		}
+	}
+
+	if hasNewFormat {
+		// Send new format as-is (array of ExistingPR objects)
+		return []ExistingPR(e), nil
+	}
+
+	// For old flat format, wrap in arrays for backward compatibility
+	oldFormat := make([][]ExistingPR, 0, len(e))
+	for _, pr := range e {
+		oldFormat = append(oldFormat, []ExistingPR{pr})
+	}
+	return oldFormat, nil
+}
+
 type ExistingGroupPR struct {
 	DependencyGroupName string       `json:"dependency-group-name" yaml:"dependency-group-name"`
 	Dependencies        []ExistingPR `json:"dependencies" yaml:"dependencies"`
