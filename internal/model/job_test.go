@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -18,6 +19,242 @@ func TestInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	compareMap(t, "job", input2["job"], input.Job)
+}
+
+func TestExistingPullRequestsNewFormat(t *testing.T) {
+	testYAML := `---
+job:
+  package-manager: npm_and_yarn
+  source:
+    provider: github
+    repo: dependabot/test
+    directory: "/"
+  existing-pull-requests:
+    - pr-number: 123
+      dependencies:
+        - dependency-name: dependency-a
+          dependency-version: 1.2.5
+          directory: "/"
+        - dependency-name: dependency-b
+          dependency-version: 2.0.0
+          directory: "/sub"
+    - pr-number: 456
+      dependencies:
+        - dependency-name: dependency-c
+          dependency-version: 3.1.0
+    - dependency-name: dependency-d
+      dependency-version: 4.0.0
+      directory: "/"
+`
+
+	var input Input
+	if err := yaml.Unmarshal([]byte(testYAML), &input); err != nil {
+		t.Fatal(err)
+	}
+
+	prs := input.Job.ExistingPullRequests
+	if len(prs) != 3 {
+		t.Fatalf("expected 3 PR entries, got %d", len(prs))
+	}
+
+	// Test first grouped PR with pr-number 123
+	if prs[0].PRNumber == nil || *prs[0].PRNumber != 123 {
+		t.Errorf("expected pr-number 123, got %v", prs[0].PRNumber)
+	}
+	if prs[0].Dependencies == nil || len(*prs[0].Dependencies) != 2 {
+		t.Fatalf("expected 2 dependencies in PR 123, got %v", prs[0].Dependencies)
+	}
+	if (*prs[0].Dependencies)[0].DependencyName != "dependency-a" {
+		t.Errorf("expected dependency-a, got %s", (*prs[0].Dependencies)[0].DependencyName)
+	}
+	if (*prs[0].Dependencies)[0].DependencyVersion != "1.2.5" {
+		t.Errorf("expected version 1.2.5, got %s", (*prs[0].Dependencies)[0].DependencyVersion)
+	}
+	if (*prs[0].Dependencies)[1].DependencyName != "dependency-b" {
+		t.Errorf("expected dependency-b, got %s", (*prs[0].Dependencies)[1].DependencyName)
+	}
+
+	// Test second grouped PR with pr-number 456
+	if prs[1].PRNumber == nil || *prs[1].PRNumber != 456 {
+		t.Errorf("expected pr-number 456, got %v", prs[1].PRNumber)
+	}
+	if prs[1].Dependencies == nil || len(*prs[1].Dependencies) != 1 {
+		t.Fatalf("expected 1 dependency in PR 456, got %v", prs[1].Dependencies)
+	}
+
+	// Test flat format entry (no pr-number, direct dependency fields)
+	if prs[2].DependencyName != "dependency-d" {
+		t.Errorf("expected dependency-d, got %s", prs[2].DependencyName)
+	}
+	if prs[2].DependencyVersion != "4.0.0" {
+		t.Errorf("expected version 4.0.0, got %s", prs[2].DependencyVersion)
+	}
+	if prs[2].Dependencies != nil {
+		t.Errorf("expected no nested dependencies for flat format entry")
+	}
+}
+
+func TestExistingPullRequestsNewFormatJSON(t *testing.T) {
+	testJSON := `{
+  "job": {
+    "package-manager": "npm_and_yarn",
+    "source": {
+      "provider": "github",
+      "repo": "dependabot/test",
+      "directory": "/"
+    },
+    "existing-pull-requests": [
+      {
+        "pr-number": 123,
+        "dependencies": [
+          {
+            "dependency-name": "dependency-a",
+            "dependency-version": "1.2.5",
+            "directory": "/"
+          },
+          {
+            "dependency-name": "dependency-b",
+            "dependency-version": "2.0.0",
+            "directory": "/sub"
+          }
+        ]
+      },
+      {
+        "pr-number": 456,
+        "dependencies": [
+          {
+            "dependency-name": "dependency-c",
+            "dependency-version": "3.1.0"
+          }
+        ]
+      },
+      {
+        "dependency-name": "dependency-d",
+        "dependency-version": "4.0.0",
+        "directory": "/"
+      }
+    ]
+  }
+}`
+
+	var input Input
+	if err := json.Unmarshal([]byte(testJSON), &input); err != nil {
+		t.Fatal(err)
+	}
+
+	prs := input.Job.ExistingPullRequests
+	if len(prs) != 3 {
+		t.Fatalf("expected 3 PR entries, got %d", len(prs))
+	}
+
+	// Test first grouped PR with pr-number 123
+	if prs[0].PRNumber == nil || *prs[0].PRNumber != 123 {
+		t.Errorf("expected pr-number 123, got %v", prs[0].PRNumber)
+	}
+	if prs[0].Dependencies == nil || len(*prs[0].Dependencies) != 2 {
+		t.Fatalf("expected 2 dependencies in PR 123, got %v", prs[0].Dependencies)
+	}
+	if (*prs[0].Dependencies)[0].DependencyName != "dependency-a" {
+		t.Errorf("expected dependency-a, got %s", (*prs[0].Dependencies)[0].DependencyName)
+	}
+
+	// Test second grouped PR with pr-number 456
+	if prs[1].PRNumber == nil || *prs[1].PRNumber != 456 {
+		t.Errorf("expected pr-number 456, got %v", prs[1].PRNumber)
+	}
+
+	// Test flat format entry (no pr-number, direct dependency fields)
+	if prs[2].DependencyName != "dependency-d" {
+		t.Errorf("expected dependency-d, got %s", prs[2].DependencyName)
+	}
+}
+
+func TestExistingPullRequestsOldFormat(t *testing.T) {
+	testYAML := `---
+job:
+  package-manager: go_modules
+  source:
+    provider: github
+    repo: dependabot/test
+    directory: "/"
+  existing-pull-requests:
+    - - dependency-name: dep-x
+        dependency-version: 1.0.0
+    - - dependency-name: dep-y
+        dependency-version: 2.0.0
+`
+
+	var input Input
+	if err := yaml.Unmarshal([]byte(testYAML), &input); err != nil {
+		t.Fatal(err)
+	}
+
+	prs := input.Job.ExistingPullRequests
+	if len(prs) != 2 {
+		t.Fatalf("expected 2 PR entries from old format, got %d", len(prs))
+	}
+
+	if prs[0].DependencyName != "dep-x" {
+		t.Errorf("expected dep-x, got %s", prs[0].DependencyName)
+	}
+	if prs[0].DependencyVersion != "1.0.0" {
+		t.Errorf("expected version 1.0.0, got %s", prs[0].DependencyVersion)
+	}
+
+	if prs[1].DependencyName != "dep-y" {
+		t.Errorf("expected dep-y, got %s", prs[1].DependencyName)
+	}
+}
+
+func TestExistingPullRequestsOldFormatJSON(t *testing.T) {
+	testJSON := `{
+  "job": {
+    "package-manager": "go_modules",
+    "source": {
+      "provider": "github",
+      "repo": "dependabot/test",
+      "directory": "/"
+    },
+    "existing-pull-requests": [
+      [
+        {
+          "dependency-name": "dep-x",
+          "dependency-version": "1.0.0"
+        }
+      ],
+      [
+        {
+          "dependency-name": "dep-y",
+          "dependency-version": "2.0.0"
+        }
+      ]
+    ]
+  }
+}`
+
+	var input Input
+	if err := json.Unmarshal([]byte(testJSON), &input); err != nil {
+		t.Fatal(err)
+	}
+
+	prs := input.Job.ExistingPullRequests
+	if len(prs) != 2 {
+		t.Fatalf("expected 2 PR entries from old format, got %d", len(prs))
+	}
+
+	if prs[0].DependencyName != "dep-x" {
+		t.Errorf("expected dep-x, got %s", prs[0].DependencyName)
+	}
+	if prs[0].DependencyVersion != "1.0.0" {
+		t.Errorf("expected version 1.0.0, got %s", prs[0].DependencyVersion)
+	}
+
+	if prs[1].DependencyName != "dep-y" {
+		t.Errorf("expected dep-y, got %s", prs[1].DependencyName)
+	}
+	if prs[1].DependencyVersion != "2.0.0" {
+		t.Errorf("expected version 2.0.0, got %s", prs[1].DependencyVersion)
+	}
 }
 
 func compareMap(t *testing.T, parent string, expected map[string]any, actual interface{}) {
