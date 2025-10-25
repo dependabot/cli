@@ -10,14 +10,9 @@ Next, clone https://github.com/dependabot/dependabot-core. This project contains
 
 Try opening a terminal and run `script/dependabot update go_modules dependabot/cli --debug` in the `dependabot-core` project directory. This will drop you in an interactive session with the update ready to proceed.
 
-To perform the update, you need to run two commands:
+To perform the update, you need to run:
 
-- `bin/run fetch_files`
 - `bin/run update_files`
-
-If the problem you are debugging is during the fetch step, the fetch_files command will be all you need to run.
-
-If the problem is after the fetch step, you can repeatedly run update_files while you're debugging. 
 
 In the example `script/dependabot` command above, try running an update in the container. 
 
@@ -32,7 +27,7 @@ Next, let's try adding a `debugger` statement. Open the `dependabot-core` projec
 
 > **Note** You don't have to restart your CLI session, the changes are automatically synced to the container!
 
-In the interactive debugging session, run `bin/run fetch_files` and `bin/run update_files`. During the update_files command, the Ruby debugger will open. It should look something like this:
+In the interactive debugging session, run `bin/run update_files`. During the update_files command, the Ruby debugger will open. It should look something like this:
 
 ```ruby
 [11, 20] in ~/go_modules/lib/dependabot/go_modules/update_checker.rb
@@ -60,7 +55,7 @@ At this prompt, you can run [debugger commands](https://github.com/ruby/debug) t
 
 If your Dependabot job is hanging and would like to figure out why, the CLI is the perfect tool for the job. 
 
-Start by running the update that recreates the hang with `dependabot update <ecosystem> <org/repo>`. Once the hang is reproducible, run with the `--debug` flag and the run the `fetch_files` and `update_files` commands and wait until the job hangs.
+Start by running the update that recreates the hang with `dependabot update <ecosystem> <org/repo>`. Once the hang is reproducible, run with the `--debug` flag and the run the `update_files` command and wait until the job hangs.
 
 Once it does hang, hit CTL-C, and you'll get a stack trace leading you to the problematic code.
 
