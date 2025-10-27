@@ -268,6 +268,7 @@ func checkCredAccess(ctx context.Context, job *model.Job, creds []model.Credenti
 }
 
 var packageManagerLookup = map[string]string{
+	"bazel":          "bazel",
 	"bun":            "bun",
 	"bundler":        "bundler",
 	"cargo":          "cargo",
@@ -281,6 +282,7 @@ var packageManagerLookup = map[string]string{
 	"submodules":     "gitsubmodule",
 	"go_modules":     "gomod",
 	"gradle":         "gradle",
+	"julia":          "julia",
 	"maven":          "maven",
 	"helm":           "helm",
 	"hex":            "mix",
