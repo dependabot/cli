@@ -34,7 +34,6 @@ const (
 
 const (
 	guestInputDir = "/home/dependabot/dependabot-updater/job.json"
-	guestOutput   = "/home/dependabot/dependabot-updater/output.json"
 	guestRepoDir  = "/home/dependabot/dependabot-updater/repo"
 
 	caseSensitiveContainerRoot    = "/dpdbot"
@@ -315,10 +314,8 @@ func userEnv(proxyURL string, apiUrl string, job *model.Job, additionalEnvVars [
 		fmt.Sprintf("DEPENDABOT_JOB_ID=%v", firstNonEmpty(os.Getenv("DEPENDABOT_JOB_ID"), jobID)),
 		fmt.Sprintf("DEPENDABOT_JOB_TOKEN=%v", ""),
 		fmt.Sprintf("DEPENDABOT_JOB_PATH=%v", guestInputDir),
-		fmt.Sprintf("DEPENDABOT_OUTPUT_PATH=%v", guestOutput),
 		fmt.Sprintf("DEPENDABOT_API_URL=%s", apiUrl),
 		fmt.Sprintf("SSL_CERT_FILE=%v/ca-certificates.crt", certsPath),
-		"UPDATER_ONE_CONTAINER=true",
 		"UPDATER_DETERMINISTIC=true",
 	}
 

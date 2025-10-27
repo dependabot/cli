@@ -5,14 +5,12 @@ exec docker build -qt graph-updater .
 dependabot graph go_modules dependabot/cli -o out.yml --updater-image graph-updater
 
 # assert the dummy is working
-stderr 'bin/run arguments: fetch_files'
 stderr 'bin/run arguments: update_graph'
 stderr '"enable_dependency_submission_poc":true'
 
 # Verify the smoke test can run the graph command
 dependabot test -f out.yml --updater-image graph-updater
 
-stderr 'bin/run arguments: fetch_files'
 stderr 'bin/run arguments: update_graph'
 
 exec docker rmi -f graph-updater
