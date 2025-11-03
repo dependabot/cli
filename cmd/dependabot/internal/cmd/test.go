@@ -35,7 +35,6 @@ func NewTestCommand() *cobra.Command {
 			processInput(&smokeTest.Input, nil)
 
 			if err := executeTestJob(infra.RunParams{
-				Command:             smokeTest.Command,
 				CacheDir:            flags.cache,
 				CollectorConfigPath: flags.collectorConfigPath,
 				CollectorImage:      collectorImage,

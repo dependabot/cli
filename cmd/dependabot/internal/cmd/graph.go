@@ -61,13 +61,16 @@ func NewGraphCommand() *cobra.Command {
 			}
 			input.Job.Experiments["enable_dependency_submission_poc"] = true
 
+			if input.Job.Command == "" {
+				input.Job.Command = model.UpdateGraphCommand
+			}
+
 			var writer io.Writer
 			if !flags.debugging {
 				writer = os.Stdout
 			}
 
 			if err := infra.Run(infra.RunParams{
-				Command:             model.UpdateGraphCommand,
 				CacheDir:            flags.cache,
 				CollectorConfigPath: flags.collectorConfigPath,
 				CollectorImage:      collectorImage,
