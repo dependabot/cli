@@ -31,6 +31,7 @@ import (
 )
 
 var runCmds = map[model.RunCommand]string{
+	model.VersionCommand:     "bin/run fetch_files && bin/run update_files",
 	model.UpdateFilesCommand: "bin/run fetch_files && bin/run update_files",
 	model.RecreateCommand:    "bin/run fetch_files && bin/run update_files",
 	model.SecurityCommand:    "bin/run fetch_files && bin/run update_files",

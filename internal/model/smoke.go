@@ -4,6 +4,7 @@ type RunCommand string
 
 const (
 	UpdateFilesCommand RunCommand = "update"
+	VersionCommand     RunCommand = "version"
 	RecreateCommand    RunCommand = "recreate"
 	SecurityCommand    RunCommand = "security"
 	UpdateGraphCommand RunCommand = "graph"
