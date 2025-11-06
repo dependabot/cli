@@ -108,12 +108,16 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		}
 	}
 
-	netCfg := &network.NetworkingConfig{
-		EndpointsConfig: map[string]*network.EndpointSettings{
-			net.noInternetName: {
-				NetworkID: net.NoInternet.ID,
+	var netCfg *network.NetworkingConfig
+	// Only configure networking if networks exist (when credentials are present)
+	if net != nil {
+		netCfg = &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				net.noInternetName: {
+					NetworkID: net.NoInternet.ID,
+				},
 			},
-		},
+		}
 	}
 
 	updaterContainer, err := cli.ContainerCreate(ctx, containerCfg, hostCfg, netCfg, nil, "")
@@ -128,7 +132,12 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		storageVolumes:     storageVolumes,
 	}
 
-	if err = putUpdaterInputs(ctx, cli, prox.ca.Cert, updaterContainer.ID, params.Job); err != nil {
+	// Get the cert from proxy if it exists, otherwise use empty string
+	cert := ""
+	if prox != nil {
+		cert = prox.ca.Cert
+	}
+	if err = putUpdaterInputs(ctx, cli, cert, updaterContainer.ID, params.Job); err != nil {
 		updater.Close()
 		return nil, err
 	}
@@ -265,10 +274,13 @@ func addStorageMounts(hostCfg *container.HostConfig, storageContainerAddress str
 
 func putUpdaterInputs(ctx context.Context, cli *client.Client, cert, id string, job *model.Job) error {
 	opt := container.CopyToContainerOptions{}
-	if t, err := tarball(dbotCert, cert); err != nil {
-		return fmt.Errorf("failed to create cert tarball: %w", err)
-	} else if err = cli.CopyToContainer(ctx, id, "/", t, opt); err != nil {
-		return fmt.Errorf("failed to copy cert to container: %w", err)
+	// Only copy cert if it exists (when proxy is present)
+	if cert != "" {
+		if t, err := tarball(dbotCert, cert); err != nil {
+			return fmt.Errorf("failed to create cert tarball: %w", err)
+		} else if err = cli.CopyToContainer(ctx, id, "/", t, opt); err != nil {
+			return fmt.Errorf("failed to copy cert to container: %w", err)
+		}
 	}
 
 	data, err := JobFile{Job: job}.ToJSON()

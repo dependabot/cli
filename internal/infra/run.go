@@ -370,10 +370,15 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
+	// Determine if we have credentials - if not, we can skip the proxy and networks
+	hasCredentials := len(params.Creds) > 0
+
 	if params.PullImages {
-		err = pullImage(ctx, cli, params.ProxyImage)
-		if err != nil {
-			return err
+		if hasCredentials {
+			err = pullImage(ctx, cli, params.ProxyImage)
+			if err != nil {
+				return err
+			}
 		}
 
 		if params.CollectorConfigPath != "" {
@@ -396,25 +401,30 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 	}
 
-	networks, err := NewNetworks(ctx, cli)
-	if err != nil {
-		return fmt.Errorf("failed to create networks: %w", err)
-	}
-	defer networks.Close()
-
-	prox, err := NewProxy(ctx, cli, &params, networks)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if proxyErr := prox.Close(); proxyErr != nil {
-			err = proxyErr
+	// Only create networks and proxy if we have credentials to protect
+	var networks *Networks
+	var prox *Proxy
+	if hasCredentials {
+		networks, err = NewNetworks(ctx, cli)
+		if err != nil {
+			return fmt.Errorf("failed to create networks: %w", err)
 		}
-	}()
+		defer networks.Close()
 
-	// proxy logs interfere with debugging output
-	if !params.Debug {
-		go prox.TailLogs(ctx, cli)
+		prox, err = NewProxy(ctx, cli, &params, networks)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if proxyErr := prox.Close(); proxyErr != nil {
+				err = proxyErr
+			}
+		}()
+
+		// proxy logs interfere with debugging output
+		if !params.Debug {
+			go prox.TailLogs(ctx, cli)
+		}
 	}
 
 	var collector *Collector
@@ -456,13 +466,18 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		return err
 	}
 
+	proxyURL := ""
+	if prox != nil {
+		proxyURL = prox.url
+	}
+
 	if params.Debug {
-		if err := updater.RunShell(ctx, prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables); err != nil {
+		if err := updater.RunShell(ctx, proxyURL, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables); err != nil {
 			return err
 		}
 	} else {
 		// Run dependabot commands as a dependabot user
-		env := userEnv(prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
+		env := userEnv(proxyURL, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
 		}
