@@ -371,7 +371,9 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	}
 
 	// Determine if we have credentials - if not, we can skip the proxy and networks
+	// Exception: networks are still needed for case-insensitive filesystem support
 	hasCredentials := len(params.Creds) > 0
+	needsNetwork := hasCredentials || params.Job.UseCaseInsensitiveFileSystem()
 
 	if params.PullImages {
 		if hasCredentials {
@@ -401,16 +403,19 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 	}
 
-	// Only create networks and proxy if we have credentials to protect
+	// Create networks if we have credentials to protect or need case-insensitive filesystem
 	var networks *Networks
 	var prox *Proxy
-	if hasCredentials {
+	if needsNetwork {
 		networks, err = NewNetworks(ctx, cli)
 		if err != nil {
 			return fmt.Errorf("failed to create networks: %w", err)
 		}
 		defer networks.Close()
+	}
 
+	// Only create proxy if we have credentials to protect
+	if hasCredentials {
 		prox, err = NewProxy(ctx, cli, &params, networks)
 		if err != nil {
 			return err
