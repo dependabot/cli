@@ -428,7 +428,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	}
 
 	var collector *Collector
-	if params.CollectorConfigPath != "" {
+	if params.CollectorConfigPath != "" && hasCredentials {
 		collector, err = NewCollector(ctx, cli, networks, &params, prox)
 		if err != nil {
 			fmt.Println("Failed to create OpenTelemetry collector:", err)
@@ -437,6 +437,8 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 			go collector.TailLogs(ctx, cli)
 		}
 		defer collector.Close()
+	} else if params.CollectorConfigPath != "" && !hasCredentials {
+		log.Println("Warning: OpenTelemetry collector requires credentials to be present, skipping collector setup")
 	}
 
 	updater, err := NewUpdater(ctx, cli, networks, &params, prox, collector)
