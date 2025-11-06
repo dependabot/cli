@@ -3,19 +3,50 @@
 exec docker build -qt proxy-updater .
 exec docker build -qt dummy-proxy -f Dockerfile.proxy .
 
-dependabot update go_modules dependabot/cli --updater-image proxy-updater --proxy-image dummy-proxy
+# Test with credentials (proxy should run)
+dependabot update -f job.yml --updater-image proxy-updater --proxy-image dummy-proxy
 stderr 'proxy \| Proxy is running'
 stderr 'updater \| Updater is running'
 ! stderr 'proxy \| custom-ca-cert\.crt'
 
-dependabot update go_modules dependabot/cli --proxy-cert my-cert --updater-image proxy-updater --proxy-image dummy-proxy
+dependabot update -f job.yml --proxy-cert my-cert --updater-image proxy-updater --proxy-image dummy-proxy
 stderr 'proxy \| custom-ca-cert\.crt'
 stderr 'proxy \| I am a certificate'
 
 # Test that the CLI exits with non-zero if the proxy does too.
-! dependabot update go_modules dependabot/cli --proxy-cert crash --updater-image proxy-updater --proxy-image dummy-proxy --proxy-username user --proxy-password pass
+! dependabot update -f job.yml --proxy-cert crash --updater-image proxy-updater --proxy-image dummy-proxy
+
+# Test without credentials (proxy should NOT run)
+dependabot update -f job-no-creds.yml --updater-image proxy-updater --proxy-image dummy-proxy
+! stderr 'proxy \| Proxy is running'
+stderr 'updater \| Updater is running'
 
 exec docker rmi -f proxy-updater dummy-proxy
+
+-- job.yml --
+job:
+  package-manager: go_modules
+  allowed-updates:
+    - update-type: all
+  source:
+    provider: github
+    repo: dependabot/cli
+    directory: /
+credentials:
+  - type: git_source
+    host: github.com
+    username: x-access-token
+    password: dummy_token
+
+-- job-no-creds.yml --
+job:
+  package-manager: go_modules
+  allowed-updates:
+    - update-type: all
+  source:
+    provider: github
+    repo: dependabot/cli
+    directory: /
 
 -- crash --
 crash
