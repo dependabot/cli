@@ -105,6 +105,88 @@ func TestAPI_CreatePullRequest_ReplacesBinaryWithHash(t *testing.T) {
 	}
 }
 
+func TestAPI_CreatePullRequest_PreservesAssociatedMetadata(t *testing.T) {
+	var stdout bytes.Buffer
+
+	api := NewAPI(nil, &stdout)
+	defer api.Stop()
+
+	manifestPaths := []string{
+		"WorkspacePackage1.jl/SubPackageA/Project.toml",
+		"WorkspacePackage1.jl/SubPackageB/Project.toml",
+	}
+	lockfilePath := "WorkspacePackage1.jl/Manifest.toml"
+
+	createPullRequest := model.CreatePullRequest{
+		UpdatedDependencyFiles: []model.DependencyFile{
+			{
+				Name:                    "Manifest.toml",
+				Directory:               "/WorkspacePackage1.jl",
+				Content:                 "manifest content",
+				ContentEncoding:         "utf-8",
+				AssociatedManifestPaths: manifestPaths,
+				AssociatedLockfilePath:  lockfilePath,
+			},
+		},
+	}
+
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(model.UpdateWrapper{Data: createPullRequest}); err != nil {
+		t.Fatalf("failed to encode request body: %v", err)
+	}
+
+	url := fmt.Sprintf("http://127.0.0.1:%d/create_pull_request", api.Port())
+	req, err := http.NewRequest("POST", url, &body)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("failed to send request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if len(api.Errors) > 0 {
+		t.Fatalf("expected no errors, got %d errors: %v", len(api.Errors), api.Errors)
+	}
+
+	if len(api.Actual.Output) != 1 {
+		t.Fatalf("expected 1 output, got %d", len(api.Actual.Output))
+	}
+	actual := api.Actual.Output[0].Expect.Data.(model.CreatePullRequest).UpdatedDependencyFiles[0]
+	if actual.AssociatedLockfilePath != lockfilePath {
+		t.Fatalf("expected lockfile path %q, got %q", lockfilePath, actual.AssociatedLockfilePath)
+	}
+	if len(actual.AssociatedManifestPaths) != len(manifestPaths) {
+		t.Fatalf("expected %d manifest paths, got %d", len(manifestPaths), len(actual.AssociatedManifestPaths))
+	}
+	for i, path := range manifestPaths {
+		if actual.AssociatedManifestPaths[i] != path {
+			t.Fatalf("expected manifest path %q at index %d, got %q", path, i, actual.AssociatedManifestPaths[i])
+		}
+	}
+
+	var wrapper Wrapper[model.CreatePullRequest]
+	if err := json.NewDecoder(&stdout).Decode(&wrapper); err != nil {
+		t.Fatalf("failed to decode stdout: %v", err)
+	}
+	stdoutFile := wrapper.Data.UpdatedDependencyFiles[0]
+	if stdoutFile.AssociatedLockfilePath != lockfilePath {
+		t.Fatalf("expected stdout lockfile path %q, got %q", lockfilePath, stdoutFile.AssociatedLockfilePath)
+	}
+	if len(stdoutFile.AssociatedManifestPaths) != len(manifestPaths) {
+		t.Fatalf("expected stdout manifest path count %d, got %d", len(manifestPaths), len(stdoutFile.AssociatedManifestPaths))
+	}
+	for i, path := range manifestPaths {
+		if stdoutFile.AssociatedManifestPaths[i] != path {
+			t.Fatalf("expected stdout manifest path %q at index %d, got %q", path, i, stdoutFile.AssociatedManifestPaths[i])
+		}
+	}
+}
+
 func TestAPI_compareDependencySubmissionRequest(t *testing.T) {
 	t.Run("ignores detector version", func(t *testing.T) {
 		expect := model.DependencySubmissionRequest{
