@@ -49,6 +49,9 @@ type DependencyFile struct {
 	SymlinkTarget   string `json:"symlink_target,omitempty" yaml:"symlink_target,omitempty"`
 	Type            string `json:"type" yaml:"type"`
 	Mode            string `json:"mode" yaml:"mode,omitempty"`
+	// New fields to support cross-directory workspace manifests/lockfiles
+	AssociatedManifestPaths []string `json:"associated_manifest_paths,omitempty" yaml:"associated_manifest_paths,omitempty"`
+	AssociatedLockfilePath  string   `json:"associated_lockfile_path,omitempty" yaml:"associated_lockfile_path,omitempty"`
 }
 
 type ClosePullRequest struct {
