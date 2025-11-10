@@ -22,7 +22,7 @@ import (
 const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
 
 // ProxyImageName is the default Docker image used by the proxy
-const ProxyImageName = "ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest"
+const ProxyImageName = "ghcr.io/dependabot/proxy:latest"
 
 type Proxy struct {
 	cli         *client.Client
@@ -90,7 +90,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 			"ACTIONS_ID_TOKEN_REQUEST_URL=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"),
 		},
 		Entrypoint: []string{
-			"sh", "-c", "update-ca-certificates && /update-job-proxy",
+			"sh", "-c", "update-ca-certificates && /dependabot-proxy",
 		},
 	}
 	hostName := namesgenerator.GetRandomName(1)
