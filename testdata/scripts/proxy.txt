@@ -27,9 +27,9 @@ I am a certificate
 FROM ubuntu:22.04
 
 COPY --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
-COPY --chmod=755 update-job-proxy /update-job-proxy
+COPY --chmod=755 dependabot-proxy /dependabot-proxy
 
--- update-job-proxy --
+-- dependabot-proxy --
 #!/usr/bin/env bash
 
 echo "Proxy is running"
