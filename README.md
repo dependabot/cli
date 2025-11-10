@@ -50,7 +50,7 @@ Available Commands:
 
 Flags:
   -h, --help                   help for dependabot
-      --proxy-image string     container image to use for the proxy (default "ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest")
+      --proxy-image string     container image to use for the proxy (default "ghcr.io/dependabot/proxy:latest")
       --updater-image string   container image to use for the updater
   -v, --version                version for dependabot
 
@@ -152,7 +152,7 @@ with values from the environment.
 >
 > The job description file format isn't documented formally yet,
 > but you can find examples in the [smoke tests](https://github.com/dependabot/smoke-tests/tree/main/tests)
-> and look at the [model directory](/internal/model) for how the CLI models the job. 
+> and look at the [model directory](/internal/model) for how the CLI models the job.
 
 ### How it works
 
@@ -303,7 +303,7 @@ See the [debugging doc](/docs/debugging.md) for details.
 ### "Docker daemon not running"
 
 ```
-failed to pull ghcr.io/github/dependabot-update-job-proxy/dependabot-update-job-proxy:latest:
+failed to pull ghcr.io/dependabot/proxy:latest:
 Error response from daemon: dial unix docker.raw.sock: connect: no such file or directory
 ```
 
@@ -351,7 +351,7 @@ the issue, see <https://github.com/dependabot/cli/issues/113#issuecomment-161012
 [Docker]: https://docs.docker.com/get-started/
 [contributing]: ./.github/CONTRIBUTING.md
 [updater]: https://github.com/dependabot/dependabot-core/pkgs/container/dependabot-updater
-[proxy]: https://github.com/orgs/github/packages/container/package/dependabot-update-job-proxy%2Fdependabot-update-job-proxy
+[proxy]: https://github.com/orgs/dependabot/packages/container/package/proxy
 [gh]: https://github.com/cli/cli
 [releases]: https://github.com/dependabot/cli/releases
 [dependabot-core]: https://github.com/dependabot/dependabot-core
