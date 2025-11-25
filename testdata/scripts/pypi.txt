@@ -1,10 +1,25 @@
 # this test verifies the certificate generated allows us to connect to pypi.org
 exec docker build -qt pypi-updater .
 
-dependabot update go_modules dependabot/cli --updater-image pypi-updater
+dependabot update -f job.yml --updater-image pypi-updater
 stderr '200 https://pypi.org:443/'
 
 exec docker rmi -f pypi-updater
+
+-- job.yml --
+job:
+  package-manager: go_modules
+  allowed-updates:
+    - update-type: all
+  source:
+    provider: github
+    repo: dependabot/cli
+    directory: /
+credentials:
+  - type: git_source
+    host: github.com
+    username: x-access-token
+    password: dummy_token
 
 -- Dockerfile --
 FROM python:3.13-bookworm

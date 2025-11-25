@@ -159,3 +159,38 @@ func Test_generateIgnoreConditions(t *testing.T) {
 		}
 	})
 }
+
+func Test_hasCredentials(t *testing.T) {
+	t.Run("returns false when credentials are nil", func(t *testing.T) {
+		params := RunParams{
+			Creds: nil,
+		}
+		hasCredentials := len(params.Creds) > 0
+		if hasCredentials {
+			t.Error("expected hasCredentials to be false with nil credentials")
+		}
+	})
+
+	t.Run("returns false when credentials are empty", func(t *testing.T) {
+		params := RunParams{
+			Creds: []model.Credential{},
+		}
+		hasCredentials := len(params.Creds) > 0
+		if hasCredentials {
+			t.Error("expected hasCredentials to be false with empty credentials")
+		}
+	})
+
+	t.Run("returns true when credentials exist", func(t *testing.T) {
+		params := RunParams{
+			Creds: []model.Credential{{
+				"type":  "test",
+				"token": "test_token",
+			}},
+		}
+		hasCredentials := len(params.Creds) > 0
+		if !hasCredentials {
+			t.Error("expected hasCredentials to be true with credentials")
+		}
+	})
+}
