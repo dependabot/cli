@@ -329,6 +329,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 	// doesn't already exist. This way the user doesn't run out of calls from being anonymous.
 	hasLocalToken := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN") != ""
 	hasLocalAzureToken := os.Getenv("LOCAL_AZURE_ACCESS_TOKEN") != ""
+	hasGitHubJitAccessEndpoint := os.Getenv("GITHUB_JITACCESS_TOKEN_ENDPOINT") != ""
 
 	var isGitSourceInCreds bool
 	for _, cred := range input.Credentials {
@@ -359,6 +360,17 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			"username": "x-access-token",
 			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
 		})
+
+		if hasGitHubJitAccessEndpoint {
+			log.Println("Adding jit_access type for GitHub credentials")
+			input.Credentials = append(input.Credentials, model.Credential{
+				"type":            "jit_access",
+				"credential-type": "git_source",
+				"username":        "x-access-token",
+				"endpoint":        "$GITHUB_JIT_ACCESS_TOKEN_ENDPOINT",
+			})
+		}
+
 		if len(input.Job.CredentialsMetadata) > 0 {
 			// Add the metadata since the next section will be skipped.
 			input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, map[string]any{
