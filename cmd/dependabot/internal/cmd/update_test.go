@@ -203,6 +203,49 @@ func Test_processInput(t *testing.T) {
 
 		assertStringArraysEqual(t, expectedGitCredentalsMetadataHosts, actualCredentialsMetadataHosts)
 	})
+
+	t.Run("Add Jit Access credentials when endpoint is present", func(t *testing.T) {
+		var input model.Input
+		os.Setenv("LOCAL_GITHUB_ACCESS_TOKEN", "token")
+		host := "github.example.com"
+		input.Job.Source.Hostname = &host
+		os.Setenv("GITHUB_JITACCESS_TOKEN_ENDPOINT", "host/jit_access")
+
+		processInput(&input, nil)
+
+		if len(input.Credentials) != 2 {
+			t.Fatal("expected two credential types to be added")
+		}
+		if !reflect.DeepEqual(input.Credentials[0], model.Credential{
+			"type":     "git_source",
+			"host":     host,
+			"username": "x-access-token",
+			"password": "$LOCAL_GITHUB_ACCESS_TOKEN",
+		}) {
+			t.Error("expected git_source credentials to be added")
+		}
+		if !reflect.DeepEqual(input.Credentials[1], model.Credential{
+			"type":            "jit_access",
+			"credential-type": "git_source",
+			"username":        "x-access-token",
+			"endpoint":        "$GITHUB_JITACCESS_TOKEN_ENDPOINT",
+		}) {
+			t.Error("expected jit_access credentials to be added")
+		}
+		if !reflect.DeepEqual(input.Job.CredentialsMetadata[0], model.Credential{
+			"type": "git_source",
+			"host": host,
+		}) {
+			t.Error("expected git_source credentials metadata to be added")
+		}
+		if !reflect.DeepEqual(input.Job.CredentialsMetadata[1], model.Credential{
+			"type":            "jit_access",
+			"credential-type": "git_source",
+			"endpoint":        "$GITHUB_JITACCESS_TOKEN_ENDPOINT",
+		}) {
+			t.Error("expected jit_accesscredentials metadata to be added")
+		}
+	})
 }
 
 func assertStringArraysEqual(t *testing.T, expected, actual []string) {

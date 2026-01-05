@@ -367,7 +367,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 				"type":            "jit_access",
 				"credential-type": "git_source",
 				"username":        "x-access-token",
-				"endpoint":        "$GITHUB_JIT_ACCESS_TOKEN_ENDPOINT",
+				"endpoint":        "$GITHUB_JITACCESS_TOKEN_ENDPOINT",
 			})
 		}
 
