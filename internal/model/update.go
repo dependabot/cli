@@ -30,12 +30,13 @@ type UpdatePullRequest struct {
 }
 
 type DependencySubmissionRequest struct {
-	Version   int8           `json:"version" yaml:"version"`
-	Sha       string         `json:"sha" yaml:"sha"`
-	Ref       string         `json:"ref" yaml:"ref"`
-	Job       map[string]any `json:"job" yaml:"job"`
-	Detector  map[string]any `json:"detector" yaml:"detector"`
-	Manifests map[string]any `json:"manifests" yaml:"manifests"`
+	Version   int8              `json:"version" yaml:"version"`
+	Sha       string            `json:"sha" yaml:"sha"`
+	Ref       string            `json:"ref" yaml:"ref"`
+	Job       map[string]any    `json:"job" yaml:"job"`
+	Detector  map[string]any    `json:"detector" yaml:"detector"`
+	Manifests map[string]any    `json:"manifests" yaml:"manifests"`
+	Metadata  map[string]string `json:"metadata" yaml:"metadata"`
 }
 
 type DependencyFile struct {
