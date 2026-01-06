@@ -365,8 +365,8 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			log.Println("Adding jit_access type for GitHub credentials")
 			input.Credentials = append(input.Credentials, model.Credential{
 				"type":            "jit_access",
+				"host":            host,
 				"credential-type": "git_source",
-				"username":        "x-access-token",
 				"endpoint":        "$GITHUB_JITACCESS_TOKEN_ENDPOINT",
 			})
 		}

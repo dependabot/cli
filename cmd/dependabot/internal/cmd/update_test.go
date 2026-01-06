@@ -227,8 +227,8 @@ func Test_processInput(t *testing.T) {
 		}
 		if !reflect.DeepEqual(input.Credentials[1], model.Credential{
 			"type":            "jit_access",
+			"host":            host,
 			"credential-type": "git_source",
-			"username":        "x-access-token",
 			"endpoint":        "$GITHUB_JITACCESS_TOKEN_ENDPOINT",
 		}) {
 			t.Error("expected jit_access credentials to be added")
@@ -242,9 +242,10 @@ func Test_processInput(t *testing.T) {
 		if !reflect.DeepEqual(input.Job.CredentialsMetadata[1], model.Credential{
 			"type":            "jit_access",
 			"credential-type": "git_source",
+			"host":            host,
 			"endpoint":        "$GITHUB_JITACCESS_TOKEN_ENDPOINT",
 		}) {
-			t.Error("expected jit_accesscredentials metadata to be added")
+			t.Error("expected jit_access credentials metadata to be added")
 		}
 	})
 }
