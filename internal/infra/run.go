@@ -289,6 +289,7 @@ var packageManagerLookup = map[string]string{
 	"npm_and_yarn":   "npm",
 	"opentofu":       "opentofu",
 	"pip":            "pip",
+	"pre_commit":     "pre-commit",
 	"terraform":      "terraform",
 	"swift":          "swift",
 	"devcontainers":  "devcontainers",
