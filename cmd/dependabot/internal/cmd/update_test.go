@@ -295,10 +295,11 @@ func Test_extractInput(t *testing.T) {
 			// Retry the calls in case the server takes a bit to start up.
 			for i := 0; i < 10; i++ {
 				body := strings.NewReader(`{"job":{"package-manager":"go_modules"}}`)
-				_, err := http.Post("http://127.0.0.1:8080", "application/json", body)
+				resp, err := http.Post("http://127.0.0.1:8080", "application/json", body)
 				if err != nil {
 					time.Sleep(10 * time.Millisecond)
 				} else {
+					resp.Body.Close()
 					return
 				}
 			}
