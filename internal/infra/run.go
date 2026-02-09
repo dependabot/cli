@@ -22,10 +22,10 @@ import (
 	"github.com/dependabot/cli/internal/server"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
+	archive "github.com/moby/go-archive"
 	"github.com/moby/moby/api/types/registry"
 	"gopkg.in/yaml.v3"
 )
@@ -546,7 +546,7 @@ func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, loca
 }
 
 func pullImage(ctx context.Context, cli *client.Client, imageName string) error {
-	inspect, _, err := cli.ImageInspectWithRaw(ctx, imageName)
+	inspect, err := cli.ImageInspect(ctx, imageName)
 	if err != nil {
 		// Image doesn't exist locally, pull it
 		err = pullImageWithAuth(ctx, cli, imageName)
@@ -554,13 +554,13 @@ func pullImage(ctx context.Context, cli *client.Client, imageName string) error 
 			return fmt.Errorf("failed to pull image %v: %w", imageName, err)
 		}
 
-		inspect, _, err = cli.ImageInspectWithRaw(ctx, imageName)
+		inspect, err = cli.ImageInspect(ctx, imageName)
 		if err != nil {
 			return fmt.Errorf("failed to inspect image %v after pull: %w", imageName, err)
 		}
 	} else {
 		// Image doesn't exist remotely, don't bother pulling it
-		if inspect.RepoDigests == nil || len(inspect.RepoDigests) == 0 || inspect.RepoDigests[0] == "" {
+		if len(inspect.RepoDigests) == 0 || inspect.RepoDigests[0] == "" {
 			return nil
 		}
 
