@@ -291,8 +291,7 @@ func compareMap(t *testing.T, parent string, expected map[string]any, actual int
 			case []any:
 				// Also check structs that are in arrays.
 				for _, v := range expectedValue {
-					switch v := v.(type) {
-					case map[string]any:
+					if v, ok := v.(map[string]any); ok {
 						structField := actualType.Field(fieldIndex)
 						name := yamlTagCleaner(structField.Tag.Get("yaml"))
 						compareMap(t, parent+"->"+name, v, actualValue.Interface())

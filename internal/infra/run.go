@@ -608,8 +608,8 @@ func pullImage(ctx context.Context, cli *client.Client, imageName string) error 
 func pullImageWithAuth(ctx context.Context, cli *client.Client, imageName string) error {
 	var imagePullOptions image.PullOptions
 
-	if strings.HasPrefix(imageName, "ghcr.io/") {
-
+	switch {
+	case strings.HasPrefix(imageName, "ghcr.io/"):
 		token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
 		if token != "" {
 			auth := base64.StdEncoding.EncodeToString([]byte("x:" + token))
@@ -619,7 +619,7 @@ func pullImageWithAuth(ctx context.Context, cli *client.Client, imageName string
 		} else {
 			log.Println("Failed to find credentials for GitHub container registry.")
 		}
-	} else if strings.Contains(imageName, ".azurecr.io/") {
+	case strings.Contains(imageName, ".azurecr.io/"):
 		username := os.Getenv("AZURE_REGISTRY_USERNAME")
 		password := os.Getenv("AZURE_REGISTRY_PASSWORD")
 
@@ -641,7 +641,7 @@ func pullImageWithAuth(ctx context.Context, cli *client.Client, imageName string
 		} else {
 			log.Println("Failed to find credentials for Azure container registry.")
 		}
-	} else {
+	default:
 		log.Printf("Failed to find credentials for pulling image: %s\n.", imageName)
 	}
 
