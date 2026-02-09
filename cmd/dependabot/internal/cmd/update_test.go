@@ -191,7 +191,7 @@ func Test_processInput(t *testing.T) {
 			}
 		}
 
-		actualCredentialsMetadataHosts := []string{}
+		actualCredentialsMetadataHosts := make([]string, 0, len(credentialsMetadataHosts))
 		for host := range credentialsMetadataHosts {
 			actualCredentialsMetadataHosts = append(actualCredentialsMetadataHosts, host)
 		}
