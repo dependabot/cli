@@ -22,10 +22,10 @@ import (
 	"github.com/dependabot/cli/internal/server"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	archive "github.com/moby/go-archive"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
+	archive "github.com/moby/go-archive"
 	"github.com/moby/moby/api/types/registry"
 	"gopkg.in/yaml.v3"
 )
