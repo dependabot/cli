@@ -1,0 +1,81 @@
+name: Docker images
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  docker:
+    name: Docker (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+
+      - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+
+      - name: Build Docker image
+        run: nix build .#dockerImage
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push arch-specific image
+        run: |
+          docker load < result
+          docker tag dependabot-cli:latest "$REGISTRY/$IMAGE_NAME:sha-${GITHUB_SHA:0:7}-${{ matrix.arch }}"
+          docker push "$REGISTRY/$IMAGE_NAME:sha-${GITHUB_SHA:0:7}-${{ matrix.arch }}"
+
+  manifest:
+    name: Push multi-arch manifest
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+
+      - name: Create and push manifest lists
+        run: |
+          DIGEST_TAG="sha-${GITHUB_SHA:0:7}"
+          AMD64="$REGISTRY/$IMAGE_NAME:${DIGEST_TAG}-amd64"
+          ARM64="$REGISTRY/$IMAGE_NAME:${DIGEST_TAG}-arm64"
+
+          for TAG in $DOCKER_METADATA_OUTPUT_TAGS; do
+            docker manifest create "$TAG" "$AMD64" "$ARM64"
+            docker manifest push "$TAG"
+          done
