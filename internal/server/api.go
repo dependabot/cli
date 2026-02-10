@@ -56,7 +56,7 @@ func NewAPI(expected []model.Output, writer io.Writer) *API {
 	if os.Getenv("FAKE_API_PORT") != "" {
 		port = os.Getenv("FAKE_API_PORT")
 	}
-	l, err := net.Listen("tcp", fakeAPIHost+":"+port)
+	l, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", fakeAPIHost+":"+port)
 	if err != nil {
 		panic(err)
 	}

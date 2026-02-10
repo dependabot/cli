@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -67,7 +68,7 @@ func TestAPI_CreatePullRequest_ReplacesBinaryWithHash(t *testing.T) {
 
 	url := "http://127.0.0.1:" + // use the API's port
 		fmt.Sprintf("%d/create_pull_request", api.Port())
-	req, err := http.NewRequest("POST", url, &body)
+	req, err := http.NewRequestWithContext(context.Background(), "POST", url, &body)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
