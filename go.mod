@@ -4,13 +4,13 @@ go 1.24.0
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/docker/cli v28.5.1+incompatible
-	github.com/docker/docker v28.5.1+incompatible
+	github.com/docker/cli v29.2.1+incompatible
+	github.com/docker/docker v28.5.2+incompatible
 	github.com/google/go-containerregistry v0.20.6
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/hexops/gotextdiff v1.0.3
-	github.com/moby/go-archive v0.1.0
-	github.com/moby/moby v28.5.1+incompatible
+	github.com/moby/go-archive v0.2.0
+	github.com/moby/moby v28.5.2+incompatible
 	github.com/moby/sys/signal v0.7.1
 	github.com/spf13/cobra v1.10.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -27,14 +27,14 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.17.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
-	github.com/docker/docker-credential-helpers v0.9.4 // indirect
+	github.com/docker/docker-credential-helpers v0.9.5 // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
