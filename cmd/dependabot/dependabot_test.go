@@ -12,15 +12,14 @@ import (
 )
 
 func TestDependabot(t *testing.T) {
-	err := exec.Command("go", "build", ".").Run()
+	ctx := context.Background()
+	err := exec.CommandContext(ctx, "go", "build", ".").Run()
 	if err != nil {
 		t.Fatal("failed to build dependabot")
 	}
 	t.Cleanup(func() {
 		os.Remove("dependabot")
 	})
-
-	ctx := context.Background()
 	engine := &script.Engine{
 		Conds: scripttest.DefaultConds(),
 		Cmds:  Commands(),

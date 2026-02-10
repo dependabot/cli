@@ -169,7 +169,7 @@ func extractInput(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error) 
 	}
 
 	if hasServer {
-		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", flags.inputServerPort))
+		l, err := (&net.ListenConfig{}).Listen(cmd.Context(), "tcp", fmt.Sprintf("127.0.0.1:%d", flags.inputServerPort))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create listener: %w", err)
 		}

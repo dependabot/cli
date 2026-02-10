@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -295,7 +296,12 @@ func Test_extractInput(t *testing.T) {
 			// Retry the calls in case the server takes a bit to start up.
 			for i := 0; i < 10; i++ {
 				body := strings.NewReader(`{"job":{"package-manager":"go_modules"}}`)
-				resp, err := http.Post("http://127.0.0.1:8080", "application/json", body)
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://127.0.0.1:8080", body)
+				if err != nil {
+					return
+				}
+				req.Header.Set("Content-Type", "application/json")
+				resp, err := http.DefaultClient.Do(req)
 				if err != nil {
 					time.Sleep(10 * time.Millisecond)
 				} else {

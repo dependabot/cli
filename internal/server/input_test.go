@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -20,7 +21,7 @@ func TestInput(t *testing.T) {
 	if os.Getenv("GOOS") == "darwin" {
 		ip = "127.0.0.1"
 	}
-	l, err := net.Listen("tcp", ip+":0")
+	l, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", ip+":0")
 	if err != nil {
 		t.Fatal("Failed to create listener: ", err.Error())
 	}
