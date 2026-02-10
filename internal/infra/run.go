@@ -255,6 +255,7 @@ func checkCredAccess(ctx context.Context, job *model.Job, creds []model.Credenti
 		if err != nil {
 			return fmt.Errorf("failed making request: %w", err)
 		}
+		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("failed request to GitHub API to check access: %s", resp.Status)
 		}
