@@ -130,7 +130,7 @@ func Run(params RunParams) error {
 		var err error
 		// Open a file for writing but don't truncate it yet since an error will delete the test.
 		// This is done before the test so if the dir isn't writable it doesn't waste time.
-		outFile, err = os.OpenFile(params.Output, os.O_RDWR|os.O_CREATE, 0666)
+		outFile, err = os.OpenFile(params.Output, os.O_RDWR|os.O_CREATE, 0600)
 		if err != nil {
 			return fmt.Errorf("failed to create output file: %w", err)
 		}
@@ -499,7 +499,7 @@ func getFromContainer(ctx context.Context, cli *client.Client, containerID, srcP
 	defer outFile.Close()
 	tarReader := tar.NewReader(reader)
 	tarReader.Next()
-	_, err = io.Copy(outFile, tarReader)
+	_, err = io.Copy(outFile, io.LimitReader(tarReader, 1<<30)) // 1 GiB limit to prevent decompression bombs
 	if err != nil {
 		log.Printf("Failed copy while getting from container %v: %v\n", srcPath, err)
 	}

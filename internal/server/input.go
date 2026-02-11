@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/dependabot/cli/internal/model"
 	"log"
 	"net"
 	"net/http"
+	"time"
+
+	"github.com/dependabot/cli/internal/model"
 )
 
 type credServer struct {
@@ -30,7 +32,7 @@ func (s *credServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Input receives configuration via HTTP on the port and returns it decoded
 func Input(listener net.Listener) (*model.Input, error) {
 	handler := &credServer{}
-	srv := &http.Server{Handler: handler}
+	srv := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	handler.server = srv
 
 	// printing so the user doesn't think the cli is hanging
