@@ -36,7 +36,7 @@ func TestInput(t *testing.T) {
 
 	url := fmt.Sprintf("http://%s", l.Addr().String())
 	data := `{"job":{"package-manager":"test"},"credentials":[{"credential":"value"}]}`
-	resp, err := http.Post(url, "application/json", bytes.NewReader([]byte(data)))
+	resp, err := http.Post(url, "application/json", bytes.NewReader([]byte(data))) //nolint:gosec // test code with controlled URL
 	if err != nil {
 		t.Fatal(err.Error())
 	}

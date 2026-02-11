@@ -85,7 +85,7 @@ var testCmd = NewTestCommand()
 func readSmokeTest(file string) (*model.SmokeTest, []byte, error) {
 	var smokeTest model.SmokeTest
 
-	data, err := os.ReadFile(file)
+	data, err := os.ReadFile(file) //nolint:gosec // file path is provided by the user via CLI flags
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open smoke test: %w", err)
 	}

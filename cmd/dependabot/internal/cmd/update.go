@@ -285,7 +285,7 @@ func readArguments(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error)
 func readInputFile(file string) (*model.Input, error) {
 	var input model.Input
 
-	data, err := os.ReadFile(file)
+	data, err := os.ReadFile(file) //nolint:gosec // file path is provided by the user via CLI flags
 	if err != nil {
 		return nil, fmt.Errorf("failed to open input file: %w", err)
 	}

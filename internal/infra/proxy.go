@@ -69,7 +69,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 	hostCfg.ExtraHosts = append(hostCfg.ExtraHosts, params.ExtraHosts...)
 	if params.CacheDir != "" {
-		_ = os.MkdirAll(params.CacheDir, 0744)
+		_ = os.MkdirAll(params.CacheDir, 0750)
 		cacheDir, _ := filepath.Abs(params.CacheDir)
 		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
 			Type:   mount.TypeBind,
