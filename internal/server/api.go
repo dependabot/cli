@@ -305,6 +305,8 @@ func compare(expect, actual *model.UpdateWrapper) error {
 		return compareRecordUpdateJobError(v, actual.Data.(model.RecordUpdateJobError))
 	case model.RecordUpdateJobUnknownError:
 		return compareRecordUpdateJobUnknownError(v, actual.Data.(model.RecordUpdateJobUnknownError))
+	case []model.RecordEcosystemMeta:
+		return compareRecordEcosystemMeta(v, actual.Data.([]model.RecordEcosystemMeta))
 	default:
 		return fmt.Errorf("unexpected type: %s", reflect.TypeOf(v))
 	}
@@ -380,4 +382,11 @@ func compareRecordUpdateJobUnknownError(expect, actual model.RecordUpdateJobUnkn
 		return nil
 	}
 	return unexpectedBody("record_update_job_unknown_error")
+}
+
+func compareRecordEcosystemMeta(expect, actual []model.RecordEcosystemMeta) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return unexpectedBody("record_ecosystem_meta")
 }

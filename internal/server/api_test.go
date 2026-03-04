@@ -106,6 +106,81 @@ func TestAPI_CreatePullRequest_ReplacesBinaryWithHash(t *testing.T) {
 	}
 }
 
+func TestAPI_compareRecordEcosystemMeta(t *testing.T) {
+	t.Run("matching ecosystem meta", func(t *testing.T) {
+		expect := []model.RecordEcosystemMeta{
+			{
+				Ecosystem: model.Ecosystem{
+					Name: "bundler",
+					PackageManager: model.VersionManager{
+						Name:       "bundler",
+						Version:    "2.7.2",
+						RawVersion: "2.7.2",
+					},
+				},
+			},
+		}
+		actual := []model.RecordEcosystemMeta{
+			{
+				Ecosystem: model.Ecosystem{
+					Name: "bundler",
+					PackageManager: model.VersionManager{
+						Name:       "bundler",
+						Version:    "2.7.2",
+						RawVersion: "2.7.2",
+					},
+				},
+			},
+		}
+
+		if err := compareRecordEcosystemMeta(expect, actual); err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("mismatched ecosystem meta", func(t *testing.T) {
+		expect := []model.RecordEcosystemMeta{
+			{
+				Ecosystem: model.Ecosystem{
+					Name: "bundler",
+				},
+			},
+		}
+		actual := []model.RecordEcosystemMeta{
+			{
+				Ecosystem: model.Ecosystem{
+					Name: "npm_and_yarn",
+				},
+			},
+		}
+
+		if err := compareRecordEcosystemMeta(expect, actual); err == nil {
+			t.Error("expected error for mismatched ecosystem meta")
+		}
+	})
+
+	t.Run("compare via compare function", func(t *testing.T) {
+		meta := []model.RecordEcosystemMeta{
+			{
+				Ecosystem: model.Ecosystem{
+					Name: "go_modules",
+					PackageManager: model.VersionManager{
+						Name:       "gomod",
+						Version:    "1.21",
+						RawVersion: "1.21",
+					},
+				},
+			},
+		}
+		expectWrapper := &model.UpdateWrapper{Data: meta}
+		actualWrapper := &model.UpdateWrapper{Data: meta}
+
+		if err := compare(expectWrapper, actualWrapper); err != nil {
+			t.Errorf("expected no error from compare, got %v", err)
+		}
+	})
+}
+
 func TestAPI_compareDependencySubmissionRequest(t *testing.T) {
 	t.Run("ignores detector version", func(t *testing.T) {
 		expect := model.DependencySubmissionRequest{
