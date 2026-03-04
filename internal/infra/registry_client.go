@@ -27,7 +27,7 @@ func NewRegistryClient(image string) *RegistryClient {
 
 	var remoteOptions []remote.Option
 	user, pass, err := getRegistryAuthHeader(domain)
-	if err != nil {
+	if err == nil {
 		remoteOptions = []remote.Option{
 			remote.WithAuth(&authn.Basic{Username: user, Password: pass}),
 		}
