@@ -598,6 +598,10 @@ func pullImage(ctx context.Context, cli *client.Client, imageName string) error 
 			if err != nil {
 				return fmt.Errorf("image %v is outdated, failed to pull update: %w", imageName, err)
 			}
+			inspect, err = cli.ImageInspect(ctx, imageName)
+			if err != nil {
+				return fmt.Errorf("failed to inspect image %v after pull: %w", imageName, err)
+			}
 		} else {
 			log.Printf("image %v is already up to date\n", imageName)
 		}
