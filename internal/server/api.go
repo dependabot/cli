@@ -143,8 +143,8 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if kind == "increment_metric" {
-		// Let's just output the metrics data and stop
+	if kind == "increment_metric" || kind == "record_ecosystem_meta" {
+		// These calls are noisy and changeable; skip recording them in output
 		return
 	}
 
