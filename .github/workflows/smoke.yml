@@ -47,7 +47,7 @@ jobs:
           LOCAL_GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -o pipefail
-          URL=https://api.github.com/repos/dependabot/smoke-tests/contents/tests/smoke-${{ matrix.suite }}.yaml
+          URL=https://api.github.com/repos/dependabot/smoke-tests/contents/tests/smoke-${{ matrix.suite }}.yaml?ref=kbukum1/revert-pr-389-390
           curl $(gh api $URL --jq .download_url) -o smoke.yaml
           go run cmd/dependabot/dependabot.go test \
             -f=smoke.yaml \
