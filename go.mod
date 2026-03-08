@@ -6,7 +6,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/docker/cli v29.2.1+incompatible
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/google/go-containerregistry v0.21.1
+	github.com/google/go-containerregistry v0.21.2
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/moby/go-archive v0.2.0
@@ -50,17 +50,15 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0 // indirect
-	go.opentelemetry.io/otel v1.41.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.41.0 // indirect
-	go.opentelemetry.io/otel/metric v1.41.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.41.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.41.0 // indirect
-	go.opentelemetry.io/otel/trace v1.41.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0 // indirect
+	go.opentelemetry.io/otel v1.42.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.42.0 // indirect
+	go.opentelemetry.io/otel/metric v1.42.0 // indirect
+	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/time v0.14.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
