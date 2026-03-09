@@ -257,6 +257,99 @@ func TestExistingPullRequestsOldFormatJSON(t *testing.T) {
 	}
 }
 
+func TestExistingPullRequestsDependencyRemoved(t *testing.T) {
+	testYAML := `---
+job:
+  package-manager: npm_and_yarn
+  source:
+    provider: github
+    repo: dependabot/test
+    directory: "/"
+  existing-pull-requests:
+    - pr-number: 42
+      dependencies:
+        - dependency-name: antd
+          dependency-version: 6.3.2
+        - dependency-name: node-fetch
+          dependency-removed: true
+`
+
+	var input Input
+	if err := yaml.Unmarshal([]byte(testYAML), &input); err != nil {
+		t.Fatal(err)
+	}
+
+	prs := input.Job.ExistingPullRequests
+	if len(prs) != 1 {
+		t.Fatalf("expected 1 PR entry, got %d", len(prs))
+	}
+
+	if prs[0].PRNumber == nil || *prs[0].PRNumber != 42 {
+		t.Errorf("expected pr-number 42, got %v", prs[0].PRNumber)
+	}
+	if prs[0].Dependencies == nil || len(*prs[0].Dependencies) != 2 {
+		t.Fatalf("expected 2 dependencies in PR 42, got %v", prs[0].Dependencies)
+	}
+
+	deps := *prs[0].Dependencies
+	if deps[0].DependencyName != "antd" {
+		t.Errorf("expected antd, got %s", deps[0].DependencyName)
+	}
+	if deps[0].DependencyVersion != "6.3.2" {
+		t.Errorf("expected version 6.3.2, got %s", deps[0].DependencyVersion)
+	}
+	if deps[0].DependencyRemoved {
+		t.Error("expected antd dependency-removed to be false")
+	}
+
+	if deps[1].DependencyName != "node-fetch" {
+		t.Errorf("expected node-fetch, got %s", deps[1].DependencyName)
+	}
+	if !deps[1].DependencyRemoved {
+		t.Error("expected node-fetch dependency-removed to be true")
+	}
+	if deps[1].DependencyVersion != "" {
+		t.Errorf("expected no version for removed dep, got %s", deps[1].DependencyVersion)
+	}
+
+	// Verify round-trip: marshal to JSON and check dependency-removed is preserved
+	data, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonStr := string(data)
+
+	if !strings.Contains(jsonStr, `"dependency-removed":true`) {
+		t.Errorf("JSON output missing dependency-removed:true: %s", jsonStr)
+	}
+
+	// The node-fetch entry should not have dependency-version
+	nodeFetchIdx := strings.Index(jsonStr, `"dependency-name":"node-fetch"`)
+	if nodeFetchIdx < 0 {
+		t.Fatalf("JSON output missing node-fetch entry: %s", jsonStr)
+	}
+	nodeFetchObj := jsonStr[nodeFetchIdx:]
+	closeBrace := strings.Index(nodeFetchObj, "}")
+	nodeFetchObj = nodeFetchObj[:closeBrace]
+	if strings.Contains(nodeFetchObj, `"dependency-version"`) {
+		t.Errorf("node-fetch should not have dependency-version when dependency-removed is true: %s", jsonStr)
+	}
+
+	var roundTripped Input
+	if err := json.Unmarshal(data, &roundTripped); err != nil {
+		t.Fatalf("failed to round-trip JSON: %v", err)
+	}
+
+	rtPRs := roundTripped.Job.ExistingPullRequests
+	if len(rtPRs) != 1 {
+		t.Fatalf("round-trip: expected 1 PR entry, got %d", len(rtPRs))
+	}
+	rtDeps := *rtPRs[0].Dependencies
+	if !rtDeps[1].DependencyRemoved {
+		t.Errorf("round-trip: dependency-removed lost in JSON: %s", jsonStr)
+	}
+}
+
 func compareMap(t *testing.T, parent string, expected map[string]any, actual interface{}) {
 	actualType := reflect.TypeOf(actual)
 	if actualType.Kind() != reflect.Struct {
