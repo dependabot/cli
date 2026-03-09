@@ -92,7 +92,8 @@ type ExistingPR struct {
 
 type ExistingPRDependency struct {
 	DependencyName    string  `json:"dependency-name" yaml:"dependency-name"`
-	DependencyVersion string  `json:"dependency-version" yaml:"dependency-version"`
+	DependencyVersion string  `json:"dependency-version,omitempty" yaml:"dependency-version,omitempty"`
+	DependencyRemoved bool    `json:"dependency-removed,omitempty" yaml:"dependency-removed,omitempty"`
 	Directory         *string `json:"directory,omitempty" yaml:"directory,omitempty"`
 }
 
