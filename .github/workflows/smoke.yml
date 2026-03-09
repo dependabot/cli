@@ -47,8 +47,7 @@ jobs:
           LOCAL_GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -o pipefail
-          URL=https://api.github.com/repos/dependabot/smoke-tests/contents/tests/smoke-${{ matrix.suite }}.yaml
-          curl $(gh api $URL --jq .download_url) -o smoke.yaml
+          gh api "repos/dependabot/smoke-tests/contents/tests/smoke-${{ matrix.suite }}.yaml" -H "Accept: application/vnd.github.raw" > smoke.yaml
           go run cmd/dependabot/dependabot.go test \
             -f=smoke.yaml \
             -o=result.yaml \
