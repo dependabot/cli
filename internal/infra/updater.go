@@ -116,9 +116,20 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		},
 	}
 
-	updaterContainer, err := cli.ContainerCreate(ctx, containerCfg, hostCfg, netCfg, nil, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create updater container: %w", err)
+	// Retry container creation to handle transient SMB mount failures.
+	// The CIFS volumes are mounted during container creation, and the SMB service
+	// may not be fully ready even though its port is listening.
+	var updaterContainer container.CreateResponse
+	for attempt := range 3 {
+		updaterContainer, err = cli.ContainerCreate(ctx, containerCfg, hostCfg, netCfg, nil, "")
+		if err == nil {
+			break
+		}
+		if !strings.Contains(err.Error(), "mount") || attempt == 2 {
+			return nil, fmt.Errorf("failed to create updater container: %w", err)
+		}
+		log.Printf("retrying updater container creation due to mount error: %v", err)
+		time.Sleep(2 * time.Second)
 	}
 
 	updater := &Updater{
@@ -568,10 +579,6 @@ func waitForPort(ctx context.Context, cli *client.Client, containerID string, po
 		if execInspect.ExitCode == 0 {
 			// port is listening
 			log.Printf("  port %d is listening after %d attempts", port, i+1)
-
-			// in a few instances, the port is open but the service isn't yet ready for connections
-			// no more reliable method has been found, other than a short delay
-			time.Sleep(sleepDuration)
 			return nil
 		}
 
