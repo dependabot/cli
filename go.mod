@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/docker/cli v29.2.1+incompatible
+	github.com/docker/cli v29.3.0+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/google/go-containerregistry v0.21.2
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
