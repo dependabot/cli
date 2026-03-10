@@ -4,7 +4,8 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker": {
       "moby": false
-    }
+    },
+    "ghcr.io/devcontainers/features/github-cli": {}
   },
   "customizations": {
     "vscode": {
