@@ -1,6 +1,6 @@
 name: CI Build + Unit Test
 
-on:
+on: # yamllint disable-line rule:truthy
   push:
     branches: ["main"]
   pull_request:
