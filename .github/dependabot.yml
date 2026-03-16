@@ -21,9 +21,9 @@ updates:
       - dependency-type: "all"
     groups:
       docker:
-         patterns:
-            - "github.com/docker/*"
-            - "github.com/moby/*"
+        patterns:
+          - "github.com/docker/*"
+          - "github.com/moby/*"
       all:
         patterns:
           - "*"
@@ -37,4 +37,3 @@ updates:
       all:
         patterns:
           - "*"
-  

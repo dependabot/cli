@@ -12,4 +12,3 @@ credentials:
     host: github.com
     username: x-access-token
     password: $LOCAL_GITHUB_ACCESS_TOKEN
-
