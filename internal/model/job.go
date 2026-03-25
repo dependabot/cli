@@ -203,9 +203,10 @@ type ExistingGroupPR struct {
 }
 
 type Allowed struct {
-	DependencyType string `json:"dependency-type,omitempty" yaml:"dependency-type,omitempty"`
-	DependencyName string `json:"dependency-name,omitempty" yaml:"dependency-name,omitempty"`
-	UpdateType     string `json:"update-type,omitempty" yaml:"update-type,omitempty"`
+	DependencyType string   `json:"dependency-type,omitempty" yaml:"dependency-type,omitempty"`
+	DependencyName string   `json:"dependency-name,omitempty" yaml:"dependency-name,omitempty"`
+	UpdateType     string   `json:"update-type,omitempty" yaml:"update-type,omitempty"`
+	UpdateTypes    []string `json:"update-types,omitempty" yaml:"update-types,omitempty"`
 }
 
 type Group struct {

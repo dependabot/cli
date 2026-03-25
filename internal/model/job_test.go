@@ -21,6 +21,72 @@ func TestInput(t *testing.T) {
 	compareMap(t, "job", input2["job"], input.Job)
 }
 
+func TestAllowedUpdateTypes(t *testing.T) {
+	var input Input
+	if err := yaml.Unmarshal([]byte(exampleJob), &input); err != nil {
+		t.Fatal(err)
+	}
+
+	allowed := input.Job.AllowedUpdates
+	if len(allowed) != 2 {
+		t.Fatalf("expected 2 allowed updates, got %d", len(allowed))
+	}
+
+	// First entry: dependency-type + update-type (existing pattern)
+	if allowed[0].DependencyType != "direct" {
+		t.Errorf("expected dependency-type 'direct', got %q", allowed[0].DependencyType)
+	}
+	if allowed[0].UpdateType != "all" {
+		t.Errorf("expected update-type 'all', got %q", allowed[0].UpdateType)
+	}
+	if len(allowed[0].UpdateTypes) != 0 {
+		t.Errorf("expected no update-types on first entry, got %v", allowed[0].UpdateTypes)
+	}
+
+	// Second entry: dependency-name + update-types (new feature)
+	if allowed[1].DependencyName != "rails" {
+		t.Errorf("expected dependency-name 'rails', got %q", allowed[1].DependencyName)
+	}
+	expectedTypes := []string{"version-update:semver-minor", "version-update:semver-patch"}
+	if len(allowed[1].UpdateTypes) != len(expectedTypes) {
+		t.Fatalf("expected %d update-types, got %d", len(expectedTypes), len(allowed[1].UpdateTypes))
+	}
+	for i, et := range expectedTypes {
+		if allowed[1].UpdateTypes[i] != et {
+			t.Errorf("update-types[%d]: expected %q, got %q", i, et, allowed[1].UpdateTypes[i])
+		}
+	}
+}
+
+func TestAllowedUpdateTypesJSON(t *testing.T) {
+	original := Allowed{
+		DependencyName: "rails",
+		UpdateTypes:    []string{"version-update:semver-minor", "version-update:semver-patch"},
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var decoded Allowed
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatal(err)
+	}
+
+	if decoded.DependencyName != original.DependencyName {
+		t.Errorf("dependency-name: expected %q, got %q", original.DependencyName, decoded.DependencyName)
+	}
+	if len(decoded.UpdateTypes) != len(original.UpdateTypes) {
+		t.Fatalf("update-types length: expected %d, got %d", len(original.UpdateTypes), len(decoded.UpdateTypes))
+	}
+	for i, et := range original.UpdateTypes {
+		if decoded.UpdateTypes[i] != et {
+			t.Errorf("update-types[%d]: expected %q, got %q", i, et, decoded.UpdateTypes[i])
+		}
+	}
+}
+
 func TestExistingPullRequestsNewFormat(t *testing.T) {
 	testYAML := `---
 job:
@@ -663,6 +729,10 @@ job:
   allowed-updates:
   - dependency-type: direct
     update-type: all
+  - dependency-name: "rails"
+    update-types:
+    - "version-update:semver-minor"
+    - "version-update:semver-patch"
   dependency-groups:
   - name: npm
     rules:
