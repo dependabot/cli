@@ -69,21 +69,45 @@ func TestAllowedUpdateTypesJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var decoded Allowed
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	// Verify the actual JSON keys are correct by unmarshaling into a raw map
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
 		t.Fatal(err)
 	}
 
-	if decoded.DependencyName != original.DependencyName {
-		t.Errorf("dependency-name: expected %q, got %q", original.DependencyName, decoded.DependencyName)
+	if _, ok := raw["update-types"]; !ok {
+		t.Errorf("expected JSON key \"update-types\" to be present, got keys: %v", raw)
 	}
-	if len(decoded.UpdateTypes) != len(original.UpdateTypes) {
-		t.Fatalf("update-types length: expected %d, got %d", len(original.UpdateTypes), len(decoded.UpdateTypes))
+	if _, ok := raw["dependency-name"]; !ok {
+		t.Errorf("expected JSON key \"dependency-name\" to be present, got keys: %v", raw)
 	}
-	for i, et := range original.UpdateTypes {
-		if decoded.UpdateTypes[i] != et {
-			t.Errorf("update-types[%d]: expected %q, got %q", i, et, decoded.UpdateTypes[i])
+
+	types, ok := raw["update-types"].([]any)
+	if !ok {
+		t.Fatalf("expected update-types to be an array, got %T", raw["update-types"])
+	}
+	expectedTypes := []string{"version-update:semver-minor", "version-update:semver-patch"}
+	if len(types) != len(expectedTypes) {
+		t.Fatalf("expected %d update-types, got %d", len(expectedTypes), len(types))
+	}
+	for i, et := range expectedTypes {
+		if types[i] != et {
+			t.Errorf("update-types[%d]: expected %q, got %q", i, et, types[i])
 		}
+	}
+
+	// Verify omitempty: UpdateTypes should be absent when nil
+	empty := Allowed{DependencyName: "rails"}
+	data, err = json.Marshal(empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rawEmpty map[string]any
+	if err := json.Unmarshal(data, &rawEmpty); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := rawEmpty["update-types"]; ok {
+		t.Errorf("expected \"update-types\" to be omitted when nil, but it was present")
 	}
 }
 
