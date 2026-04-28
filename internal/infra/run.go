@@ -178,7 +178,7 @@ func generateOutput(params RunParams, api *server.API, outFile *os.File) ([]byte
 	api.Actual.Input.Job = *params.Job
 
 	// ignore conditions help make tests reproducible, so they are generated if there aren't any yet
-	if len(api.Actual.Input.Job.IgnoreConditions) == 0 && api.Actual.Input.Job.PackageManager != "submodules" {
+	if len(api.Actual.Input.Job.IgnoreConditions) == 0 {
 		if err := generateIgnoreConditions(&params, &api.Actual); err != nil {
 			return nil, err
 		}
@@ -342,6 +342,8 @@ func expandEnvironmentVariables(api *server.API, params *RunParams) {
 	}
 }
 
+var gitShaVersion = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
 func generateIgnoreConditions(params *RunParams, actual *model.SmokeTest) error {
 	for _, out := range actual.Output {
 		if out.Type == "create_pull_request" {
@@ -353,6 +355,11 @@ func generateIgnoreConditions(params *RunParams, actual *model.SmokeTest) error 
 			for _, dep := range createPR.Dependencies {
 				if dep.Version == nil {
 					// dependency version nil due to it being removed
+					continue
+				}
+				if gitShaRegex.MatchString(*dep.Version) {
+					// Git SHAs (used by submodules, nix flake inputs, etc.) cannot be
+					// expressed as a Gem::Requirement, so skip those individual conditions.
 					continue
 				}
 				ignore := model.Condition{
