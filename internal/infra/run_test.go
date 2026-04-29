@@ -158,4 +158,32 @@ func Test_generateIgnoreConditions(t *testing.T) {
 			t.Error("expected 0 ignore condition to be generated, got", len(actual.Input.Job.IgnoreConditions))
 		}
 	})
+
+	t.Run("skips git SHA versions", func(t *testing.T) {
+		runParams := &RunParams{
+			Output: outputFileName,
+		}
+		semver := "1.0.0"
+		sha := "8b27c1239e5c421a2bbc2c65d52e4a6fbf2ff296"
+		actual := &model.SmokeTest{
+			Output: []model.Output{{
+				Type: "create_pull_request",
+				Expect: model.UpdateWrapper{Data: model.CreatePullRequest{
+					Dependencies: []model.Dependency{
+						{Name: "semver-dep", Version: &semver},
+						{Name: "sha-dep", Version: &sha},
+					},
+				}},
+			}},
+		}
+		if err := generateIgnoreConditions(runParams, actual); err != nil {
+			t.Fatal(err)
+		}
+		if len(actual.Input.Job.IgnoreConditions) != 1 {
+			t.Fatalf("expected 1 ignore condition, got %d", len(actual.Input.Job.IgnoreConditions))
+		}
+		if actual.Input.Job.IgnoreConditions[0].DependencyName != "semver-dep" {
+			t.Errorf("expected semver-dep, got %q", actual.Input.Job.IgnoreConditions[0].DependencyName)
+		}
+	})
 }
