@@ -16,6 +16,39 @@ import (
 	"github.com/dependabot/cli/internal/model"
 )
 
+func Test_setImageNames(t *testing.T) {
+	tests := []struct {
+		packageManager string
+		expectedSuffix string
+	}{
+		{"conda", "conda"},
+		{"deno", "deno"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.packageManager, func(t *testing.T) {
+			params := &RunParams{
+				Job: &model.Job{PackageManager: tt.packageManager},
+			}
+			if err := setImageNames(params); err != nil {
+				t.Fatalf("setImageNames returned unexpected error: %v", err)
+			}
+			expected := "ghcr.io/dependabot/dependabot-updater-" + tt.expectedSuffix
+			if params.UpdaterImage != expected {
+				t.Errorf("expected UpdaterImage %q, got %q", expected, params.UpdaterImage)
+			}
+		})
+	}
+
+	t.Run("unknown package manager returns error", func(t *testing.T) {
+		params := &RunParams{
+			Job: &model.Job{PackageManager: "unknown-ecosystem"},
+		}
+		if err := setImageNames(params); err == nil {
+			t.Error("expected error for unknown package manager, got nil")
+		}
+	})
+}
+
 func Test_checkCredAccess(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

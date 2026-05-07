@@ -273,6 +273,8 @@ var packageManagerLookup = map[string]string{
 	"bundler":        "bundler",
 	"cargo":          "cargo",
 	"composer":       "composer",
+	"conda":          "conda",
+	"deno":           "deno",
 	"devcontainers":  "devcontainers",
 	"docker_compose": "docker-compose",
 	"docker":         "docker",
