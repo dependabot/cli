@@ -295,6 +295,7 @@ var packageManagerLookup = map[string]string{
 	"pre_commit":     "pre-commit",
 	"pub":            "pub",
 	"rust_toolchain": "rust-toolchain",
+	"sbt":            "sbt",
 	"submodules":     "gitsubmodule",
 	"swift":          "swift",
 	"terraform":      "terraform",
