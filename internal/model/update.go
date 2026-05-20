@@ -79,6 +79,12 @@ type RecordUpdateJobUnknownError struct {
 	ErrorDetails map[string]any `json:"error-details" yaml:"error-details"`
 }
 
+type RecordUpdateJobWarning struct {
+	WarnType        string `json:"warn-type" yaml:"warn-type"`
+	WarnTitle       string `json:"warn-title" yaml:"warn-title"`
+	WarnDescription string `json:"warn-description" yaml:"warn-description"`
+}
+
 type IncrementMetric struct {
 	Metric string         `json:"metric" yaml:"metric"`
 	Tags   map[string]any `json:"tags" yaml:"tags"`

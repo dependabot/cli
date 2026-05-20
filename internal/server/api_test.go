@@ -181,6 +181,61 @@ func TestAPI_compareRecordEcosystemMeta(t *testing.T) {
 	})
 }
 
+func TestAPI_compareRecordUpdateJobWarning(t *testing.T) {
+	t.Run("matching warning", func(t *testing.T) {
+		warning := model.RecordUpdateJobWarning{
+			WarnType:        "warn_once",
+			WarnTitle:       "something to know",
+			WarnDescription: "more details here",
+		}
+		if err := compareRecordUpdateJobWarning(warning, warning); err != nil {
+			t.Errorf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("mismatched warning", func(t *testing.T) {
+		expect := model.RecordUpdateJobWarning{WarnType: "warn_once", WarnTitle: "title-a", WarnDescription: "desc-a"}
+		actual := model.RecordUpdateJobWarning{WarnType: "warn_once", WarnTitle: "title-b", WarnDescription: "desc-b"}
+		if err := compareRecordUpdateJobWarning(expect, actual); err == nil {
+			t.Error("expected error for mismatched warning")
+		}
+	})
+
+	t.Run("compare via compare function", func(t *testing.T) {
+		warning := model.RecordUpdateJobWarning{
+			WarnType:        "warn_once",
+			WarnTitle:       "something to know",
+			WarnDescription: "more details here",
+		}
+		expectWrapper := &model.UpdateWrapper{Data: warning}
+		actualWrapper := &model.UpdateWrapper{Data: warning}
+		if err := compare(expectWrapper, actualWrapper); err != nil {
+			t.Errorf("expected no error from compare, got %v", err)
+		}
+	})
+
+	t.Run("decodeWrapper round-trip", func(t *testing.T) {
+		payload := []byte(`{"data": {"warn-type": "warn_once", "warn-title": "something to know", "warn-description": "more details here"}}`)
+		wrapper, err := decodeWrapper("record_update_job_warning", payload)
+		if err != nil {
+			t.Fatalf("unexpected decode error: %v", err)
+		}
+		warning, ok := wrapper.Data.(model.RecordUpdateJobWarning)
+		if !ok {
+			t.Fatalf("expected RecordUpdateJobWarning, got %T", wrapper.Data)
+		}
+		if warning.WarnType != "warn_once" {
+			t.Errorf("expected warn-type 'warn_once', got '%s'", warning.WarnType)
+		}
+		if warning.WarnTitle != "something to know" {
+			t.Errorf("expected warn-title 'something to know', got '%s'", warning.WarnTitle)
+		}
+		if warning.WarnDescription != "more details here" {
+			t.Errorf("expected warn-description 'more details here', got '%s'", warning.WarnDescription)
+		}
+	})
+}
+
 func TestAPI_compareDependencySubmissionRequest(t *testing.T) {
 	t.Run("ignores detector version", func(t *testing.T) {
 		expect := model.DependencySubmissionRequest{

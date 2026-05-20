@@ -246,6 +246,8 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 		actual.Data, err = decode[model.RecordUpdateJobError](data)
 	case "record_update_job_unknown_error":
 		actual.Data, err = decode[model.RecordUpdateJobUnknownError](data)
+	case "record_update_job_warning":
+		actual.Data, err = decode[model.RecordUpdateJobWarning](data)
 	case "increment_metric":
 		actual.Data, err = decode[model.IncrementMetric](data)
 	default:
@@ -305,6 +307,8 @@ func compare(expect, actual *model.UpdateWrapper) error {
 		return compareRecordUpdateJobError(v, actual.Data.(model.RecordUpdateJobError))
 	case model.RecordUpdateJobUnknownError:
 		return compareRecordUpdateJobUnknownError(v, actual.Data.(model.RecordUpdateJobUnknownError))
+	case model.RecordUpdateJobWarning:
+		return compareRecordUpdateJobWarning(v, actual.Data.(model.RecordUpdateJobWarning))
 	case []model.RecordEcosystemMeta:
 		return compareRecordEcosystemMeta(v, actual.Data.([]model.RecordEcosystemMeta))
 	default:
@@ -382,6 +386,13 @@ func compareRecordUpdateJobUnknownError(expect, actual model.RecordUpdateJobUnkn
 		return nil
 	}
 	return unexpectedBody("record_update_job_unknown_error")
+}
+
+func compareRecordUpdateJobWarning(expect, actual model.RecordUpdateJobWarning) error {
+	if reflect.DeepEqual(expect, actual) {
+		return nil
+	}
+	return unexpectedBody("record_update_job_warning")
 }
 
 func compareRecordEcosystemMeta(expect, actual []model.RecordEcosystemMeta) error {
