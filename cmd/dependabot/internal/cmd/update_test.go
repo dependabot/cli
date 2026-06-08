@@ -204,6 +204,40 @@ func Test_processInput(t *testing.T) {
 
 		assertStringArraysEqual(t, expectedGitCredentalsMetadataHosts, actualCredentialsMetadataHosts)
 	})
+
+	t.Run("add Azure Artifacts credentials for cargo when local token is present", func(t *testing.T) {
+		var input = model.Input{
+			Job: model.Job{
+				PackageManager: "cargo",
+				Source: model.Source{
+					Repo:      "org/project/_git/repo",
+					Directory: "/",
+				},
+			},
+		}
+		var flags = UpdateFlags{
+			apiUrl: "https://dev.azure.com/org/project/_git/repo",
+		}
+		os.Unsetenv("LOCAL_GITHUB_ACCESS_TOKEN")
+		os.Setenv("LOCAL_AZURE_ACCESS_TOKEN", "token")
+
+		processInput(&input, &flags)
+
+		// Ensure cargo_registry credentials are added for Azure Artifacts hosts
+		actualCargoRegistryStrings := []string{}
+		for _, cred := range input.Credentials {
+			if cred["type"] == "cargo_registry" {
+				actualCargoRegistryStrings = append(actualCargoRegistryStrings, fmt.Sprintf("%s|%s", cred["host"], cred["password"]))
+			}
+		}
+
+		expectedCargoRegistries := []string{
+			"org.pkgs.visualstudio.com|$LOCAL_AZURE_ACCESS_TOKEN",
+			"pkgs.dev.azure.com|$LOCAL_AZURE_ACCESS_TOKEN",
+		}
+
+		assertStringArraysEqual(t, expectedCargoRegistries, actualCargoRegistryStrings)
+	})
 }
 
 func assertStringArraysEqual(t *testing.T, expected, actual []string) {
