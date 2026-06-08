@@ -42,6 +42,7 @@ type UpdateFlags struct {
 
 // A map of package manager names to credential type
 var azureArtifactsPackageManagerCredentialType = map[string]string{
+	"cargo":        "cargo_registry",
 	"gradle":       "maven_repository",
 	"maven":        "maven_repository",
 	"npm_and_yarn": "npm_registry",
