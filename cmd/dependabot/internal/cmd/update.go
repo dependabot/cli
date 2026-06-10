@@ -410,12 +410,21 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 				fmt.Sprintf("%s.pkgs.visualstudio.com", azureRepo.Org),
 			}
 			for _, host := range azureArtifactsHosts {
-				input.Credentials = append(input.Credentials, model.Credential{
-					"type":     azureArtifactsPackageManagerCredentialType[input.Job.PackageManager],
-					"host":     host,
-					"username": "x-access-token",
-					"password": "$LOCAL_AZURE_ACCESS_TOKEN",
-				})
+				credType := azureArtifactsPackageManagerCredentialType[input.Job.PackageManager]
+				if input.Job.PackageManager == "cargo" {
+					input.Credentials = append(input.Credentials, model.Credential{
+						"type":  credType,
+						"url":   fmt.Sprintf("https://%s", host),
+						"token": "$LOCAL_AZURE_ACCESS_TOKEN",
+					})
+				} else {
+					input.Credentials = append(input.Credentials, model.Credential{
+						"type":     credType,
+						"host":     host,
+						"username": "x-access-token",
+						"password": "$LOCAL_AZURE_ACCESS_TOKEN",
+					})
+				}
 			}
 		} else {
 			log.Printf("Skipping Azure Artifacts credentials for %s package manager.", input.Job.PackageManager)

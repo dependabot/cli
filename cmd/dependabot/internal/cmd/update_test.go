@@ -223,17 +223,17 @@ func Test_processInput(t *testing.T) {
 
 		processInput(&input, &flags)
 
-		// Ensure cargo_registry credentials are added for Azure Artifacts hosts
+		// Ensure cargo_registry credentials are added for Azure Artifacts hosts with url and token
 		actualCargoRegistryStrings := []string{}
 		for _, cred := range input.Credentials {
 			if cred["type"] == "cargo_registry" {
-				actualCargoRegistryStrings = append(actualCargoRegistryStrings, fmt.Sprintf("%s|%s", cred["host"], cred["password"]))
+				actualCargoRegistryStrings = append(actualCargoRegistryStrings, fmt.Sprintf("%s|%s", cred["url"], cred["token"]))
 			}
 		}
 
 		expectedCargoRegistries := []string{
-			"org.pkgs.visualstudio.com|$LOCAL_AZURE_ACCESS_TOKEN",
-			"pkgs.dev.azure.com|$LOCAL_AZURE_ACCESS_TOKEN",
+			"https://org.pkgs.visualstudio.com|$LOCAL_AZURE_ACCESS_TOKEN",
+			"https://pkgs.dev.azure.com|$LOCAL_AZURE_ACCESS_TOKEN",
 		}
 
 		assertStringArraysEqual(t, expectedCargoRegistries, actualCargoRegistryStrings)
