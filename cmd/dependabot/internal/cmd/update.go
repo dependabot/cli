@@ -416,6 +416,10 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 					"username": "x-access-token",
 					"password": "$LOCAL_AZURE_ACCESS_TOKEN",
 				})
+				input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, model.Credential{
+					"type": azureArtifactsPackageManagerCredentialType[input.Job.PackageManager],
+					"host": host,
+				})
 			}
 		} else {
 			log.Printf("Skipping Azure Artifacts credentials for %s package manager.", input.Job.PackageManager)
