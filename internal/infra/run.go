@@ -38,6 +38,13 @@ var runCmds = map[model.RunCommand]string{
 	model.UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
 }
 
+const importJavaCACertsCmd = `
+if command -v keytool >/dev/null 2>&1 && [ -f /etc/ssl/certs/java/cacerts ] && [ -f /usr/local/share/ca-certificates/dbot-ca.crt ]; then
+  keytool -delete -alias dependabot-cli-proxy-ca -keystore /etc/ssl/certs/java/cacerts -storepass changeit >/dev/null 2>&1 || true
+  keytool -importcert -noprompt -trustcacerts -alias dependabot-cli-proxy-ca -file /usr/local/share/ca-certificates/dbot-ca.crt -keystore /etc/ssl/certs/java/cacerts -storepass changeit
+fi
+`
+
 type RunParams struct {
 	// Input file
 	Input string
@@ -465,9 +472,21 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 	}
 
-	// update CA certificates as root prior to start debug shell or running dependabot commands
+	// Update CA certificates as root before starting debug shell or running dependabot commands.
 	if err := updater.RunCmd(ctx, "update-ca-certificates", root); err != nil {
 		return err
+	}
+	if updater.ExitCode == nil || *updater.ExitCode != 0 {
+		return fmt.Errorf("failed to update CA certificates in updater container")
+	}
+
+	if isJavaBasedPackageManager(params.Job.PackageManager) {
+		if err := updater.RunCmd(ctx, importJavaCACertsCmd, root); err != nil {
+			return err
+		}
+		if updater.ExitCode == nil || *updater.ExitCode != 0 {
+			return fmt.Errorf("failed to import proxy certificate into Java trust store")
+		}
 	}
 
 	if params.Debug {
@@ -493,6 +512,15 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	}
 
 	return nil
+}
+
+func isJavaBasedPackageManager(packageManager string) bool {
+	switch packageManager {
+	case "gradle", "maven", "sbt":
+		return true
+	default:
+		return false
+	}
 }
 
 func getFromContainer(ctx context.Context, cli *client.Client, containerID, srcPath string) {

@@ -220,3 +220,26 @@ func Test_generateIgnoreConditions(t *testing.T) {
 		}
 	})
 }
+
+func Test_isJavaBasedPackageManager(t *testing.T) {
+	tests := []struct {
+		name           string
+		packageManager string
+		expected       bool
+	}{
+		{name: "gradle", packageManager: "gradle", expected: true},
+		{name: "maven", packageManager: "maven", expected: true},
+		{name: "sbt", packageManager: "sbt", expected: true},
+		{name: "go_modules", packageManager: "go_modules", expected: false},
+		{name: "npm_and_yarn", packageManager: "npm_and_yarn", expected: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isJavaBasedPackageManager(tt.packageManager)
+			if got != tt.expected {
+				t.Fatalf("expected %v, got %v", tt.expected, got)
+			}
+		})
+	}
+}
