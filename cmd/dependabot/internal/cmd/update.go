@@ -403,7 +403,7 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 
 	if hasLocalAzureToken && azureRepo != nil {
 		// Add the Azure Artifacts credentials for each host if the package manager is supported.
-		if _, ok := azureArtifactsPackageManagerCredentialType[input.Job.PackageManager]; ok {
+		if credType, ok := azureArtifactsPackageManagerCredentialType[input.Job.PackageManager]; ok {
 			// All Azure Artifacts hosts
 			azureArtifactsHosts := []string{
 				"pkgs.dev.azure.com",
@@ -411,15 +411,17 @@ func processInput(input *model.Input, flags *UpdateFlags) {
 			}
 			for _, host := range azureArtifactsHosts {
 				input.Credentials = append(input.Credentials, model.Credential{
-					"type":     azureArtifactsPackageManagerCredentialType[input.Job.PackageManager],
+					"type":     credType,
 					"host":     host,
 					"username": "x-access-token",
 					"password": "$LOCAL_AZURE_ACCESS_TOKEN",
 				})
-				input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, model.Credential{
-					"type": azureArtifactsPackageManagerCredentialType[input.Job.PackageManager],
-					"host": host,
-				})
+				if input.Job.PackageManager == "cargo" {
+					input.Job.CredentialsMetadata = append(input.Job.CredentialsMetadata, model.Credential{
+						"type": credType,
+						"host": host,
+					})
+				}
 			}
 		} else {
 			log.Printf("Skipping Azure Artifacts credentials for %s package manager.", input.Job.PackageManager)
