@@ -23,22 +23,26 @@ func TestInput(t *testing.T) {
 
 func TestUseCaseInsensitiveFileSystem(t *testing.T) {
 	tests := []struct {
-		name        string
-		experiments Experiment
-		want        bool
+		name           string
+		packageManager string
+		experiments    Experiment
+		want           bool
 	}{
-		{"nil experiments", nil, false},
-		{"empty experiments", Experiment{}, false},
-		{"underscore true", Experiment{"use_case_insensitive_filesystem": true}, true},
-		{"underscore false", Experiment{"use_case_insensitive_filesystem": false}, false},
-		{"hyphen true", Experiment{"use-case-insensitive-filesystem": true}, true},
-		{"hyphen false", Experiment{"use-case-insensitive-filesystem": false}, false},
-		{"non-bool value", Experiment{"use_case_insensitive_filesystem": "true"}, false},
+		{"nil experiments", "nuget", nil, false},
+		{"empty experiments", "nuget", Experiment{}, false},
+		{"underscore true", "nuget", Experiment{"use_case_insensitive_filesystem": true}, true},
+		{"underscore false", "nuget", Experiment{"use_case_insensitive_filesystem": false}, false},
+		{"hyphen true", "nuget", Experiment{"use-case-insensitive-filesystem": true}, true},
+		{"hyphen false", "nuget", Experiment{"use-case-insensitive-filesystem": false}, false},
+		{"non-bool value", "nuget", Experiment{"use_case_insensitive_filesystem": "true"}, false},
+		{"non-nuget with experiment", "npm_and_yarn", Experiment{"use_case_insensitive_filesystem": true}, false},
+		{"non-nuget hyphen with experiment", "gomod", Experiment{"use-case-insensitive-filesystem": true}, false},
+		{"empty package manager with experiment", "", Experiment{"use_case_insensitive_filesystem": true}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := &Job{Experiments: tt.experiments}
+			j := &Job{PackageManager: tt.packageManager, Experiments: tt.experiments}
 			if got := j.UseCaseInsensitiveFileSystem(); got != tt.want {
 				t.Errorf("UseCaseInsensitiveFileSystem() = %v, want %v", got, tt.want)
 			}

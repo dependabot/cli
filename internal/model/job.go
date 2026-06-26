@@ -63,7 +63,7 @@ type Job struct {
 }
 
 func (j *Job) UseCaseInsensitiveFileSystem() bool {
-	return j.experimentEnabled("use_case_insensitive_filesystem")
+	return j.PackageManager == "nuget" && j.experimentEnabled("use_case_insensitive_filesystem")
 }
 
 // experimentEnabled reports whether the named boolean experiment is enabled.
