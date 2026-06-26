@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -62,8 +63,18 @@ type Job struct {
 }
 
 func (j *Job) UseCaseInsensitiveFileSystem() bool {
-	if experimentValue, isBoolean := j.Experiments["use_case_insensitive_filesystem"].(bool); isBoolean && experimentValue {
-		return true
+	return j.experimentEnabled("use_case_insensitive_filesystem")
+}
+
+// experimentEnabled reports whether the named boolean experiment is enabled.
+// name is the canonical experiment name using underscores; the hyphenated
+// variant is also checked to accommodate both naming conventions.
+func (j *Job) experimentEnabled(name string) bool {
+	hyphenated := strings.ReplaceAll(name, "_", "-")
+	for _, n := range []string{name, hyphenated} {
+		if experimentValue, isBoolean := j.Experiments[n].(bool); isBoolean && experimentValue {
+			return true
+		}
 	}
 
 	return false
