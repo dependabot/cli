@@ -79,16 +79,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 	config := &container.Config{
 		Image: params.ProxyImage,
-		Env: []string{
-			"HTTP_PROXY=" + os.Getenv("HTTP_PROXY"),
-			"HTTPS_PROXY=" + os.Getenv("HTTPS_PROXY"),
-			"NO_PROXY=" + os.Getenv("NO_PROXY"),
-			"JOB_ID=" + jobID,
-			"PROXY_CACHE=true",
-			"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
-			"ACTIONS_ID_TOKEN_REQUEST_TOKEN=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
-			"ACTIONS_ID_TOKEN_REQUEST_URL=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"),
-		},
+		Env:   proxyEnv(params.ApiUrl),
 		Entrypoint: []string{
 			"sh", "-c", "update-ca-certificates && /dependabot-proxy",
 		},
@@ -139,6 +130,34 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 
 	return proxy, nil
+}
+
+// proxyEnv builds the environment variables passed to the proxy container.
+func proxyEnv(apiURL string) []string {
+	env := []string{
+		"HTTP_PROXY=" + os.Getenv("HTTP_PROXY"),
+		"HTTPS_PROXY=" + os.Getenv("HTTPS_PROXY"),
+		"NO_PROXY=" + os.Getenv("NO_PROXY"),
+		"JOB_ID=" + jobID,
+		"PROXY_CACHE=" + firstNonEmpty(os.Getenv("PROXY_CACHE"), "true"),
+		"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
+		"ACTIONS_ID_TOKEN_REQUEST_TOKEN=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
+		"ACTIONS_ID_TOKEN_REQUEST_URL=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"),
+	}
+	// Only forward JOB_TOKEN and DEPENDABOT_API_URL when JOB_TOKEN is set on the
+	// host. The proxy uses DEPENDABOT_API_URL to decide which host to inject the
+	// JOB_TOKEN into as an Authorization header; forwarding it without a token
+	// (e.g. in the CLI's default/Azure flows) would cause the proxy to clobber
+	// auth on requests to that host, so the two must be passed together.
+	if token, ok := os.LookupEnv("JOB_TOKEN"); ok && token != "" {
+		env = append(env, "JOB_TOKEN="+token)
+		env = append(env, "DEPENDABOT_API_URL="+apiURL)
+	}
+	// Forward OPENSSL_FORCE_FIPS_MODE only when the host has it set.
+	if fips, ok := os.LookupEnv("OPENSSL_FORCE_FIPS_MODE"); ok {
+		env = append(env, "OPENSSL_FORCE_FIPS_MODE="+fips)
+	}
+	return env
 }
 
 func putProxyConfig(ctx context.Context, cli *client.Client, config *Config, id string) error {
