@@ -57,8 +57,8 @@ func TestAllowedUpdateTypes(t *testing.T) {
 	}
 
 	allowed := input.Job.AllowedUpdates
-	if len(allowed) != 2 {
-		t.Fatalf("expected 2 allowed updates, got %d", len(allowed))
+	if len(allowed) != 3 {
+		t.Fatalf("expected 3 allowed updates, got %d", len(allowed))
 	}
 
 	// First entry: dependency-type + update-type (existing pattern)
@@ -114,6 +114,69 @@ func TestAllowedUpdateTypesJSON(t *testing.T) {
 	expectedEmpty := `{"dependency-name":"rails"}`
 	if string(data) != expectedEmpty {
 		t.Errorf("unexpected JSON output for empty UpdateTypes:\n  got:  %s\n  want: %s", string(data), expectedEmpty)
+	}
+}
+
+func TestAllowedVersions(t *testing.T) {
+	var input Input
+	if err := yaml.Unmarshal([]byte(exampleJob), &input); err != nil {
+		t.Fatal(err)
+	}
+
+	allowed := input.Job.AllowedUpdates
+	if len(allowed) != 3 {
+		t.Fatalf("expected 3 allowed updates, got %d", len(allowed))
+	}
+
+	// First two entries: existing patterns (no versions)
+	if len(allowed[0].Versions) != 0 {
+		t.Errorf("expected no versions on first entry, got %v", allowed[0].Versions)
+	}
+	if len(allowed[1].Versions) != 0 {
+		t.Errorf("expected no versions on second entry, got %v", allowed[1].Versions)
+	}
+
+	// Third entry: dependency-name + versions (new feature)
+	if allowed[2].DependencyName != "lodash" {
+		t.Errorf("expected dependency-name 'lodash', got %q", allowed[2].DependencyName)
+	}
+	expectedVersions := []string{">= 4.0.0", "< 5.0.0"}
+	if len(allowed[2].Versions) != len(expectedVersions) {
+		t.Fatalf("expected %d versions, got %d", len(expectedVersions), len(allowed[2].Versions))
+	}
+	for i, ev := range expectedVersions {
+		if allowed[2].Versions[i] != ev {
+			t.Errorf("versions[%d]: expected %q, got %q", i, ev, allowed[2].Versions[i])
+		}
+	}
+}
+
+func TestAllowedVersionsJSON(t *testing.T) {
+	original := Allowed{
+		DependencyName: "lodash",
+		Versions:       []string{"3.x", "4.x"},
+	}
+
+	data, err := json.Marshal(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := `{"dependency-name":"lodash","versions":["3.x","4.x"]}`
+	if string(data) != expected {
+		t.Errorf("unexpected JSON output:\n  got:  %s\n  want: %s", string(data), expected)
+	}
+
+	// Verify omitempty: Versions should be absent when nil
+	empty := Allowed{DependencyName: "lodash"}
+	data, err = json.Marshal(empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedEmpty := `{"dependency-name":"lodash"}`
+	if string(data) != expectedEmpty {
+		t.Errorf("unexpected JSON output for empty Versions:\n  got:  %s\n  want: %s", string(data), expectedEmpty)
 	}
 }
 
@@ -763,6 +826,10 @@ job:
     update-types:
     - "version-update:semver-minor"
     - "version-update:semver-patch"
+  - dependency-name: "lodash"
+    versions:
+    - ">= 4.0.0"
+    - "< 5.0.0"
   dependency-groups:
   - name: npm
     rules:

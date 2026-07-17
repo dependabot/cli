@@ -218,6 +218,7 @@ type Allowed struct {
 	DependencyName string   `json:"dependency-name,omitempty" yaml:"dependency-name,omitempty"`
 	UpdateType     string   `json:"update-type,omitempty" yaml:"update-type,omitempty"`
 	UpdateTypes    []string `json:"update-types,omitempty" yaml:"update-types,omitempty"`
+	Versions       []string `json:"versions,omitempty" yaml:"versions,omitempty"`
 }
 
 type Group struct {
