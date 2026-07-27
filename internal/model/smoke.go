@@ -3,11 +3,12 @@ package model
 type RunCommand string
 
 const (
-	UpdateFilesCommand RunCommand = "update"
-	VersionCommand     RunCommand = "version"
-	RecreateCommand    RunCommand = "recreate"
-	SecurityCommand    RunCommand = "security"
-	UpdateGraphCommand RunCommand = "graph"
+	UpdateFilesCommand  RunCommand = "update"
+	VersionCommand      RunCommand = "version"
+	RecreateCommand     RunCommand = "recreate"
+	SecurityCommand     RunCommand = "security"
+	UpdateGraphCommand  RunCommand = "graph"
+	ReachabilityCommand RunCommand = "reachability"
 )
 
 // SmokeTest is a way to test a job by asserting the outputs.
