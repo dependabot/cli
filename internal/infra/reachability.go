@@ -1,8 +1,10 @@
 package infra
 
 import (
+	"archive/tar"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path"
@@ -12,16 +14,18 @@ import (
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	archive "github.com/moby/go-archive"
 )
 
-// guestReachInputDir is where the reachability input set is bind-mounted inside
-// the container. It mirrors `reach run`'s -workdir contract: it holds the
-// target/ checkout, alerts.json, an optional sbom.json, and the annotations
-// feed, and reach writes its outputs (refined.csv, paths.json) back here - so
-// the bind mount surfaces them on the host.
+// guestReachInputDir is where the reachability input set lives inside the
+// container. It mirrors `reach run`'s -workdir contract: it holds the target/
+// checkout, alerts.json, an optional sbom.json, and the annotations feed, and
+// reach writes its outputs (refined.csv, paths.json) here. The input set is
+// copied IN and the outputs copied back OUT (not bind-mounted), so this works
+// even when dependabot-cli itself runs inside a container (e.g. `act` or a
+// containerized runner) where a host bind mount would not resolve.
 const guestReachInputDir = "/home/dependabot/reach-run"
 
 // ReachabilityParams configures a reachability job. It reuses the proxy and the
@@ -42,7 +46,8 @@ type ReachabilityParams struct {
 	ReachabilityImage string
 	// ProxyImage is the proxy container image.
 	ProxyImage string
-	// InputDir is the host directory bind-mounted at guestReachInputDir. It must
+	// InputDir is the local directory whose contents are copied into the
+	// container at guestReachInputDir (and whose outputs are copied back). It must
 	// contain the target/ checkout, alerts.json, and the annotations feed; an
 	// sbom.json enables the SBOM-first inventory (else target/package-lock.json).
 	InputDir string
@@ -154,28 +159,23 @@ func RunReachability(params ReachabilityParams) (err error) {
 	}()
 	go prox.TailLogs(ctx, cli)
 
-	// Start the reachability container: /bin/sh + Tty so it stays up, the input
-	// set bind-mounted, connected only to the no-internet network so every fetch
-	// egresses through the proxy.
+	// Start the reachability container: /bin/sh + Tty so it stays up, connected
+	// only to the no-internet network so every fetch egresses through the proxy.
+	// The input set is copied IN and the outputs OUT (not bind-mounted), so this
+	// works even when dependabot-cli runs inside a container (act / a
+	// containerized runner), where a host bind mount would not resolve.
 	containerCfg := &container.Config{
 		User:  dependabot,
 		Image: params.ReachabilityImage,
 		Cmd:   []string{"/bin/sh"},
 		Tty:   true,
 	}
-	hostCfg := &container.HostConfig{
-		Mounts: []mount.Mount{{
-			Type:   mount.TypeBind,
-			Source: absInput,
-			Target: guestReachInputDir,
-		}},
-	}
 	netCfg := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
 			networks.noInternetName: {NetworkID: networks.NoInternet.ID},
 		},
 	}
-	created, err := cli.ContainerCreate(ctx, containerCfg, hostCfg, netCfg, nil, "")
+	created, err := cli.ContainerCreate(ctx, containerCfg, nil, netCfg, nil, "")
 	if err != nil {
 		return fmt.Errorf("failed to create reachability container: %w", err)
 	}
@@ -198,6 +198,12 @@ func RunReachability(params ReachabilityParams) (err error) {
 		return fmt.Errorf("failed to start reachability container: %w", err)
 	}
 
+	// Copy the input set into the container (owned by dependabot so reach can
+	// write its outputs alongside them).
+	if err = copyDirIntoContainer(ctx, cli, reach, absInput, guestReachInputDir); err != nil {
+		return err
+	}
+
 	if err = reach.RunCmd(ctx, "update-ca-certificates", root); err != nil {
 		return err
 	}
@@ -212,11 +218,63 @@ func RunReachability(params ReachabilityParams) (err error) {
 	if reach.ExitCode != nil && *reach.ExitCode != 0 {
 		return fmt.Errorf("reachability run exited with code %d", *reach.ExitCode)
 	}
+
+	// Copy the outputs back out to the input dir so the caller can read them.
+	// refined.csv is required; paths.json / verdicts.csv are best-effort (paths
+	// only exists when something was reachable).
+	if err = copyOutFile(ctx, cli, created.ID, path.Join(guestReachInputDir, "refined.csv"), filepath.Join(absInput, "refined.csv")); err != nil {
+		return fmt.Errorf("copy out refined.csv: %w", err)
+	}
+	for _, name := range []string{"paths.json", "verdicts.csv"} {
+		_ = copyOutFile(ctx, cli, created.ID, path.Join(guestReachInputDir, name), filepath.Join(absInput, name))
+	}
 	return nil
 }
 
+// copyDirIntoContainer copies the contents of localDir into containerDir inside
+// the running container and chowns them to the dependabot user, so reach (which
+// runs as dependabot) can read the inputs and write its outputs there. Modeled
+// on dependabot-cli's putCloneDir, minus the git-repo initialization.
+func copyDirIntoContainer(ctx context.Context, cli *client.Client, u *Updater, localDir, containerDir string) error {
+	if err := u.RunCmd(ctx, "mkdir -p "+containerDir, dependabot); err != nil {
+		return fmt.Errorf("create %s in container: %w", containerDir, err)
+	}
+	r, err := archive.TarWithOptions(localDir, &archive.TarOptions{})
+	if err != nil {
+		return fmt.Errorf("tar %s: %w", localDir, err)
+	}
+	if err := cli.CopyToContainer(ctx, u.containerID, containerDir, r, container.CopyToContainerOptions{}); err != nil {
+		return fmt.Errorf("copy inputs into container: %w", err)
+	}
+	if err := u.RunCmd(ctx, "chown -R dependabot "+containerDir, root); err != nil {
+		return fmt.Errorf("chown %s in container: %w", containerDir, err)
+	}
+	return nil
+}
+
+// copyOutFile copies a single file out of the container to dst on the local
+// filesystem (CopyFromContainer returns a tar stream with the one entry).
+func copyOutFile(ctx context.Context, cli *client.Client, containerID, src, dst string) error {
+	reader, _, err := cli.CopyFromContainer(ctx, containerID, src)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	tr := tar.NewReader(reader)
+	if _, err := tr.Next(); err != nil {
+		return err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, io.LimitReader(tr, 1<<30)) //nolint:gosec // outputs are small CSV/JSON
+	return err
+}
+
 // reachRunCommand builds the `reach run` invocation executed inside the
-// reachability container. Inputs are read from the bind-mounted input dir; the
+// reachability container. Inputs are read from the copied-in input dir; the
 // annotation feed and the codeql binary are located from the params.
 func reachRunCommand(params ReachabilityParams) string {
 	annotations := path.Join(guestReachInputDir, firstNonEmpty(params.Annotations, "annotations"))
