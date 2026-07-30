@@ -279,15 +279,15 @@ func copyOutFile(ctx context.Context, cli *client.Client, containerID, src, dst 
 // annotation feed and the codeql binary are located from the params.
 func reachRunCommand(params ReachabilityParams) string {
 	annotations := path.Join(guestReachInputDir, firstNonEmpty(params.Annotations, "annotations"))
-	cmd := fmt.Sprintf("reach run -workdir %s -annotations %s", guestReachInputDir, annotations)
+	cmd := fmt.Sprintf("reach run --workdir %s --annotations %s", guestReachInputDir, annotations)
 	// When the job has a repo, let reach fetch the alerts + SBOM itself (it does
 	// so through the proxy). A caller that pre-staged alerts.json / sbom.json in
 	// the input dir still wins: reach only fetches what is missing.
 	if params.Job != nil && params.Job.Source.Repo != "" {
-		cmd += " -repo " + params.Job.Source.Repo
+		cmd += " --repo " + params.Job.Source.Repo
 	}
 	if params.CodeqlPath != "" {
-		cmd += " -codeql " + params.CodeqlPath
+		cmd += " --codeql " + params.CodeqlPath
 	}
 	return cmd
 }

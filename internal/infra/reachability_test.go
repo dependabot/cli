@@ -7,23 +7,23 @@ import (
 	"github.com/dependabot/cli/internal/model"
 )
 
-// reachRunCommand should add -repo when the job has a source repo, so reach
+// reachRunCommand should add --repo when the job has a source repo, so reach
 // fetches the alerts + SBOM itself; and omit it otherwise (pre-staged inputs).
 func TestReachRunCommandRepo(t *testing.T) {
 	withRepo := reachRunCommand(ReachabilityParams{
 		Job:        &model.Job{Source: model.Source{Repo: "octo/repo"}},
 		CodeqlPath: "/opt/codeql/codeql",
 	})
-	if !strings.Contains(withRepo, "-repo octo/repo") {
-		t.Errorf("expected -repo octo/repo in %q", withRepo)
+	if !strings.Contains(withRepo, "--repo octo/repo") {
+		t.Errorf("expected --repo octo/repo in %q", withRepo)
 	}
-	if !strings.Contains(withRepo, "-codeql /opt/codeql/codeql") {
-		t.Errorf("expected -codeql in %q", withRepo)
+	if !strings.Contains(withRepo, "--codeql /opt/codeql/codeql") {
+		t.Errorf("expected --codeql in %q", withRepo)
 	}
 
 	noRepo := reachRunCommand(ReachabilityParams{Job: &model.Job{}})
-	if strings.Contains(noRepo, "-repo") {
-		t.Errorf("did not expect -repo in %q", noRepo)
+	if strings.Contains(noRepo, "--repo") {
+		t.Errorf("did not expect --repo in %q", noRepo)
 	}
 }
 
