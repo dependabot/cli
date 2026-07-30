@@ -210,8 +210,9 @@ func RunReachability(params ReachabilityParams) (err error) {
 
 	// userEnv sets http(s)_proxy=<proxy> and SSL_CERT_FILE, so reach's registry
 	// fetches route through the proxy with the proxy CA trusted - no extra cert
-	// handling needed.
-	env := userEnv(prox.url, rp.ApiUrl, rp.Job, nil)
+	// handling needed. reachAPIEnv adds the token (+ GHES API URL) so reach can
+	// fetch its own control-plane inputs (alerts, SBOM) through the proxy.
+	env := userEnv(prox.url, rp.ApiUrl, rp.Job, reachAPIEnv(params.Job))
 	if err = reach.RunCmd(ctx, reachRunCommand(params), dependabot, env...); err != nil {
 		return err
 	}
@@ -279,8 +280,34 @@ func copyOutFile(ctx context.Context, cli *client.Client, containerID, src, dst 
 func reachRunCommand(params ReachabilityParams) string {
 	annotations := path.Join(guestReachInputDir, firstNonEmpty(params.Annotations, "annotations"))
 	cmd := fmt.Sprintf("reach run -workdir %s -annotations %s", guestReachInputDir, annotations)
+	// When the job has a repo, let reach fetch the alerts + SBOM itself (it does
+	// so through the proxy). A caller that pre-staged alerts.json / sbom.json in
+	// the input dir still wins: reach only fetches what is missing.
+	if params.Job != nil && params.Job.Source.Repo != "" {
+		cmd += " -repo " + params.Job.Source.Repo
+	}
 	if params.CodeqlPath != "" {
 		cmd += " -codeql " + params.CodeqlPath
 	}
 	return cmd
+}
+
+// reachAPIEnv returns the extra container env that lets reach reach the GitHub
+// API for its own input fetching: a token (so the request authenticates) and,
+// for GHES, the API base URL derived from the job source. The requests still
+// egress through the proxy; reach carries the token so no proxy-side credential
+// injection is required for the control-plane calls.
+func reachAPIEnv(job *model.Job) []string {
+	var env []string
+	if tok := firstNonEmpty(
+		os.Getenv("GH_TOKEN"),
+		os.Getenv("GITHUB_TOKEN"),
+		os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN"),
+	); tok != "" {
+		env = append(env, "GH_TOKEN="+tok)
+	}
+	if job != nil && job.Source.APIEndpoint != nil && *job.Source.APIEndpoint != "" {
+		env = append(env, "GITHUB_API_URL="+*job.Source.APIEndpoint)
+	}
+	return env
 }
