@@ -110,7 +110,7 @@ type ExistingPRDependency struct {
 
 type ExistingPullRequests []ExistingPR
 
-func (e *ExistingPullRequests) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (e *ExistingPullRequests) UnmarshalYAML(unmarshal func(any) error) error {
 	// First try the new format (array of ExistingPR objects)
 	var newFormat []ExistingPR
 	if err := unmarshal(&newFormat); err == nil {
@@ -185,7 +185,7 @@ func (e ExistingPullRequests) MarshalJSON() ([]byte, error) {
 	return json.Marshal(oldFormat)
 }
 
-func (e ExistingPullRequests) MarshalYAML() (interface{}, error) {
+func (e ExistingPullRequests) MarshalYAML() (any, error) {
 	// Check if this is using the new grouped format (has pr-number or dependencies)
 	hasNewFormat := false
 	for _, pr := range e {

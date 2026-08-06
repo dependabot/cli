@@ -446,7 +446,7 @@ job:
 	}
 }
 
-func compareMap(t *testing.T, parent string, expected map[string]any, actual interface{}) {
+func compareMap(t *testing.T, parent string, expected map[string]any, actual any) {
 	actualType := reflect.TypeOf(actual)
 	if actualType.Kind() != reflect.Struct {
 		// Some fields like Experiments are not modeled as structs
@@ -457,7 +457,7 @@ func compareMap(t *testing.T, parent string, expected map[string]any, actual int
 	for key, value := range expected {
 		// Walk the struct and find the field with the yaml tag that matches the map key name.
 		fieldIndex := -1
-		for i := 0; i < fields; i++ {
+		for i := range fields {
 			field := actualType.Field(i)
 			name := yamlTagCleaner(field.Tag.Get("yaml"))
 			if key == name {

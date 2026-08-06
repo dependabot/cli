@@ -9,8 +9,8 @@ import (
 func envValue(env []string, key string) (string, bool) {
 	prefix := key + "="
 	for _, e := range env {
-		if strings.HasPrefix(e, prefix) {
-			return strings.TrimPrefix(e, prefix), true
+		if after, ok := strings.CutPrefix(e, prefix); ok {
+			return after, true
 		}
 	}
 	return "", false
