@@ -96,6 +96,9 @@ func (p *RunParams) Validate() error {
 	if p.Job.Source.Commit != "" && !gitShaRegex.MatchString(p.Job.Source.Commit) {
 		return fmt.Errorf("commit must be a SHA, or not provided")
 	}
+	if err := p.Job.UpdateCooldown.Validate(); err != nil {
+		return err
+	}
 	// Allows for older smoke tests without the command field to keep working.
 	if p.Job.Command == "" {
 		p.Job.Command = model.UpdateFilesCommand

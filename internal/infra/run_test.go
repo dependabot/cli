@@ -49,6 +49,32 @@ func Test_setImageNames(t *testing.T) {
 	})
 }
 
+func Test_RunParamsValidateCooldown(t *testing.T) {
+	days := func(n int) *int { return &n }
+
+	tests := []struct {
+		name     string
+		cooldown *model.UpdateCooldown
+		wantErr  bool
+	}{
+		{"no cooldown", nil, false},
+		{"zero is allowed", &model.UpdateCooldown{DefaultDays: days(0)}, false},
+		{"positive is allowed", &model.UpdateCooldown{DefaultDays: days(7)}, false},
+		{"negative is rejected", &model.UpdateCooldown{DefaultDays: days(-1)}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := &RunParams{
+				Job: &model.Job{PackageManager: "go_modules", UpdateCooldown: tt.cooldown},
+			}
+			if err := params.Validate(); (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %t", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func Test_checkCredAccess(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
