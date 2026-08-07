@@ -146,6 +146,17 @@ func NewUpdateCommand() *cobra.Command {
 }
 
 func extractInput(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error) {
+	input, err := readInput(cmd, flags)
+	if err != nil {
+		return nil, err
+	}
+	if err := input.Job.UpdateCooldown.Validate(); err != nil {
+		return nil, err
+	}
+	return input, nil
+}
+
+func readInput(cmd *cobra.Command, flags *UpdateFlags) (*model.Input, error) {
 	hasFile := flags.file != ""
 	hasArguments := len(cmd.Flags().Args()) > 0
 	hasServer := flags.inputServerPort != 0

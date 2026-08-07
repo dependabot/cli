@@ -21,6 +21,157 @@ func TestInput(t *testing.T) {
 	compareMap(t, "job", input2["job"], input.Job)
 }
 
+func TestUpdateCooldownAllowsZero(t *testing.T) {
+	cooldownFields := []string{"default-days", "semver-major-days", "semver-minor-days", "semver-patch-days"}
+
+	tests := []struct {
+		name        string
+		testYAML    string
+		wantPresent bool
+		wantValue   int
+	}{
+		{
+			name: "explicit zero is preserved",
+			testYAML: `---
+job:
+  package-manager: npm_and_yarn
+  source:
+    provider: github
+    repo: dependabot/test
+    directory: "/"
+  cooldown:
+    default-days: 0
+    semver-major-days: 0
+    semver-minor-days: 0
+    semver-patch-days: 0
+`,
+			wantPresent: true,
+			wantValue:   0,
+		},
+		{
+			name: "non-zero is preserved",
+			testYAML: `---
+job:
+  package-manager: npm_and_yarn
+  source:
+    provider: github
+    repo: dependabot/test
+    directory: "/"
+  cooldown:
+    default-days: 3
+    semver-major-days: 3
+    semver-minor-days: 3
+    semver-patch-days: 3
+`,
+			wantPresent: true,
+			wantValue:   3,
+		},
+		{
+			name: "omitted days stay omitted",
+			testYAML: `---
+job:
+  package-manager: npm_and_yarn
+  source:
+    provider: github
+    repo: dependabot/test
+    directory: "/"
+  cooldown:
+    include:
+      - dependency-name-1
+`,
+			wantPresent: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var input Input
+			if err := yaml.Unmarshal([]byte(tt.testYAML), &input); err != nil {
+				t.Fatal(err)
+			}
+
+			data, err := json.Marshal(input.Job)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(data, &payload); err != nil {
+				t.Fatal(err)
+			}
+			cooldown, ok := payload["cooldown"].(map[string]any)
+			if !ok {
+				t.Fatalf("expected cooldown object, got %v", payload["cooldown"])
+			}
+
+			for _, field := range cooldownFields {
+				value, present := cooldown[field]
+				if present != tt.wantPresent {
+					t.Errorf("cooldown %s present = %t, want %t", field, present, tt.wantPresent)
+					continue
+				}
+				if tt.wantPresent && value != float64(tt.wantValue) {
+					t.Errorf("cooldown %s = %v, want %d", field, value, tt.wantValue)
+				}
+			}
+
+			// Verify round-trip: smoke tests marshal the job back to YAML, which must preserve zero too.
+			out, err := yaml.Marshal(input.Job)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var roundTripped Job
+			if err := yaml.Unmarshal(out, &roundTripped); err != nil {
+				t.Fatal(err)
+			}
+
+			days := map[string]*int{
+				"default-days":      roundTripped.UpdateCooldown.DefaultDays,
+				"semver-major-days": roundTripped.UpdateCooldown.SemverMajorDays,
+				"semver-minor-days": roundTripped.UpdateCooldown.SemverMinorDays,
+				"semver-patch-days": roundTripped.UpdateCooldown.SemverPatchDays,
+			}
+			for field, got := range days {
+				if (got != nil) != tt.wantPresent {
+					t.Errorf("round-trip: cooldown %s set = %t, want %t", field, got != nil, tt.wantPresent)
+					continue
+				}
+				if tt.wantPresent && *got != tt.wantValue {
+					t.Errorf("round-trip: cooldown %s = %d, want %d", field, *got, tt.wantValue)
+				}
+			}
+		})
+	}
+}
+
+func TestUpdateCooldownValidate(t *testing.T) {
+	days := func(n int) *int { return &n }
+
+	tests := []struct {
+		name     string
+		cooldown *UpdateCooldown
+		wantErr  bool
+	}{
+		{"nil cooldown", nil, false},
+		{"no days set", &UpdateCooldown{Include: []string{"a"}}, false},
+		{"zero is allowed", &UpdateCooldown{DefaultDays: days(0)}, false},
+		{"positive is allowed", &UpdateCooldown{DefaultDays: days(7)}, false},
+		{"negative default", &UpdateCooldown{DefaultDays: days(-1)}, true},
+		{"negative semver-major", &UpdateCooldown{SemverMajorDays: days(-1)}, true},
+		{"negative semver-minor", &UpdateCooldown{SemverMinorDays: days(-1)}, true},
+		{"negative semver-patch", &UpdateCooldown{SemverPatchDays: days(-1)}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cooldown.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %t", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestUseCaseInsensitiveFileSystem(t *testing.T) {
 	tests := []struct {
 		name           string
