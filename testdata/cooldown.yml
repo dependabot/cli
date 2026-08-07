@@ -1,0 +1,19 @@
+job:
+  package-manager: go_modules
+  allowed-updates:
+    - dependency-type: direct
+      update-type: all
+  source:
+    provider: github
+    repo: dependabot/cli
+    directory: /
+  cooldown:
+    default-days: 0
+    semver-major-days: 0
+    semver-minor-days: 0
+    semver-patch-days: 0
+credentials:
+  - type: git_source
+    host: github.com
+    username: x-access-token
+    password: $LOCAL_GITHUB_ACCESS_TOKEN

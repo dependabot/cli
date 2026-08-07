@@ -273,10 +273,32 @@ type CommitOptions struct {
 type Credential map[string]any
 
 type UpdateCooldown struct {
-	DefaultDays     int      `json:"default-days,omitempty" yaml:"default-days,omitempty"`
-	SemverMajorDays int      `json:"semver-major-days,omitempty" yaml:"semver-major-days,omitempty"`
-	SemverMinorDays int      `json:"semver-minor-days,omitempty" yaml:"semver-minor-days,omitempty"`
-	SemverPatchDays int      `json:"semver-patch-days,omitempty" yaml:"semver-patch-days,omitempty"`
+	DefaultDays     *int     `json:"default-days,omitempty" yaml:"default-days,omitempty"`
+	SemverMajorDays *int     `json:"semver-major-days,omitempty" yaml:"semver-major-days,omitempty"`
+	SemverMinorDays *int     `json:"semver-minor-days,omitempty" yaml:"semver-minor-days,omitempty"`
+	SemverPatchDays *int     `json:"semver-patch-days,omitempty" yaml:"semver-patch-days,omitempty"`
 	Include         []string `json:"include,omitempty" yaml:"include,omitempty"`
 	Exclude         []string `json:"exclude,omitempty" yaml:"exclude,omitempty"`
+}
+
+// Validate rejects negative cooldown days. Zero is valid and means no cooldown.
+func (c *UpdateCooldown) Validate() error {
+	if c == nil {
+		return nil
+	}
+	fields := []struct {
+		name string
+		days *int
+	}{
+		{"default-days", c.DefaultDays},
+		{"semver-major-days", c.SemverMajorDays},
+		{"semver-minor-days", c.SemverMinorDays},
+		{"semver-patch-days", c.SemverPatchDays},
+	}
+	for _, field := range fields {
+		if field.days != nil && *field.days < 0 {
+			return fmt.Errorf("cooldown %s must be zero or greater, got %d", field.name, *field.days)
+		}
+	}
+	return nil
 }
