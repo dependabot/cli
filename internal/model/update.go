@@ -92,8 +92,8 @@ type IncrementMetric struct {
 
 type Ecosystem struct {
 	Name           string         `json:"name" yaml:"name"`
-	PackageManager VersionManager `json:"package_manager,omitempty" yaml:"package_manager,omitempty"`
-	Language       VersionManager `json:"language,omitempty" yaml:"language,omitempty"`
+	PackageManager VersionManager `json:"package_manager" yaml:"package_manager,omitempty"`
+	Language       VersionManager `json:"language" yaml:"language,omitempty"`
 }
 
 type VersionManager struct {

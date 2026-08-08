@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
@@ -331,9 +332,7 @@ func expandEnvironmentVariables(api *server.API, params *RunParams) {
 		params.Creds = []model.Credential{}
 		for _, cred := range api.Actual.Input.Credentials {
 			newCred := model.Credential{}
-			for k, v := range cred {
-				newCred[k] = v
-			}
+			maps.Copy(newCred, cred)
 			params.Creds = append(params.Creds, newCred)
 		}
 	}
@@ -643,7 +642,7 @@ func pullImageWithAuth(ctx context.Context, cli *client.Client, imageName string
 		username := os.Getenv("AZURE_REGISTRY_USERNAME")
 		password := os.Getenv("AZURE_REGISTRY_PASSWORD")
 
-		registryName := strings.Split(imageName, "/")[0]
+		registryName, _, _ := strings.Cut(imageName, "/")
 
 		if username != "" && password != "" {
 			authConfig := registry.AuthConfig{
