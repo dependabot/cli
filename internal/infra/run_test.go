@@ -246,3 +246,23 @@ func Test_generateIgnoreConditions(t *testing.T) {
 		}
 	})
 }
+
+func Test_updaterCommand(t *testing.T) {
+	tests := []struct {
+		name     string
+		command  model.RunCommand
+		expected string
+	}{
+		{"update", model.UpdateFilesCommand, "bin/run fetch_files && bin/run update_files"},
+		{"graph", model.UpdateGraphCommand, "bin/run fetch_files && bin/run update_graph"},
+		{"unmapped command falls through to a bare bin/run", "reachability", "bin/run"},
+		{"unrecognized command is never a no-op", "not-a-real-command", "bin/run"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := updaterCommand(tt.command); got != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, got)
+			}
+		})
+	}
+}

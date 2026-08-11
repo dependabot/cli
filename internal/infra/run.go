@@ -39,6 +39,13 @@ var runCmds = map[model.RunCommand]string{
 	model.UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
 }
 
+func updaterCommand(command model.RunCommand) string {
+	if cmd, ok := runCmds[command]; ok {
+		return cmd
+	}
+	return "bin/run"
+}
+
 type RunParams struct {
 	// Input file
 	Input string
@@ -482,7 +489,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if params.Flamegraph {
 			env = append(env, "FLAMEGRAPH=1")
 		}
-		if err := updater.RunCmd(ctx, runCmds[params.Job.Command], dependabot, env...); err != nil {
+		if err := updater.RunCmd(ctx, updaterCommand(params.Job.Command), dependabot, env...); err != nil {
 			return err
 		}
 		if params.Flamegraph {
