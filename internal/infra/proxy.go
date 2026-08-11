@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
@@ -32,6 +33,12 @@ type Proxy struct {
 }
 
 func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *Networks) (*Proxy, error) {
+	return newProxyWithCreds(ctx, cli, params, nets, params.Creds)
+}
+
+// newProxyWithCreds builds a proxy serving a specific credential set, so the fetch
+// and update sides can be given different ones.
+func newProxyWithCreds(ctx context.Context, cli *client.Client, params *RunParams, nets *Networks, creds []model.Credential) (*Proxy, error) {
 	// Generate secrets:
 	ca, err := GenerateCertificateAuthority()
 	if err != nil {
@@ -40,7 +47,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 
 	// Generate and write configuration to disk:
 	proxyConfig := &Config{
-		Credentials: params.Creds,
+		Credentials: creds,
 		CA:          ca,
 	}
 

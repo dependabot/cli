@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/volume"
 
 	"github.com/dependabot/cli/internal/model"
 	"github.com/dependabot/cli/internal/server"
@@ -31,12 +32,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var runCmds = map[model.RunCommand]string{
-	model.VersionCommand:     "bin/run fetch_files && bin/run update_files",
-	model.UpdateFilesCommand: "bin/run fetch_files && bin/run update_files",
-	model.RecreateCommand:    "bin/run fetch_files && bin/run update_files",
-	model.SecurityCommand:    "bin/run fetch_files && bin/run update_files",
-	model.UpdateGraphCommand: "bin/run fetch_files && bin/run update_graph",
+// fetchCmd fetches the dependency files. In the combined topology the update
+// commands fetch for themselves, so it only runs in the split topology.
+const fetchCmd = "bin/run fetch_files"
+
+var updateCmds = map[model.RunCommand]string{
+	model.VersionCommand:     "bin/run update_files",
+	model.UpdateFilesCommand: "bin/run update_files",
+	model.RecreateCommand:    "bin/run update_files",
+	model.SecurityCommand:    "bin/run update_files",
+	model.UpdateGraphCommand: "bin/run update_graph",
 }
 
 type RunParams struct {
@@ -445,7 +450,16 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		defer collector.Close()
 	}
 
-	updater, err := NewUpdater(ctx, cli, networks, &params, prox, collector)
+	if params.Job.IsolatedFetchUpdate() {
+		return runIsolated(ctx, cli, networks, &params, prox, collector)
+	}
+
+	return runCombined(ctx, cli, networks, &params, prox, collector)
+}
+
+// runCombined runs fetch and update in a single container sharing a repo clone.
+func runCombined(ctx context.Context, cli *client.Client, networks *Networks, params *RunParams, prox *Proxy, collector *Collector) (err error) {
+	updater, err := NewUpdater(ctx, cli, networks, params, prox, collector, "")
 	if err != nil {
 		return err
 	}
@@ -455,16 +469,8 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 	}()
 
-	// put the clone dir in the updater container to be used by during the update
-	if params.LocalDir != "" {
-		containerDir := guestRepoDir
-		if params.Job.UseCaseInsensitiveFileSystem() {
-			// since the updater is using the storage container, we need to populate the repo on that device because that's the directory that will be used for the update
-			containerDir = caseSensitiveRepoContentsPath
-		}
-		if err = putCloneDir(ctx, cli, updater, params.LocalDir, containerDir); err != nil {
-			return err
-		}
+	if err = placeCloneDir(ctx, cli, params, updater); err != nil {
+		return err
 	}
 
 	// update CA certificates as root prior to start debug shell or running dependabot commands
@@ -473,25 +479,145 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	}
 
 	if params.Debug {
-		if err := updater.RunShell(ctx, prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables); err != nil {
-			return err
+		return updater.RunShell(ctx, prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
+	}
+
+	// Run dependabot commands as a dependabot user
+	env := userEnv(prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
+	if params.Flamegraph {
+		env = append(env, "FLAMEGRAPH=1")
+	}
+	if err := updater.RunCmd(ctx, updateCmds[params.Job.Command], dependabot, env...); err != nil {
+		return err
+	}
+	if params.Flamegraph {
+		getFromContainer(ctx, cli, updater.containerID, "/tmp/dependabot-flamegraph.html")
+	}
+
+	return checkExitCode(params, updater)
+}
+
+// runIsolated clones in one container and updates in another. The clone travels
+// between them on a shared volume rather than being made twice. Each side gets its
+// own proxy on its own network, so the update side cannot reach the fetch proxy.
+func runIsolated(ctx context.Context, cli *client.Client, networks *Networks, params *RunParams, prox *Proxy, collector *Collector) (err error) {
+	if params.Debug {
+		return fmt.Errorf("--debug is not supported with the isolated_fetch_update experiment")
+	}
+	if params.Job.UseCaseInsensitiveFileSystem() {
+		return fmt.Errorf("isolated_fetch_update is not supported with use_case_insensitive_filesystem")
+	}
+	if params.CollectorConfigPath != "" {
+		return fmt.Errorf("the OpenTelemetry collector is not supported with the isolated_fetch_update experiment")
+	}
+
+	repoVolume, err := cli.VolumeCreate(ctx, volume.CreateOptions{Labels: map[string]string{"dependabot-cli": "repo"}})
+	if err != nil {
+		return fmt.Errorf("failed to create repo volume: %w", err)
+	}
+	defer func() {
+		if volumeErr := cli.VolumeRemove(context.Background(), repoVolume.Name, true); volumeErr != nil {
+			err = volumeErr
 		}
-	} else {
-		// Run dependabot commands as a dependabot user
-		env := userEnv(prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
-		if params.Flamegraph {
-			env = append(env, "FLAMEGRAPH=1")
+	}()
+
+	fetcher, err := NewUpdater(ctx, cli, networks, params, prox, collector, repoVolume.Name)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if fetcherErr := fetcher.Close(); fetcherErr != nil {
+			err = fetcherErr
 		}
-		if err := updater.RunCmd(ctx, runCmds[params.Job.Command], dependabot, env...); err != nil {
-			return err
+	}()
+
+	if err = placeCloneDir(ctx, cli, params, fetcher); err != nil {
+		return err
+	}
+
+	if err = fetcher.RunCmd(ctx, "update-ca-certificates", root); err != nil {
+		return err
+	}
+
+	fetchEnv := userEnv(prox.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
+	if err = fetcher.RunCmd(ctx, fetchCmd, dependabot, fetchEnv...); err != nil {
+		return err
+	}
+	if *fetcher.ExitCode != 0 {
+		return fmt.Errorf("fetch exited with code %d", *fetcher.ExitCode)
+	}
+
+	// The update side gets its own network and proxy so its credentials can diverge
+	// from the fetch side's without the two containers being able to swap proxies.
+	updateNetworks, err := NewNetworks(ctx, cli)
+	if err != nil {
+		return fmt.Errorf("failed to create update networks: %w", err)
+	}
+	defer func() {
+		if netErr := updateNetworks.Close(); netErr != nil {
+			err = netErr
 		}
-		if params.Flamegraph {
-			getFromContainer(ctx, cli, updater.containerID, "/tmp/dependabot-flamegraph.html")
+	}()
+
+	// Same credentials as the fetch side for now. This is the seam where the repo-read
+	// credential gets dropped, once the update side no longer calls the target repo.
+	updateProxy, err := newProxyWithCreds(ctx, cli, params, updateNetworks, params.Creds)
+	if err != nil {
+		return fmt.Errorf("failed to create update proxy: %w", err)
+	}
+	defer func() {
+		if proxyErr := updateProxy.Close(); proxyErr != nil {
+			err = proxyErr
 		}
-		// If the exit code is non-zero, error when using the `update` subcommand, but not the `test` subcommand.
-		if params.Expected == nil && *updater.ExitCode != 0 {
-			return fmt.Errorf("updater exited with code %d", *updater.ExitCode)
+	}()
+	go updateProxy.TailLogs(ctx, cli)
+
+	updater, err := NewUpdater(ctx, cli, updateNetworks, params, updateProxy, collector, repoVolume.Name)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if updaterErr := updater.Close(); updaterErr != nil {
+			err = updaterErr
 		}
+	}()
+
+	if err = updater.RunCmd(ctx, "update-ca-certificates", root); err != nil {
+		return err
+	}
+
+	env := userEnv(updateProxy.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
+	if params.Flamegraph {
+		env = append(env, "FLAMEGRAPH=1")
+	}
+	if err = updater.RunCmd(ctx, updateCmds[params.Job.Command], dependabot, env...); err != nil {
+		return err
+	}
+	if params.Flamegraph {
+		getFromContainer(ctx, cli, updater.containerID, "/tmp/dependabot-flamegraph.html")
+	}
+
+	return checkExitCode(params, updater)
+}
+
+func placeCloneDir(ctx context.Context, cli *client.Client, params *RunParams, updater *Updater) error {
+	if params.LocalDir == "" {
+		return nil
+	}
+
+	containerDir := guestRepoDir
+	if params.Job.UseCaseInsensitiveFileSystem() {
+		// since the updater is using the storage container, we need to populate the repo on that device because that's the directory that will be used for the update
+		containerDir = caseSensitiveRepoContentsPath
+	}
+
+	return putCloneDir(ctx, cli, updater, params.LocalDir, containerDir)
+}
+
+// checkExitCode errors when using the `update` subcommand, but not the `test` subcommand.
+func checkExitCode(params *RunParams, updater *Updater) error {
+	if params.Expected == nil && *updater.ExitCode != 0 {
+		return fmt.Errorf("updater exited with code %d", *updater.ExitCode)
 	}
 
 	return nil

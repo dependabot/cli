@@ -1,11 +1,12 @@
 package infra
 
 import (
-	"github.com/dependabot/cli/internal/model"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dependabot/cli/internal/model"
 )
 
 func Test_mountOptions(t *testing.T) {

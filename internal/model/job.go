@@ -66,6 +66,12 @@ func (j *Job) UseCaseInsensitiveFileSystem() bool {
 	return j.PackageManager == "nuget" && j.experimentEnabled("use_case_insensitive_filesystem")
 }
 
+// IsolatedFetchUpdate reports whether fetch and update run in separate containers
+// that exchange a serialized file set instead of sharing a repo clone.
+func (j *Job) IsolatedFetchUpdate() bool {
+	return j.experimentEnabled("isolated_fetch_update")
+}
+
 // experimentEnabled reports whether the named boolean experiment is enabled.
 // name is the canonical experiment name using underscores; the hyphenated
 // variant is also checked to accommodate both naming conventions.

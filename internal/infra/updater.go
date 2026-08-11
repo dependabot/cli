@@ -2,6 +2,7 @@ package infra
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -22,7 +23,6 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
-	"github.com/goware/prefixer"
 	"github.com/moby/moby/pkg/stdcopy"
 )
 
@@ -31,6 +31,10 @@ const (
 	root       = "root"
 	dependabot = "dependabot"
 )
+
+// maxLogLineSize bounds a single line of container output; job.json is echoed as
+// one line by some updaters and exceeds bufio's default.
+const maxLogLineSize = 16 * 1024 * 1024
 
 const (
 	guestInputDir = "/home/dependabot/dependabot-updater/job.json"
@@ -64,7 +68,17 @@ const (
 )
 
 // NewUpdater starts the update container interactively running /bin/sh, so it does not stop.
-func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy, collector *Collector) (*Updater, error) {
+// repoVolume, when set, is a volume mounted at guestRepoDir so the clone made by the
+// fetch container is the clone the update container uses.
+func NewUpdater(
+	ctx context.Context,
+	cli *client.Client,
+	net *Networks,
+	params *RunParams,
+	prox *Proxy,
+	collector *Collector,
+	repoVolume string,
+) (*Updater, error) {
 	containerCfg := &container.Config{
 		User:  dependabot,
 		Image: params.UpdaterImage,
@@ -96,6 +110,14 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 			Source:   local,
 			Target:   remote,
 			ReadOnly: readOnly,
+		})
+	}
+
+	if repoVolume != "" {
+		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
+			Type:   mount.TypeVolume,
+			Source: repoVolume,
+			Target: guestRepoDir,
 		})
 	}
 
@@ -136,6 +158,14 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	if err = cli.ContainerStart(ctx, updaterContainer.ID, container.StartOptions{}); err != nil {
 		updater.Close()
 		return nil, fmt.Errorf("failed to start updater container: %w", err)
+	}
+
+	if repoVolume != "" {
+		// The volume mounts as root, so the dependabot user could not clone into it.
+		if err = updater.RunCmd(ctx, "chown "+dependabot+" "+guestRepoDir, root); err != nil {
+			updater.Close()
+			return nil, fmt.Errorf("failed to prepare the repo volume: %w", err)
+		}
 	}
 
 	return updater, nil
@@ -409,8 +439,10 @@ func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) e
 	}
 
 	r, w := io.Pipe()
+	copyDone := make(chan struct{})
 	go func() {
-		_, _ = io.Copy(os.Stderr, prefixer.New(r, "updater | "))
+		copyPrefixed(os.Stderr, r, "updater | ")
+		close(copyDone)
 	}()
 
 	ch := make(chan struct{})
@@ -426,6 +458,11 @@ func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) e
 	case <-ch:
 	}
 
+	// Flush the pipe before returning, otherwise the tail of the command's output
+	// is lost when the caller moves on.
+	_ = w.Close()
+	<-copyDone
+
 	// check the exit code of the command
 	execInspect, err := u.cli.ContainerExecInspect(ctx, execCreate.ID)
 	if err != nil {
@@ -435,6 +472,16 @@ func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) e
 	u.ExitCode = &execInspect.ExitCode
 
 	return nil
+}
+
+// copyPrefixed writes each line read from r to w behind prefix, including a final
+// line with no trailing newline.
+func copyPrefixed(w io.Writer, r io.Reader, prefix string) {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, bufio.MaxScanTokenSize), maxLogLineSize)
+	for scanner.Scan() {
+		_, _ = fmt.Fprintf(w, "%s%s\n", prefix, scanner.Text())
+	}
 }
 
 // Wait blocks until the condition is true.

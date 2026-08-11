@@ -1,0 +1,71 @@
+# The split topology clones in the fetch container and updates in another, with the
+# clone travelling between them on a shared Docker volume rather than being made twice.
+
+exec docker build -qt isolated-updater .
+
+dependabot update -f job.yml --updater-image isolated-updater --local my-repo
+
+# both entrypoints run, in separate containers
+stderr 'bin/run arguments: fetch_files'
+stderr 'bin/run arguments: update_files'
+
+# the fetch container is the one that gets the clone
+stderr 'fetch_files repo: \.git'
+stderr 'fetch_files repo: hello.txt'
+
+# the update container sees the same clone on the volume, without cloning again
+stderr 'update_files repo: \.git'
+stderr 'update_files repo: hello.txt'
+stderr 'update_files sees: written by fetch'
+
+# both sides point at the same contents path
+stderr 'fetch_files env: DEPENDABOT_REPO_CONTENTS_PATH=/home/dependabot/dependabot-updater/repo'
+stderr 'update_files env: DEPENDABOT_REPO_CONTENTS_PATH=/home/dependabot/dependabot-updater/repo'
+
+exec docker rmi -f isolated-updater
+
+-- job.yml --
+job:
+  package-manager: go_modules
+  source:
+    provider: github
+    repo: dependabot-fixtures/go-modules-lib
+    directory: /
+  experiments:
+    isolated_fetch_update: true
+
+-- my-repo/hello.txt --
+Hello, world!
+
+-- Dockerfile --
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y git
+
+RUN useradd dependabot
+RUN mkdir -p /home/dependabot/dependabot-updater/repo && chown -R dependabot /home/dependabot
+
+COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
+COPY --chown=dependabot --chmod=755 run bin/run
+
+-- update-ca-certificates --
+#!/usr/bin/env bash
+
+echo "Updated those certificates for ya"
+
+-- run --
+#!/usr/bin/env bash
+
+echo "bin/run arguments: $1"
+echo "$1 env: DEPENDABOT_REPO_CONTENTS_PATH=${DEPENDABOT_REPO_CONTENTS_PATH:-unset}"
+
+ls -a "$DEPENDABOT_REPO_CONTENTS_PATH" | sed "s/^/$1 repo: /"
+
+case "$1" in
+  fetch_files)
+    echo "written by fetch" > "$DEPENDABOT_REPO_CONTENTS_PATH/from-fetch.txt"
+    ;;
+  update_files)
+    echo "update_files sees: $(cat "$DEPENDABOT_REPO_CONTENTS_PATH/from-fetch.txt")"
+    ;;
+esac
