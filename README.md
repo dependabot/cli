@@ -18,7 +18,7 @@ Use any of the following for a pain-free installation:
    ```
    The benefit of this method is that re-running the command will always update to the latest version.
 * You can download a pre-built binary from the [releases] page.
-* On Mac, you can run `brew install dependabot`
+* On Mac or Linux, you can run `brew install dependabot`
 
 ## Requirements
 
