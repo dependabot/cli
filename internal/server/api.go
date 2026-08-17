@@ -137,12 +137,6 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		updatePR.UpdatedDependencyFiles = replaceBinaryWithHash(updatePR.UpdatedDependencyFiles)
 	}
 
-	if actual == nil {
-		// indicates the kind (endpoint) isn't implemented in decodeWrapper, so return a 501
-		w.WriteHeader(http.StatusNotImplemented)
-		return
-	}
-
 	if kind == "increment_metric" || kind == "record_ecosystem_meta" {
 		// These calls are noisy and changeable; skip recording them in output
 		return
@@ -251,7 +245,9 @@ func decodeWrapper(kind string, data []byte) (actual *model.UpdateWrapper, err e
 	case "increment_metric":
 		actual.Data, err = decode[model.IncrementMetric](data)
 	default:
-		return nil, fmt.Errorf("unexpected output type: %s", kind)
+		// An endpoint the CLI has no model for is still reported to stdout so a
+		// new API endpoint can be exercised before the CLI knows its shape.
+		actual.Data, err = decode[map[string]any](data)
 	}
 	return actual, err
 }

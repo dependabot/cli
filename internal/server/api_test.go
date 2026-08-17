@@ -25,15 +25,28 @@ func Test_decodeWrapper(t *testing.T) {
 }
 
 func TestAPI_ServeHTTP(t *testing.T) {
-	t.Run("doesn't crash when unknown endpoint is used", func(t *testing.T) {
-		request := httptest.NewRequest("POST", "/unexpected-endpoint", nil)
+	t.Run("records unknown endpoints instead of rejecting them", func(t *testing.T) {
+		var stdout bytes.Buffer
+		body := `{"data":{"commitSha":"abc123"}}`
+		request := httptest.NewRequest("POST", "/update_jobs/1/unexpected-endpoint", bytes.NewBufferString(body))
 		response := httptest.NewRecorder()
 
-		api := NewAPI(nil, nil)
+		api := NewAPI(nil, &stdout)
+		defer api.Stop()
 		api.ServeHTTP(response, request)
 
-		if response.Code != http.StatusNotImplemented {
-			t.Errorf("expected status code %d, got %d", http.StatusNotImplemented, response.Code)
+		if response.Code != http.StatusOK {
+			t.Errorf("expected status code %d, got %d", http.StatusOK, response.Code)
+		}
+		if len(api.Errors) != 0 {
+			t.Errorf("expected no errors, got %v", api.Errors)
+		}
+		var recorded Wrapper[map[string]any]
+		if err := json.Unmarshal(stdout.Bytes(), &recorded); err != nil {
+			t.Fatal(err)
+		}
+		if recorded.Data["commitSha"] != "abc123" {
+			t.Errorf("expected the payload on stdout, got %v", recorded.Data)
 		}
 	})
 }
