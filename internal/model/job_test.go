@@ -201,25 +201,25 @@ func TestUseCaseInsensitiveFileSystem(t *testing.T) {
 	}
 }
 
-func TestIsolatedFetchUpdate(t *testing.T) {
+func TestIsolateFetchUpdate(t *testing.T) {
 	tests := []struct {
 		name        string
 		experiments Experiment
 		want        bool
 	}{
 		{"nil experiments", nil, false},
-		{"underscore true", Experiment{"isolated_fetch_update": true}, true},
-		{"underscore false", Experiment{"isolated_fetch_update": false}, false},
-		{"hyphen true", Experiment{"isolated-fetch-update": true}, true},
-		{"non-bool value", Experiment{"isolated_fetch_update": "true"}, false},
-		{"ecosystem flag only", Experiment{"isolated_fetch_update_go_modules": true}, false},
+		{"underscore true", Experiment{"isolate_fetch_update": true}, true},
+		{"underscore false", Experiment{"isolate_fetch_update": false}, false},
+		{"hyphen true", Experiment{"isolate-fetch-update": true}, true},
+		{"non-bool value", Experiment{"isolate_fetch_update": "true"}, false},
+		{"ecosystem flag only", Experiment{"isolate_fetch_update_go_modules": true}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			j := &Job{PackageManager: "go_modules", Experiments: tt.experiments}
-			if got := j.IsolatedFetchUpdate(); got != tt.want {
-				t.Errorf("IsolatedFetchUpdate() = %v, want %v", got, tt.want)
+			if got := j.IsolateFetchUpdate(); got != tt.want {
+				t.Errorf("IsolateFetchUpdate() = %v, want %v", got, tt.want)
 			}
 		})
 	}

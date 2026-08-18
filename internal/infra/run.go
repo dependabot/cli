@@ -450,7 +450,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		defer collector.Close()
 	}
 
-	if params.Job.IsolatedFetchUpdate() {
+	if params.Job.IsolateFetchUpdate() {
 		return runIsolated(ctx, cli, networks, &params, prox, collector)
 	}
 
@@ -459,7 +459,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 
 // runCombined runs fetch and update in a single container sharing a repo clone.
 func runCombined(ctx context.Context, cli *client.Client, networks *Networks, params *RunParams, prox *Proxy, collector *Collector) (err error) {
-	updater, err := NewUpdater(ctx, cli, networks, params, prox, collector, "")
+	updater, err := NewUpdater(ctx, cli, networks, params, prox, collector, "", "")
 	if err != nil {
 		return err
 	}
@@ -497,18 +497,18 @@ func runCombined(ctx context.Context, cli *client.Client, networks *Networks, pa
 	return checkExitCode(params, updater)
 }
 
-// runIsolated clones in one container and updates in another. The clone travels
-// between them on a shared volume rather than being made twice. Each side gets its
-// own proxy on its own network, so the update side cannot reach the fetch proxy.
+// runIsolated clones in one container and transfers the checkout to a handoff
+// volume mounted as the update container's repository. Each side gets its own
+// proxy on its own network, so the update side cannot reach the fetch proxy.
 func runIsolated(ctx context.Context, cli *client.Client, networks *Networks, params *RunParams, prox *Proxy, collector *Collector) (err error) {
 	if params.Debug {
-		return fmt.Errorf("--debug is not supported with the isolated_fetch_update experiment")
+		return fmt.Errorf("--debug is not supported with the isolate_fetch_update experiment")
 	}
 	if params.Job.UseCaseInsensitiveFileSystem() {
-		return fmt.Errorf("isolated_fetch_update is not supported with use_case_insensitive_filesystem")
+		return fmt.Errorf("isolate_fetch_update is not supported with use_case_insensitive_filesystem")
 	}
 	if params.CollectorConfigPath != "" {
-		return fmt.Errorf("the OpenTelemetry collector is not supported with the isolated_fetch_update experiment")
+		return fmt.Errorf("the OpenTelemetry collector is not supported with the isolate_fetch_update experiment")
 	}
 
 	repoVolume, err := cli.VolumeCreate(ctx, volume.CreateOptions{Labels: map[string]string{"dependabot-cli": "repo"}})
@@ -520,8 +520,17 @@ func runIsolated(ctx context.Context, cli *client.Client, networks *Networks, pa
 			err = volumeErr
 		}
 	}()
+	handoffVolume, err := cli.VolumeCreate(ctx, volume.CreateOptions{Labels: map[string]string{"dependabot-cli": "repo-handoff"}})
+	if err != nil {
+		return fmt.Errorf("failed to create repo handoff volume: %w", err)
+	}
+	defer func() {
+		if volumeErr := cli.VolumeRemove(context.Background(), handoffVolume.Name, true); volumeErr != nil {
+			err = volumeErr
+		}
+	}()
 
-	fetcher, err := NewUpdater(ctx, cli, networks, params, prox, collector, repoVolume.Name)
+	fetcher, err := NewUpdater(ctx, cli, networks, params, prox, collector, repoVolume.Name, handoffVolume.Name)
 	if err != nil {
 		return err
 	}
@@ -545,6 +554,9 @@ func runIsolated(ctx context.Context, cli *client.Client, networks *Networks, pa
 	}
 	if *fetcher.ExitCode != 0 {
 		return fmt.Errorf("fetch exited with code %d", *fetcher.ExitCode)
+	}
+	if err = fetcher.RunCmd(ctx, "cp -a "+guestRepoDir+"/. "+guestRepoHandoffDir+"/", dependabot); err != nil {
+		return fmt.Errorf("failed to transfer repository checkout: %w", err)
 	}
 
 	// The update side gets its own network and proxy so its credentials can diverge
@@ -572,7 +584,7 @@ func runIsolated(ctx context.Context, cli *client.Client, networks *Networks, pa
 	}()
 	go updateProxy.TailLogs(ctx, cli)
 
-	updater, err := NewUpdater(ctx, cli, updateNetworks, params, updateProxy, collector, repoVolume.Name)
+	updater, err := NewUpdater(ctx, cli, updateNetworks, params, updateProxy, collector, handoffVolume.Name, "")
 	if err != nil {
 		return err
 	}
@@ -587,6 +599,7 @@ func runIsolated(ctx context.Context, cli *client.Client, networks *Networks, pa
 	}
 
 	env := userEnv(updateProxy.url, params.ApiUrl, params.Job, params.UpdaterEnvironmentVariables)
+	env = append(env, "DEPENDABOT_LOCAL_CHECKOUT_ONLY=true")
 	if params.Flamegraph {
 		env = append(env, "FLAMEGRAPH=1")
 	}

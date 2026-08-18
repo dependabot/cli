@@ -37,9 +37,10 @@ const (
 const maxLogLineSize = 16 * 1024 * 1024
 
 const (
-	guestInputDir = "/home/dependabot/dependabot-updater/job.json"
-	guestOutput   = "/home/dependabot/dependabot-updater/output.json"
-	guestRepoDir  = "/home/dependabot/dependabot-updater/repo"
+	guestInputDir       = "/home/dependabot/dependabot-updater/job.json"
+	guestOutput         = "/home/dependabot/dependabot-updater/output.json"
+	guestRepoDir        = "/home/dependabot/dependabot-updater/repo"
+	guestRepoHandoffDir = "/home/dependabot/dependabot-updater/repo-handoff"
 
 	caseSensitiveContainerRoot    = "/dpdbot"
 	caseSensitiveRepoContentsPath = "/dpdbot/repo"
@@ -68,8 +69,8 @@ const (
 )
 
 // NewUpdater starts the update container interactively running /bin/sh, so it does not stop.
-// repoVolume, when set, is a volume mounted at guestRepoDir so the clone made by the
-// fetch container is the clone the update container uses.
+// repoVolume, when set, is mounted at guestRepoDir. handoffVolume is mounted at
+// guestRepoHandoffDir for a fetch container to transfer the completed checkout.
 func NewUpdater(
 	ctx context.Context,
 	cli *client.Client,
@@ -78,6 +79,7 @@ func NewUpdater(
 	prox *Proxy,
 	collector *Collector,
 	repoVolume string,
+	handoffVolume string,
 ) (*Updater, error) {
 	containerCfg := &container.Config{
 		User:  dependabot,
@@ -118,6 +120,13 @@ func NewUpdater(
 			Type:   mount.TypeVolume,
 			Source: repoVolume,
 			Target: guestRepoDir,
+		})
+	}
+	if handoffVolume != "" {
+		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
+			Type:   mount.TypeVolume,
+			Source: handoffVolume,
+			Target: guestRepoHandoffDir,
 		})
 	}
 
@@ -161,10 +170,15 @@ func NewUpdater(
 	}
 
 	if repoVolume != "" {
-		// The volume mounts as root, so the dependabot user could not clone into it.
 		if err = updater.RunCmd(ctx, "chown "+dependabot+" "+guestRepoDir, root); err != nil {
 			updater.Close()
 			return nil, fmt.Errorf("failed to prepare the repo volume: %w", err)
+		}
+	}
+	if handoffVolume != "" {
+		if err = updater.RunCmd(ctx, "chown "+dependabot+" "+guestRepoHandoffDir, root); err != nil {
+			updater.Close()
+			return nil, fmt.Errorf("failed to prepare the repo handoff volume: %w", err)
 		}
 	}
 

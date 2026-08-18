@@ -1,5 +1,5 @@
-# The split topology clones in the fetch container and updates in another, with the
-# clone travelling between them on a shared Docker volume rather than being made twice.
+# The split topology clones in the fetch container and transfers the checkout to a
+# handoff volume that is the only repository volume mounted by the update container.
 
 exec docker build -qt isolated-updater .
 
@@ -12,15 +12,21 @@ stderr 'bin/run arguments: update_files'
 # the fetch container is the one that gets the clone
 stderr 'fetch_files repo: \.git'
 stderr 'fetch_files repo: hello.txt'
+stderr 'fetch_files handoff mount: present'
 
 # the update container sees the same clone on the volume, without cloning again
 stderr 'update_files repo: \.git'
 stderr 'update_files repo: hello.txt'
 stderr 'update_files sees: written by fetch'
+stderr 'update_files handoff mount: absent'
 
 # both sides point at the same contents path
 stderr 'fetch_files env: DEPENDABOT_REPO_CONTENTS_PATH=/home/dependabot/dependabot-updater/repo'
 stderr 'update_files env: DEPENDABOT_REPO_CONTENTS_PATH=/home/dependabot/dependabot-updater/repo'
+
+# only the update side is restricted to the checkout on the handoff volume
+stderr 'fetch_files local checkout only: unset'
+stderr 'update_files local checkout only: true'
 
 exec docker rmi -f isolated-updater
 
@@ -32,7 +38,7 @@ job:
     repo: dependabot-fixtures/go-modules-lib
     directory: /
   experiments:
-    isolated_fetch_update: true
+    isolate_fetch_update: true
 
 -- my-repo/hello.txt --
 Hello, world!
@@ -58,6 +64,13 @@ echo "Updated those certificates for ya"
 
 echo "bin/run arguments: $1"
 echo "$1 env: DEPENDABOT_REPO_CONTENTS_PATH=${DEPENDABOT_REPO_CONTENTS_PATH:-unset}"
+echo "$1 local checkout only: ${DEPENDABOT_LOCAL_CHECKOUT_ONLY:-unset}"
+
+if [[ -d /home/dependabot/dependabot-updater/repo-handoff ]]; then
+  echo "$1 handoff mount: present"
+else
+  echo "$1 handoff mount: absent"
+fi
 
 ls -a "$DEPENDABOT_REPO_CONTENTS_PATH" | sed "s/^/$1 repo: /"
 
