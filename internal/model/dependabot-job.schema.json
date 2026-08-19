@@ -1,0 +1,406 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dependabot job",
+  "description": "Data that is passed to the updater",
+  "type": "object",
+  "required": [
+    "job"
+  ],
+  "properties": {
+    "job": {
+      "type": "object",
+      "properties": {
+        "package-manager": {
+          "type": "string",
+          "description": "Package manager being used"
+        },
+        "allowed-updates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Allowed"
+          }
+        },
+        "debug": {
+          "type": "boolean"
+        },
+        "dependency-groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Group"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dependency-group-to-refresh": {
+          "type": "string"
+        },
+        "existing-pull-requests": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ExistingPR"
+            }
+          }
+        },
+        "existing-group-pull-requests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExistingGroupPR"
+          }
+        },
+        "experiments": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "ignore-conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Condition"
+          }
+        },
+        "lockfile-only": {
+          "type": "boolean"
+        },
+        "requirements-update-strategy": {
+          "type": "string"
+        },
+        "security-advisories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Advisory"
+          }
+        },
+        "security-updates-only": {
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/definitions/Source"
+        },
+        "update-subdependencies": {
+          "type": "boolean"
+        },
+        "updating-a-pull-request": {
+          "type": "boolean"
+        },
+        "vendor-dependencies": {
+          "type": "boolean"
+        },
+        "reject-external-code": {
+          "type": "boolean"
+        },
+        "repo-private": {
+          "type": "boolean"
+        },
+        "commit-message-options": {
+          "$ref": "#/definitions/CommitOptions"
+        },
+        "credentials-metadata": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "max-updater-run-time": {
+          "type": "integer"
+        },
+        "cooldown": {
+          "$ref": "#/definitions/UpdateCooldown"
+        }
+      },
+      "required": [
+        "package-manager",
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "Source": {
+      "type": "object",
+      "required": [
+        "provider",
+        "repo"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "azure",
+            "bitbucket",
+            "codecommit",
+            "github",
+            "gitlab"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        },
+        "directory": {
+          "type": "string"
+        },
+        "directories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "branch": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "api-endpoint": {
+          "type": "string"
+        }
+      }
+    },
+    "ExistingPR": {
+      "type": "object",
+      "required": [
+        "dependency-name",
+        "dependency-version"
+      ],
+      "properties": {
+        "dependency-name": {
+          "type": "string"
+        },
+        "dependency-version": {
+          "type": "string"
+        },
+        "directory": {
+          "type": "string"
+        }
+      }
+    },
+    "ExistingGroupPR": {
+      "type": "object",
+      "required": [
+        "dependency-group-name",
+        "dependencies"
+      ],
+      "properties": {
+        "dependency-group-name": {
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExistingPR"
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "type": "object",
+      "properties": {
+        "dependency-type": {
+          "type": "string"
+        },
+        "dependency-name": {
+          "type": "string"
+        },
+        "update-type": {
+          "type": "string"
+        }
+      }
+    },
+    "Group": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "applies-to": {
+          "type": "string"
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "Condition": {
+      "type": "object",
+      "required": [
+        "dependency-name"
+      ],
+      "properties": {
+        "dependency-name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "update-types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "updated-at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "version-requirement": {
+          "type": "string"
+        }
+      }
+    },
+    "Advisory": {
+      "type": "object",
+      "required": [
+        "dependency-name",
+        "affected-versions",
+        "patched-versions",
+        "unaffected-versions"
+      ],
+      "properties": {
+        "dependency-name": {
+          "type": "string"
+        },
+        "affected-versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "patched-versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unaffected-versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Dependency": {
+      "type": "object",
+      "required": [
+        "name",
+        "requirements",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "previous-requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Requirement"
+          }
+        },
+        "previous-version": {
+          "type": "string"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Requirement"
+          }
+        },
+        "version": {
+          "type": "string"
+        },
+        "removed": {
+          "type": "boolean"
+        },
+        "directory": {
+          "type": "string"
+        }
+      }
+    },
+    "Requirement": {
+      "type": "object",
+      "required": [
+        "file",
+        "groups",
+        "requirement"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "groups": {
+          "type": "array",
+          "items": {}
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "requirement": {
+          "type": "string"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "version": {
+          "type": "string"
+        },
+        "previous-version": {
+          "type": "string"
+        }
+      }
+    },
+    "CommitOptions": {
+      "type": "object",
+      "properties": {
+        "prefix": {
+          "type": "string"
+        },
+        "prefix-development": {
+          "type": "string"
+        },
+        "include-scope": {
+          "type": "boolean"
+        }
+      }
+    },
+    "UpdateCooldown": {
+      "type": "object",
+      "properties": {
+        "default-days": {
+          "type": "integer"
+        },
+        "semver-major-days": {
+          "type": "integer"
+        },
+        "semver-minor-days": {
+          "type": "integer"
+        },
+        "semver-patch-days": {
+          "type": "integer"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
