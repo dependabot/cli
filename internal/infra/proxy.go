@@ -39,7 +39,6 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 	
 	// Generate and write configuration to disk:
-	log.Printf("passing experiments to proxy: %v", params.Job.Experiments)
 	proxyConfig := &Config{
 		Credentials: params.Creds,
 		CA:          ca,
