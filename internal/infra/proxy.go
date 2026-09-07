@@ -37,7 +37,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate cert: %w", err)
 	}
-	
+
 	// Generate and write configuration to disk:
 	proxyConfig := &Config{
 		Credentials: params.Creds,
