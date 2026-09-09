@@ -539,33 +539,13 @@ func waitForPort(ctx context.Context, cli *client.Client, containerID string, po
 	const maxAttempts = 5
 	const sleepDuration = time.Second
 
-	// check /proc/net/tcp for the requested port; n.b., it is hex encoded and 4 characters wide
-	testCmd := fmt.Sprintf("test -f /proc/net/tcp && grep ' *\\d+: [A-F0-9]{8}:%04X ' /proc/net/tcp >/dev/null 2>&1", port)
-
 	for i := range maxAttempts {
-		execCreate, err := cli.ContainerExecCreate(ctx, containerID, container.ExecOptions{
-			AttachStdout: false,
-			AttachStderr: false,
-			User:         root,
-			Cmd:          []string{"/bin/sh", "-c", testCmd},
-		})
+		listening, err := isPortListening(ctx, cli, containerID, port)
 		if err != nil {
-			return fmt.Errorf("failed to create exec for port check: %w", err)
+			return err
 		}
 
-		execResp, err := cli.ContainerExecAttach(ctx, execCreate.ID, container.ExecAttachOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to attach to exec for port check: %w", err)
-		}
-
-		// wait for completion and check the exit code
-		execResp.Close()
-		execInspect, err := cli.ContainerExecInspect(ctx, execCreate.ID)
-		if err != nil {
-			return fmt.Errorf("failed to inspect exec: %w", err)
-		}
-
-		if execInspect.ExitCode == 0 {
+		if listening {
 			// port is listening
 			log.Printf("  port %d is listening after %d attempts", port, i+1)
 
@@ -581,4 +561,77 @@ func waitForPort(ctx context.Context, cli *client.Client, containerID string, po
 	}
 
 	return fmt.Errorf("port %d is not listening after %d attempts", port, maxAttempts)
+}
+
+func waitForPortUntil(
+	ctx context.Context,
+	pollInterval time.Duration,
+	probe func(context.Context) (bool, error),
+) error {
+	for attempt := 1; ; attempt++ {
+		listening, err := probe(ctx)
+		if err != nil {
+			return err
+		}
+		if listening {
+			log.Printf("  proxy is listening after %d attempts", attempt)
+			return nil
+		}
+
+		timer := time.NewTimer(pollInterval)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+func isPortListening(ctx context.Context, cli *client.Client, containerID string, port int) (bool, error) {
+	// The CLI already starts proxy images through sh. Use only shell built-ins
+	// here so readiness does not require additional executables in custom images.
+	testCmd := fmt.Sprintf(`
+for file in /proc/net/tcp /proc/net/tcp6; do
+  [ -r "$file" ] || continue
+  while read -r _ local_address _ state _; do
+    case "$local_address:$state" in
+      *:%04X:0A) exit 0 ;;
+    esac
+  done < "$file"
+done
+exit 1`, port)
+	return containerCommandSucceeded(ctx, cli, containerID, testCmd)
+}
+
+func containerCommandSucceeded(ctx context.Context, cli *client.Client, containerID, command string) (bool, error) {
+	return containerExecSucceeded(ctx, cli, containerID, []string{"sh", "-c", command})
+}
+
+func containerExecSucceeded(ctx context.Context, cli *client.Client, containerID string, command []string) (bool, error) {
+	execCreate, err := cli.ContainerExecCreate(ctx, containerID, container.ExecOptions{
+		AttachStdout: true,
+		AttachStderr: true,
+		User:         root,
+		Cmd:          command,
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to create container check: %w", err)
+	}
+
+	execResp, err := cli.ContainerExecAttach(ctx, execCreate.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return false, fmt.Errorf("failed to attach to container check: %w", err)
+	}
+	if _, err = io.Copy(io.Discard, execResp.Reader); err != nil {
+		execResp.Close()
+		return false, fmt.Errorf("failed to wait for container check: %w", err)
+	}
+	execResp.Close()
+
+	execInspect, err := cli.ContainerExecInspect(ctx, execCreate.ID)
+	if err != nil {
+		return false, fmt.Errorf("failed to inspect container check: %w", err)
+	}
+	return execInspect.ExitCode == 0, nil
 }
