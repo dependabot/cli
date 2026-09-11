@@ -42,5 +42,5 @@ jobs:
         with:
           subject-path: |
             ${{ steps.go_release.outputs.release_asset_dir }}/*
-            dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
-            dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+            cmd/dependabot/dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+            cmd/dependabot/dependabot-${{ github.ref_name}}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
