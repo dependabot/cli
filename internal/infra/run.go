@@ -304,6 +304,7 @@ var packageManagerLookup = map[string]string{
 	"opentofu":       "opentofu",
 	"pip":            "pip",
 	"pre_commit":     "pre-commit",
+	"powershell":     "powershell",
 	"pub":            "pub",
 	"rust_toolchain": "rust-toolchain",
 	"sbt":            "sbt",

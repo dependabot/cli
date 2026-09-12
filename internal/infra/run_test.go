@@ -23,6 +23,7 @@ func Test_setImageNames(t *testing.T) {
 	}{
 		{"conda", "conda"},
 		{"deno", "deno"},
+		{"powershell", "powershell"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.packageManager, func(t *testing.T) {
