@@ -13,7 +13,9 @@ stderr 'proxy \| custom-ca-cert\.crt'
 stderr 'proxy \| I am a certificate'
 
 # Test that the CLI exits with non-zero if the proxy does too.
-! dependabot update go_modules dependabot/cli --proxy-cert crash --updater-image proxy-updater --proxy-image dummy-proxy --proxy-username user --proxy-password pass
+! dependabot update go_modules dependabot/cli --proxy-cert crash --updater-image proxy-updater --proxy-image dummy-proxy
+stderr 'proxy did not start listening on port 1080'
+stderr 'proxy container exited with non-zero exit code'
 
 exec docker rmi -f proxy-updater dummy-proxy
 
@@ -24,21 +26,63 @@ crash
 I am a certificate
 
 -- Dockerfile.proxy --
+FROM golang:1.26 AS builder
+
+WORKDIR /src
+COPY proxy.go .
+RUN CGO_ENABLED=0 go build -o /dependabot-proxy proxy.go
+
 FROM ubuntu:22.04
 
+RUN mkdir -p /custom/bin \
+    && cp /bin/sh /custom/bin/sh \
+    && ! command -v nc
+
+ENV PATH="/custom/bin:${PATH}"
+
 COPY --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
-COPY --chmod=755 dependabot-proxy /dependabot-proxy
+COPY --from=builder /dependabot-proxy /dependabot-proxy
+RUN rm /bin/sh \
+    && [ ! -e /bin/sh ]
 
--- dependabot-proxy --
-#!/usr/bin/env bash
+-- proxy.go --
+package main
 
-echo "Proxy is running"
-echo "$(</config.json)"
+import (
+	"fmt"
+	"net"
+	"os"
+	"time"
+)
+
+func main() {
+	fmt.Println("Proxy is running")
+	config, _ := os.ReadFile("/config.json")
+	fmt.Println(string(config))
+	time.Sleep(time.Second)
+
+	listener, err := net.Listen("tcp", ":1080")
+	if err != nil {
+		panic(err)
+	}
+	defer listener.Close()
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			panic(err)
+		}
+		conn.Close()
+	}
+}
 
 -- Dockerfile --
 FROM ubuntu:22.04
 
-RUN useradd dependabot
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd dependabot
 
 COPY --chown=dependabot --chmod=755 update-ca-certificates /usr/bin/update-ca-certificates
 COPY --chown=dependabot --chmod=755 run bin/run
@@ -55,4 +99,8 @@ grep crash /usr/local/share/ca-certificates/custom-ca-cert.crt && exit 1 || true
 -- run --
 #!/usr/bin/env bash
 
+set -e
+
+proxy="${HTTP_PROXY#http://}"
+nc -w 1 "${proxy%:*}" "${proxy##*:}"
 echo "Updater is running"

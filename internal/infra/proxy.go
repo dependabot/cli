@@ -3,12 +3,14 @@ package infra
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -20,6 +22,9 @@ import (
 )
 
 const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
+const proxyReadyPort = 1080
+const proxyReadyTimeout = 60 * time.Second
+const proxyReadyPollInterval = 100 * time.Millisecond
 
 // ProxyImageName is the default Docker image used by the proxy
 const ProxyImageName = "ghcr.io/dependabot/proxy:latest"
@@ -130,6 +135,26 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 
 	return proxy, nil
+}
+
+func (p *Proxy) WaitUntilReady(ctx context.Context) error {
+	readyCtx, cancel := context.WithTimeout(ctx, proxyReadyTimeout)
+	defer cancel()
+
+	if err := waitForPortUntil(readyCtx, proxyReadyPollInterval, func(ctx context.Context) (bool, error) {
+		return isPortListening(ctx, p.cli, p.containerID, proxyReadyPort)
+	}); err != nil {
+		return proxyReadinessError(ctx, err)
+	}
+	return nil
+}
+
+func proxyReadinessError(ctx context.Context, err error) error {
+	format := "proxy did not start listening on port %d within %s: "
+	if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
+		return fmt.Errorf(format+"%v", proxyReadyPort, proxyReadyTimeout, err)
+	}
+	return fmt.Errorf(format+"%w", proxyReadyPort, proxyReadyTimeout, err)
 }
 
 // proxyEnv builds the environment variables passed to the proxy container.

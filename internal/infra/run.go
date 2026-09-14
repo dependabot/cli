@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -430,14 +431,16 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		return err
 	}
 	defer func() {
-		if proxyErr := prox.Close(); proxyErr != nil {
-			err = proxyErr
-		}
+		err = errors.Join(err, prox.Close())
 	}()
 
 	// proxy logs interfere with debugging output
 	if !params.Debug {
 		go prox.TailLogs(ctx, cli)
+	}
+
+	if err = prox.WaitUntilReady(ctx); err != nil {
+		return err
 	}
 
 	var collector *Collector
