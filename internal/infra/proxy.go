@@ -42,6 +42,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	proxyConfig := &Config{
 		Credentials: params.Creds,
 		CA:          ca,
+		Experiments: params.Job.Experiments,
 	}
 
 	hostCfg := &container.HostConfig{
@@ -79,7 +80,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 	config := &container.Config{
 		Image: params.ProxyImage,
-		Env:   proxyEnv(params.ApiUrl),
+		Env:   proxyEnv(params.ApiUrl, params.Job.PackageManager),
 		Entrypoint: []string{
 			"sh", "-c", "update-ca-certificates && /dependabot-proxy",
 		},
@@ -133,7 +134,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 }
 
 // proxyEnv builds the environment variables passed to the proxy container.
-func proxyEnv(apiURL string) []string {
+func proxyEnv(apiURL, packageManager string) []string {
 	env := []string{
 		"HTTP_PROXY=" + os.Getenv("HTTP_PROXY"),
 		"HTTPS_PROXY=" + os.Getenv("HTTPS_PROXY"),
@@ -143,6 +144,8 @@ func proxyEnv(apiURL string) []string {
 		"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
 		"ACTIONS_ID_TOKEN_REQUEST_TOKEN=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
 		"ACTIONS_ID_TOKEN_REQUEST_URL=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"),
+		// PACKAGE_MANAGER lets the proxy load the right per-ecosystem egress allowlist defaults.
+		"PACKAGE_MANAGER=" + packageManager,
 	}
 	// Only forward JOB_TOKEN and DEPENDABOT_API_URL when JOB_TOKEN is set on the
 	// host. The proxy uses DEPENDABOT_API_URL to decide which host to inject the
