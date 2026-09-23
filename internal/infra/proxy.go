@@ -138,7 +138,7 @@ func proxyEnv(apiURL string) []string {
 		"HTTP_PROXY=" + os.Getenv("HTTP_PROXY"),
 		"HTTPS_PROXY=" + os.Getenv("HTTPS_PROXY"),
 		"NO_PROXY=" + os.Getenv("NO_PROXY"),
-		"JOB_ID=" + jobID,
+		"JOB_ID=" + firstNonEmpty(os.Getenv("DEPENDABOT_JOB_ID"), jobID),
 		"PROXY_CACHE=" + firstNonEmpty(os.Getenv("PROXY_CACHE"), "true"),
 		"LOG_RESPONSE_BODY_ON_AUTH_FAILURE=true",
 		"ACTIONS_ID_TOKEN_REQUEST_TOKEN=" + os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"),

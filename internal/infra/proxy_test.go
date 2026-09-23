@@ -88,6 +88,38 @@ func Test_proxyEnv_OpenSSLForceFIPSMode(t *testing.T) {
 	})
 }
 
+func Test_proxyEnv_JobID(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		jobID string
+		unset bool
+		want  string
+	}{
+		{name: "uses host job ID", jobID: "1588055836", want: "1588055836"},
+		{name: "defaults when empty", want: "cli"},
+		{name: "defaults when unset", unset: true, want: "cli"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("DEPENDABOT_JOB_ID", tt.jobID)
+			if tt.unset {
+				if err := os.Unsetenv("DEPENDABOT_JOB_ID"); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			env := proxyEnv("")
+
+			value, ok := envValue(env, "JOB_ID")
+			if !ok {
+				t.Fatal("expected JOB_ID to be present in proxy env")
+			}
+			if value != tt.want {
+				t.Errorf("expected JOB_ID to be %q, got %q", tt.want, value)
+			}
+		})
+	}
+}
+
 func Test_proxyEnv_JobToken(t *testing.T) {
 	t.Run("passes JOB_TOKEN from environment", func(t *testing.T) {
 		t.Setenv("JOB_TOKEN", "super-secret-token")
