@@ -1,17 +1,23 @@
 package infra
 
 import (
+	"archive/tar"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/dependabot/cli/internal/server"
+	"github.com/docker/docker/client"
 
 	"github.com/dependabot/cli/internal/model"
 )
@@ -72,6 +78,115 @@ func Test_RunParamsValidateCooldown(t *testing.T) {
 				t.Errorf("Validate() error = %v, wantErr %t", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestCaseInsensitiveRepoSetupCommand(t *testing.T) {
+	t.Run("configures the CIFS staging path for NuGet experiment", func(t *testing.T) {
+		job := &model.Job{
+			PackageManager: "nuget",
+			Experiments: model.Experiment{
+				"use_case_insensitive_filesystem": true,
+			},
+		}
+		expected := "git config --global --add safe.directory " + caseSensitiveRepoContentsPath
+		if got := caseInsensitiveRepoSetupCommand(job); got != expected {
+			t.Errorf("expected %q, got %q", expected, got)
+		}
+	})
+
+	t.Run("does not configure normal jobs", func(t *testing.T) {
+		if got := caseInsensitiveRepoSetupCommand(&model.Job{PackageManager: "nuget"}); got != "" {
+			t.Errorf("expected no setup command, got %q", got)
+		}
+	})
+}
+
+type checkedCommandRunnerFunc func(context.Context, string, string, ...string) error
+
+func (f checkedCommandRunnerFunc) runCmdChecked(ctx context.Context, cmd, user string, env ...string) error {
+	return f(ctx, cmd, user, env...)
+}
+
+func TestConfigureCaseInsensitiveRepoPropagatesCommandFailure(t *testing.T) {
+	job := &model.Job{
+		PackageManager: "nuget",
+		Experiments: model.Experiment{
+			"use_case_insensitive_filesystem": true,
+		},
+	}
+	execErr := errors.New("exec exited with code 127: git: not found")
+	runner := checkedCommandRunnerFunc(func(_ context.Context, cmd, user string, _ ...string) error {
+		expected := "git config --global --add safe.directory " + caseSensitiveRepoContentsPath
+		if cmd != expected {
+			t.Errorf("command = %q, want %q", cmd, expected)
+		}
+		if user != dependabot {
+			t.Errorf("user = %q, want %q", user, dependabot)
+		}
+		return execErr
+	})
+
+	err := configureCaseInsensitiveRepo(context.Background(), runner, job)
+	if !errors.Is(err, execErr) {
+		t.Fatalf("configureCaseInsensitiveRepo error = %v, want wrapped %v", err, execErr)
+	}
+}
+
+func TestUpdateUpdaterCertificatesPropagatesCommandFailure(t *testing.T) {
+	execErr := errors.New("exec exited with code 1")
+	runner := checkedCommandRunnerFunc(func(_ context.Context, cmd, user string, _ ...string) error {
+		if cmd != "update-ca-certificates" {
+			t.Errorf("command = %q, want update-ca-certificates", cmd)
+		}
+		if user != root {
+			t.Errorf("user = %q, want %q", user, root)
+		}
+		return execErr
+	})
+
+	err := updateUpdaterCertificates(context.Background(), runner)
+	if !errors.Is(err, execErr) {
+		t.Fatalf("updateUpdaterCertificates error = %v, want wrapped %v", err, execErr)
+	}
+}
+
+func TestCreateLocalStagingDirPropagatesCommandFailure(t *testing.T) {
+	execErr := errors.New("exec exited with code 1")
+	runner := checkedCommandRunnerFunc(func(_ context.Context, cmd, user string, _ ...string) error {
+		expected := "mkdir -p " + guestRepoDir
+		if cmd != expected {
+			t.Errorf("command = %q, want %q", cmd, expected)
+		}
+		if user != dependabot {
+			t.Errorf("user = %q, want %q", user, dependabot)
+		}
+		return execErr
+	})
+
+	err := createLocalStagingDir(context.Background(), runner, guestRepoDir)
+	if !errors.Is(err, execErr) {
+		t.Fatalf("createLocalStagingDir error = %v, want wrapped %v", err, execErr)
+	}
+}
+
+func TestInitializeLocalRepositoryPropagatesCommandFailure(t *testing.T) {
+	execErr := errors.New("exec exited with code 1")
+	runner := checkedCommandRunnerFunc(func(_ context.Context, cmd, user string, _ ...string) error {
+		for _, required := range []string{"git init", "git config user.email", "git add .", "git commit"} {
+			if !strings.Contains(cmd, required) {
+				t.Errorf("command %q does not contain %q", cmd, required)
+			}
+		}
+		if user != dependabot {
+			t.Errorf("user = %q, want %q", user, dependabot)
+		}
+		return execErr
+	})
+
+	err := initializeLocalRepository(context.Background(), runner, guestRepoDir)
+	if !errors.Is(err, execErr) {
+		t.Fatalf("initializeLocalRepository error = %v, want wrapped %v", err, execErr)
 	}
 }
 
@@ -264,5 +379,88 @@ func Test_updaterCommand(t *testing.T) {
 				t.Errorf("expected %q, got %q", tt.expected, got)
 			}
 		})
+	}
+}
+
+func TestCopyLocalDirSetsUpdaterOwnership(t *testing.T) {
+	root := t.TempDir()
+	nestedDir := filepath.Join(root, "nested")
+	if err := os.Mkdir(nestedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nestedDir, "file.txt"), []byte("contents"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var headers []*tar.Header
+	var fileContents string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || !strings.HasSuffix(r.URL.Path, "/containers/updater-id/archive") {
+			http.NotFound(w, r)
+			return
+		}
+		tarReader := tar.NewReader(r.Body)
+		for {
+			header, err := tarReader.Next()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				t.Errorf("reading archive: %v", err)
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			headerCopy := *header
+			headers = append(headers, &headerCopy)
+			if header.Name == "nested/file.txt" {
+				contents, err := io.ReadAll(tarReader)
+				if err != nil {
+					t.Errorf("reading file contents: %v", err)
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				fileContents = string(contents)
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cli, err := client.NewClientWithOpts(
+		client.WithHost(server.URL),
+		client.WithVersion("1.44"),
+		client.WithHTTPClient(server.Client()),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	relativeRoot, err := filepath.Rel(workingDir, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := copyLocalDir(context.Background(), cli, "updater-id", relativeRoot, guestRepoDir, 4096, 4096); err != nil {
+		t.Fatal(err)
+	}
+
+	foundFile := false
+	for _, header := range headers {
+		if header.Uid != 4096 || header.Gid != 4096 {
+			t.Errorf("%s ownership = %d:%d, want 4096:4096", header.Name, header.Uid, header.Gid)
+		}
+		if header.Name == "nested/file.txt" {
+			if fileContents != "contents" {
+				t.Errorf("file contents = %q, want %q", fileContents, "contents")
+			}
+			foundFile = true
+		}
+	}
+	if !foundFile {
+		t.Error("archive did not contain nested/file.txt")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -20,6 +21,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/strslice"
+	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/goware/prefixer"
@@ -63,8 +66,49 @@ const (
 	dbotCert  = "/usr/local/share/ca-certificates/dbot-ca.crt"
 )
 
+const storageCleanupTimeout = 30 * time.Second
+
+func newUpdaterHostConfig() *container.HostConfig {
+	return &container.HostConfig{
+		CapDrop: strslice.StrSlice{"ALL"},
+		SecurityOpt: []string{
+			"no-new-privileges=true",
+			"seccomp=builtin",
+		},
+	}
+}
+
+var ErrSeccompUnavailable = errors.New("Docker host does not advertise seccomp support")
+
+func requireSeccomp(ctx context.Context, cli *client.Client) error {
+	info, err := cli.Info(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to inspect Docker security options: %w", err)
+	}
+	securityOptions, err := system.DecodeSecurityOptions(info.SecurityOptions)
+	if err != nil {
+		return fmt.Errorf("failed to decode Docker security options: %w", err)
+	}
+	for _, option := range securityOptions {
+		if option.Name == "seccomp" {
+			return nil
+		}
+	}
+	return ErrSeccompUnavailable
+}
+
 // NewUpdater starts the update container interactively running /bin/sh, so it does not stop.
 func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy, collector *Collector) (*Updater, error) {
+	return newUpdater(ctx, cli, net, params, prox, collector, waitForPort)
+}
+
+type storagePortWaiter func(context.Context, *client.Client, string, int) error
+
+func newUpdater(ctx context.Context, cli *client.Client, net *Networks, params *RunParams, prox *Proxy, collector *Collector, waitForStoragePort storagePortWaiter) (*Updater, error) {
+	if err := requireSeccomp(ctx, cli); err != nil {
+		return nil, fmt.Errorf("refusing to create updater container: %w", err)
+	}
+
 	containerCfg := &container.Config{
 		User:  dependabot,
 		Image: params.UpdaterImage,
@@ -81,7 +125,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 			}...)
 	}
 
-	hostCfg := &container.HostConfig{}
+	hostCfg := newUpdaterHostConfig()
 	var err error
 	for _, v := range params.Volumes {
 		var local, remote string
@@ -101,11 +145,18 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 
 	storageContainerID := ""
 	storageVolumes := []string{}
+	storageRollbackArmed := false
+	defer func() {
+		if storageRollbackArmed {
+			logStorageCleanupError(cleanupStorageResources(cli, storageContainerID, storageVolumes))
+		}
+	}()
 	if params.Job.UseCaseInsensitiveFileSystem() {
-		storageContainerID, storageVolumes, err = createStorageVolumes(hostCfg, ctx, cli, net, params.StorageImage)
+		storageContainerID, storageVolumes, err = createStorageVolumes(hostCfg, ctx, cli, net, params.StorageImage, waitForStoragePort)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create storage volumes: %w", err)
 		}
+		storageRollbackArmed = true
 	}
 
 	netCfg := &network.NetworkingConfig{
@@ -127,6 +178,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 		storageContainerID: storageContainerID,
 		storageVolumes:     storageVolumes,
 	}
+	storageRollbackArmed = false
 
 	if err = putUpdaterInputs(ctx, cli, prox.ca.Cert, updaterContainer.ID, params.Job); err != nil {
 		updater.Close()
@@ -141,7 +193,7 @@ func NewUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	return updater, nil
 }
 
-func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cli *client.Client, net *Networks, storageImageName string) (storageContainerID string, volumeNames []string, err error) {
+func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cli *client.Client, net *Networks, storageImageName string, waitForStoragePort storagePortWaiter) (storageContainerID string, volumeNames []string, err error) {
 	log.Printf("Preparing case insensitive filesystem")
 
 	// create container hosting the storage
@@ -170,8 +222,7 @@ func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cl
 
 	defer func() {
 		if err != nil {
-			removeStorageVolume(cli, ctx, caseSensitiveVolumeName)
-			removeStorageVolume(cli, ctx, caseInsensitiveVolumeName)
+			logStorageCleanupError(cleanupStorageResources(cli, storageContainerID, volumeNames))
 		}
 	}()
 
@@ -183,7 +234,7 @@ func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cl
 
 	// wait for port 445 to be listening on the storage container
 	log.Printf("  waiting for storage container port 445 to be ready")
-	err = waitForPort(ctx, cli, storageContainer.ID, 445)
+	err = waitForStoragePort(ctx, cli, storageContainer.ID, 445)
 	if err != nil {
 		err = fmt.Errorf("failed to wait for storage container port 445: %w", err)
 		return
@@ -198,6 +249,30 @@ func createStorageVolumes(hostCfg *container.HostConfig, ctx context.Context, cl
 	storageContainerAddress := inspect.NetworkSettings.Networks[net.noInternetName].IPAddress
 	addStorageMounts(hostCfg, storageContainerAddress, caseSensitiveVolumeName, caseSensitiveContainerRoot, caseInsensitiveVolumeName, caseInsensitiveContainerRoot)
 	return
+}
+
+func cleanupStorageResources(cli *client.Client, storageContainerID string, volumeNames []string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), storageCleanupTimeout)
+	defer cancel()
+
+	var cleanupErr error
+	for _, name := range volumeNames {
+		if err := removeStorageVolume(cli, ctx, name); err != nil {
+			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("failed to remove storage volume %s: %w", name, err))
+		}
+	}
+	if storageContainerID != "" {
+		if err := cli.ContainerRemove(ctx, storageContainerID, container.RemoveOptions{Force: true}); err != nil {
+			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("failed to remove storage container: %w", err))
+		}
+	}
+	return cleanupErr
+}
+
+func logStorageCleanupError(err error) {
+	if err != nil {
+		log.Printf("Failed to clean up case-insensitive storage resources: %v", err)
+	}
 }
 
 func removeStorageVolume(cli *client.Client, ctx context.Context, name string) error {
@@ -226,7 +301,7 @@ func removeStorageVolume(cli *client.Client, ctx context.Context, name string) e
 func addStorageMounts(hostCfg *container.HostConfig, storageContainerAddress string, caseSensitiveVolumeName, caseSensitiveContainerRoot, caseInsensitiveVolumeName, caseInsensitiveContainerRoot string) {
 	const cifsVolumeType = "cifs"
 	localShareName := fmt.Sprintf("//%s/dpdbot", storageContainerAddress)
-	connectionOptions := fmt.Sprintf("username=%s,password=%s,uid=1000,gid=1000", storageUser, storagePass)
+	connectionOptions := fmt.Sprintf("username=%s,password=%s,uid=1000,gid=1000,noperm", storageUser, storagePass)
 
 	// create case-sensitive layer
 	hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
@@ -392,6 +467,26 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string, 
 
 // RunCmd executes the update scripts as the dependabot user, blocks until complete.
 func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) error {
+	exitCode, err := u.runCmdStreaming(ctx, cmd, user, env...)
+	if err != nil {
+		return err
+	}
+	u.ExitCode = &exitCode
+	return nil
+}
+
+func (u *Updater) runCmdChecked(ctx context.Context, cmd, user string, env ...string) error {
+	exitCode, err := u.runCmdStreaming(ctx, cmd, user, env...)
+	if err != nil {
+		return err
+	}
+	if exitCode != 0 {
+		return fmt.Errorf("exec exited with code %d", exitCode)
+	}
+	return nil
+}
+
+func (u *Updater) runCmdStreaming(ctx context.Context, cmd, user string, env ...string) (int, error) {
 	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, container.ExecOptions{
 		AttachStdout: true,
 		AttachStderr: true,
@@ -400,41 +495,77 @@ func (u *Updater) RunCmd(ctx context.Context, cmd, user string, env ...string) e
 		Cmd:          []string{"/bin/sh", "-c", cmd},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create exec: %w", err)
+		return 0, fmt.Errorf("failed to create exec: %w", err)
 	}
 
 	execResp, err := u.cli.ContainerExecAttach(ctx, execCreate.ID, container.ExecAttachOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to start exec: %w", err)
+		return 0, fmt.Errorf("failed to start exec: %w", err)
 	}
+	defer execResp.Close()
 
 	r, w := io.Pipe()
 	go func() {
 		_, _ = io.Copy(os.Stderr, prefixer.New(r, "updater | "))
 	}()
 
-	ch := make(chan struct{})
+	copyErr := make(chan error, 1)
 	go func() {
-		_, _ = stdcopy.StdCopy(w, w, execResp.Reader)
-		ch <- struct{}{}
+		_, err := stdcopy.StdCopy(w, w, execResp.Reader)
+		_ = w.CloseWithError(err)
+		copyErr <- err
 	}()
 
 	// blocks until update is complete or ctl-c
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
-	case <-ch:
+		return 0, ctx.Err()
+	case err := <-copyErr:
+		if err != nil {
+			return 0, fmt.Errorf("failed to read exec output: %w", err)
+		}
 	}
 
 	// check the exit code of the command
 	execInspect, err := u.cli.ContainerExecInspect(ctx, execCreate.ID)
 	if err != nil {
-		return fmt.Errorf("failed to inspect exec: %w", err)
+		return 0, fmt.Errorf("failed to inspect exec: %w", err)
 	}
 
-	u.ExitCode = &execInspect.ExitCode
+	return execInspect.ExitCode, nil
+}
 
-	return nil
+func (u *Updater) runCmdOutput(ctx context.Context, cmd, user string) (string, error) {
+	execCreate, err := u.cli.ContainerExecCreate(ctx, u.containerID, container.ExecOptions{
+		AttachStdout: true,
+		AttachStderr: true,
+		User:         user,
+		Cmd:          []string{"/bin/sh", "-c", cmd},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create exec: %w", err)
+	}
+
+	execResp, err := u.cli.ContainerExecAttach(ctx, execCreate.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to start exec: %w", err)
+	}
+	defer execResp.Close()
+
+	var stdout, stderr bytes.Buffer
+	if _, err := stdcopy.StdCopy(&stdout, &stderr, execResp.Reader); err != nil {
+		return "", fmt.Errorf("failed to read exec output: %w", err)
+	}
+
+	execInspect, err := u.cli.ContainerExecInspect(ctx, execCreate.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect exec: %w", err)
+	}
+	if execInspect.ExitCode != 0 {
+		return "", fmt.Errorf("exec exited with code %d: %s", execInspect.ExitCode, strings.TrimSpace(stderr.String()))
+	}
+
+	return stdout.String(), nil
 }
 
 // Wait blocks until the condition is true.

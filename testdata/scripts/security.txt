@@ -1,0 +1,61 @@
+# Build an updater image that reports the kernel-enforced security state.
+exec docker build -qt runtime-security-updater .
+
+# Normal updater execution has no capabilities and enforces both NNP and seccomp.
+dependabot update go_modules test/repo --updater-image runtime-security-updater
+stderr 'runtime-security flow=normal capeff=0000000000000000 nonewprivs=1 seccomp=2'
+
+# Local staging remains writable without granting capabilities to the updater.
+dependabot update go_modules test/repo --updater-image runtime-security-updater --local my-repo
+stderr 'runtime-security flow=local capeff=0000000000000000 nonewprivs=1 seccomp=2'
+stderr 'local staging is writable'
+
+exec docker rmi -f runtime-security-updater
+
+-- Dockerfile --
+FROM ubuntu:22.04
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m dependabot \
+    && mkdir -p /home/dependabot/dependabot-updater \
+    && chown dependabot:dependabot /home/dependabot/dependabot-updater
+
+COPY --chown=dependabot update-ca-certificates /usr/bin/update-ca-certificates
+COPY --chown=dependabot print-security /usr/local/bin/print-security
+COPY --chown=dependabot run /bin/run
+RUN chmod 0755 /usr/bin/update-ca-certificates /usr/local/bin/print-security /bin/run
+
+-- update-ca-certificates --
+#!/bin/sh
+
+set -eu
+
+echo "Updated certificates"
+
+-- print-security --
+#!/bin/sh
+
+set -eu
+
+cap_eff=$(awk '$1 == "CapEff:" { print $2 }' /proc/self/status)
+no_new_privs=$(awk '$1 == "NoNewPrivs:" { print $2 }' /proc/self/status)
+seccomp=$(awk '$1 == "Seccomp:" { print $2 }' /proc/self/status)
+echo "runtime-security flow=$1 capeff=$cap_eff nonewprivs=$no_new_privs seccomp=$seccomp"
+
+-- run --
+#!/bin/sh
+
+set -eu
+
+flow=normal
+if [ -f "$DEPENDABOT_REPO_CONTENTS_PATH/local.txt" ]; then
+  flow=local
+  printf '%s\n' "updated" >> "$DEPENDABOT_REPO_CONTENTS_PATH/local.txt"
+  echo "local staging is writable"
+fi
+print-security "$flow"
+
+-- my-repo/local.txt --
+local source
