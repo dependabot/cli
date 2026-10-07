@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -469,6 +471,10 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		}
 	}()
 
+	if err = configureCaseInsensitiveRepo(ctx, updater, params.Job); err != nil {
+		return err
+	}
+
 	// put the clone dir in the updater container to be used by during the update
 	if params.LocalDir != "" {
 		containerDir := guestRepoDir
@@ -476,13 +482,13 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 			// since the updater is using the storage container, we need to populate the repo on that device because that's the directory that will be used for the update
 			containerDir = caseSensitiveRepoContentsPath
 		}
-		if err = putCloneDir(ctx, cli, updater, params.LocalDir, containerDir); err != nil {
+		if err = putCloneDir(ctx, cli, updater, updater.containerID, params.LocalDir, containerDir); err != nil {
 			return err
 		}
 	}
 
 	// update CA certificates as root prior to start debug shell or running dependabot commands
-	if err := updater.RunCmd(ctx, "update-ca-certificates", root); err != nil {
+	if err := updateUpdaterCertificates(ctx, updater); err != nil {
 		return err
 	}
 
@@ -511,6 +517,35 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	return nil
 }
 
+func caseInsensitiveRepoSetupCommand(job *model.Job) string {
+	if !job.UseCaseInsensitiveFileSystem() {
+		return ""
+	}
+	return "git config --global --add safe.directory " + caseSensitiveRepoContentsPath
+}
+
+type checkedCommandRunner interface {
+	runCmdChecked(context.Context, string, string, ...string) error
+}
+
+func configureCaseInsensitiveRepo(ctx context.Context, updater checkedCommandRunner, job *model.Job) error {
+	cmd := caseInsensitiveRepoSetupCommand(job)
+	if cmd == "" {
+		return nil
+	}
+	if err := updater.runCmdChecked(ctx, cmd, dependabot); err != nil {
+		return fmt.Errorf("failed to configure case-insensitive repository: %w", err)
+	}
+	return nil
+}
+
+func updateUpdaterCertificates(ctx context.Context, updater checkedCommandRunner) error {
+	if err := updater.runCmdChecked(ctx, "update-ca-certificates", root); err != nil {
+		return fmt.Errorf("failed to update updater certificates: %w", err)
+	}
+	return nil
+}
+
 func getFromContainer(ctx context.Context, cli *client.Client, containerID, srcPath string) {
 	reader, _, err := cli.CopyFromContainer(ctx, containerID, srcPath)
 	if err != nil {
@@ -532,45 +567,88 @@ func getFromContainer(ctx context.Context, cli *client.Client, containerID, srcP
 	}
 }
 
-func putCloneDir(ctx context.Context, cli *client.Client, updater *Updater, localDir, containerDir string) error {
-	// Docker won't create the directory, so we have to do it first.
-	cmd := fmt.Sprintf("mkdir -p %s", containerDir)
-	err := updater.RunCmd(ctx, cmd, dependabot)
-	if err != nil {
-		return fmt.Errorf("failed to create clone dir: %w", err)
+type localSetupRunner interface {
+	checkedCommandRunner
+	runCmdOutput(context.Context, string, string) (string, error)
+}
+
+func putCloneDir(ctx context.Context, cli *client.Client, updater localSetupRunner, containerID, localDir, containerDir string) error {
+	if err := createLocalStagingDir(ctx, updater, containerDir); err != nil {
+		return err
 	}
 
-	r, err := archive.TarWithOptions(localDir, &archive.TarOptions{})
+	identity, err := updater.runCmdOutput(ctx, "id -u && id -g", dependabot)
+	if err != nil {
+		return fmt.Errorf("failed to resolve updater user identity: %w", err)
+	}
+	fields := strings.Fields(identity)
+	if len(fields) != 2 {
+		return fmt.Errorf("failed to resolve updater user identity: unexpected output %q", strings.TrimSpace(identity))
+	}
+	uid, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return fmt.Errorf("failed to resolve updater user UID %q: %w", fields[0], err)
+	}
+	gid, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return fmt.Errorf("failed to resolve updater user GID %q: %w", fields[1], err)
+	}
+
+	if err := copyLocalDir(ctx, cli, containerID, localDir, containerDir, uid, gid); err != nil {
+		return err
+	}
+
+	if err := initializeLocalRepository(ctx, updater, containerDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createLocalStagingDir(ctx context.Context, updater checkedCommandRunner, containerDir string) error {
+	// Docker won't create the directory, so create it as the updater user first.
+	if err := updater.runCmdChecked(ctx, "mkdir -p "+containerDir, dependabot); err != nil {
+		return fmt.Errorf("failed to create clone dir: %w", err)
+	}
+	return nil
+}
+
+func copyLocalDir(ctx context.Context, cli *client.Client, containerID, localDir, containerDir string, uid, gid int) error {
+	localDir, err := filepath.Abs(localDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve local clone dir: %w", err)
+	}
+	r, err := archive.TarWithOptions(localDir, &archive.TarOptions{
+		ChownOpts: &archive.ChownOpts{UID: uid, GID: gid},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to tar clone dir: %w", err)
 	}
+	defer r.Close()
 
 	opt := container.CopyToContainerOptions{}
-	err = cli.CopyToContainer(ctx, updater.containerID, containerDir, r, opt)
+	err = cli.CopyToContainer(ctx, containerID, containerDir, r, opt)
 	if err != nil {
 		return fmt.Errorf("failed to copy clone dir to container: %w", err)
 	}
+	return nil
+}
 
-	err = updater.RunCmd(ctx, "chown -R dependabot "+containerDir, root)
-	if err != nil {
-		return fmt.Errorf("failed to initialize clone dir: %w", err)
-	}
-
-	// The directory needs to be a git repo, so we need to initialize it.
+func initializeLocalRepository(ctx context.Context, updater checkedCommandRunner, containerDir string) error {
 	commands := []string{
 		"cd " + containerDir,
 		"git config --global init.defaultBranch main",
-		"git init",
+		// Preserve existing repository settings such as core.filemode, which is
+		// needed when staging a Windows worktree in a Linux container.
+		"(git rev-parse --git-dir >/dev/null 2>&1 || git init)",
 		"git config user.email 'dependabot@github.com'",
 		"git config user.name 'dependabot'",
 		"git add .",
-		"git commit --quiet -m 'Dependabot CLI automated commit'",
+		"(status=0; git diff --cached --quiet || status=$?; if [ \"$status\" -eq 1 ]; then git commit --quiet -m 'Dependabot CLI automated commit'; elif [ \"$status\" -ne 0 ]; then exit \"$status\"; fi)",
 	}
-	err = updater.RunCmd(ctx, strings.Join(commands, " && "), dependabot)
-	if err != nil {
+	if err := updater.runCmdChecked(ctx, strings.Join(commands, " && "), dependabot); err != nil {
 		return fmt.Errorf("failed to initialize clone dir: %w", err)
 	}
-
 	return nil
 }
 

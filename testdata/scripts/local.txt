@@ -27,8 +27,7 @@ stderr 'assert this in the test'
 
 # When my-repo is a git repo, and it's dirty, the CLI should commit to it so it's clean.
 # Otherwise changes would be lost during the update.
-exec echo 'make an uncommited change' >> my-repo/hello.txt
-exec touch my-repo/goodbye.txt
+exec git -C my-repo apply --unidiff-zero ../dirty.patch
 
 dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
 stderr 'hello.txt'
@@ -43,12 +42,13 @@ FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y git
 
-RUN useradd dependabot && chgrp dependabot /etc/ssl/certs && chmod g+w /etc/ssl/certs
+RUN useradd -m dependabot && chgrp dependabot /etc/ssl/certs && chmod g+w /etc/ssl/certs
 USER dependabot
 WORKDIR /home/dependabot
 RUN mkdir -p /home/dependabot/dependabot-updater
 
-COPY --chown=dependabot --chmod=755 run bin/run
+COPY --chown=dependabot run bin/run
+RUN chmod 0755 /home/dependabot/bin/run
 
 -- run --
 #!/usr/bin/env bash
@@ -61,3 +61,18 @@ git -C /home/dependabot/dependabot-updater/repo log -1 --pretty=format:%s
 
 -- my-repo/hello.txt --
 Hello, world!
+
+-- dirty.patch --
+diff --git a/hello.txt b/hello.txt
+index af5626b..1bb2758 100644
+--- a/hello.txt
++++ b/hello.txt
+@@ -2,0 +3 @@
++make an uncommited change
+diff --git a/goodbye.txt b/goodbye.txt
+new file mode 100644
+index 0000000..dd3e1f8
+--- /dev/null
++++ b/goodbye.txt
+@@ -0,0 +1 @@
++Goodbye, world!
