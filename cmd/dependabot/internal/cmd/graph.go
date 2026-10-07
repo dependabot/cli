@@ -86,6 +86,7 @@ func NewGraphCommand() *cobra.Command {
 				ProxyCertPath:               flags.proxyCertPath,
 				ProxyImage:                  proxyImage,
 				PullImages:                  flags.pullImages,
+				RecordedAt:                  input.RecordedAt,
 				Timeout:                     flags.timeout,
 				UpdaterImage:                updaterImage,
 				Volumes:                     flags.volumes,

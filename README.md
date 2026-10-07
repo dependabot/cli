@@ -250,8 +250,8 @@ output:
 This example smoke test describes the expected behavior for Dependabot
 to update the base image of a Dockerfile from `ubuntu:17.04` to `ubuntu:22.04`.
 
-* The `input` field consists of a `job` and any `credentials`.
-  (this is equivalent a [job description file](#job-description-file)).
+* The `input` field consists of a `job`, any `credentials`, and an optional
+  `recorded-at` timestamp (equivalent to a [job description file](#job-description-file)).
 * The `output` field comprises an array of expectation objects.
   These correspond to requests made by the updater to the Dependabot API service
   when performing an update job.
@@ -292,6 +292,26 @@ are most likely to be fast and deterministic.
 Any cache misses indicate an external request made by the updater,
 which may cause tests to fail unexpectedly
 (for example, when a new version of a package is released).
+
+### Recording time
+
+New recordings made with `update -o` or `graph -o` capture `input.recorded-at`
+as an RFC 3339 timestamp. Recording and replay use that instant for Ruby's
+`Time.now` and JavaScript's `Date`, including native npm subprocesses.
+This keeps release-age cooldowns from expiring between runs against the same
+cached registry responses.
+
+You can also supply `recorded-at` in a job input to reproduce a known historical
+instant. The clock has millisecond precision. The override is confined to the
+updater container and preserves existing `RUBYOPT` and `NODE_OPTIONS` options.
+Timers, monotonic clocks, TLS certificate verification, and other runtimes'
+clocks are not overridden.
+
+Ordinary updates without an output recording or an explicit `recorded-at`
+continue to use the current clock. Legacy smoke tests without `recorded-at`
+also keep their existing behavior. To make one clock-consistent, create a new
+recording with `update -o`; do not infer its original clock from cached HTTP
+responses or change expected dependency versions by hand.
 
 ## Debugging with the CLI
 

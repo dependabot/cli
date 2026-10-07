@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type RunCommand string
 
 const (
@@ -24,6 +26,8 @@ type Input struct {
 	Job Job `yaml:"job"`
 	// Credentials is the registry info and tokens to pass to the Proxy
 	Credentials []Credential `yaml:"credentials,omitempty"`
+	// RecordedAt pins the Ruby and JavaScript wall clocks when replaying a recording.
+	RecordedAt *time.Time `yaml:"recorded-at,omitempty" json:"recorded-at,omitempty"`
 }
 
 // Output is the expected output given the inputs

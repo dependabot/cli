@@ -101,6 +101,7 @@ func NewUpdateCommand() *cobra.Command {
 				ProxyCertPath:               flags.proxyCertPath,
 				ProxyImage:                  proxyImage,
 				PullImages:                  flags.pullImages,
+				RecordedAt:                  input.RecordedAt,
 				StorageImage:                storageImage,
 				Timeout:                     flags.timeout,
 				UpdaterImage:                updaterImage,
