@@ -56,6 +56,7 @@ type Updater struct {
 	containerID        string
 	storageContainerID string
 	storageVolumes     []string
+	recordedClock      bool
 
 	// ExitCode is set once an Updater command has completed.
 	ExitCode *int
@@ -183,6 +184,12 @@ func newUpdater(ctx context.Context, cli *client.Client, net *Networks, params *
 	if err = putUpdaterInputs(ctx, cli, prox.ca.Cert, updaterContainer.ID, params.Job); err != nil {
 		updater.Close()
 		return nil, err
+	}
+	if params.RecordedAt != nil {
+		if err = updater.installClock(ctx, *params.RecordedAt); err != nil {
+			updater.Close()
+			return nil, err
+		}
 	}
 
 	if err = cli.ContainerStart(ctx, updaterContainer.ID, container.StartOptions{}); err != nil {
@@ -418,7 +425,7 @@ func (u *Updater) RunShell(ctx context.Context, proxyURL string, apiUrl string, 
 		Tty:          true,
 		User:         dependabot,
 		Env:          append(userEnv(proxyURL, apiUrl, job, additionalEnvVars), "DEBUG=1"),
-		Cmd:          []string{"/bin/bash"},
+		Cmd:          u.command("/bin/bash"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create exec: %w", err)
@@ -492,7 +499,7 @@ func (u *Updater) runCmdStreaming(ctx context.Context, cmd, user string, env ...
 		AttachStderr: true,
 		User:         user,
 		Env:          env,
-		Cmd:          []string{"/bin/sh", "-c", cmd},
+		Cmd:          u.command("/bin/sh", "-c", cmd),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to create exec: %w", err)

@@ -1,0 +1,110 @@
+# The updater runs real Ruby and npm. No external registry requests are needed.
+exec docker build -qt clock-updater .
+
+dependabot update -f input.yaml -o recorded.yaml --updater-image clock-updater
+stderr 'NPM_CANDIDATE=1.0.0'
+stderr 'RUBY_TIME=2026-10-02T06:10:32.000Z'
+
+# The same metadata admits the new version after its three-day cooldown expires.
+dependabot update -f later.yaml --updater-image clock-updater
+stderr 'NPM_CANDIDATE=1.1.0'
+stderr 'RUBY_TIME=2026-10-07T06:10:32.000Z'
+
+# Replaying the earlier recording must not inherit the later clock.
+dependabot test -f recorded.yaml --updater-image clock-updater
+stderr 'NPM_CANDIDATE=1.0.0'
+stderr 'RUBY_TIME=2026-10-02T06:10:32.000Z'
+
+exec docker rmi clock-updater
+
+-- Dockerfile --
+FROM node:24-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ruby ca-certificates && npm install --global npm@11.19.0
+RUN useradd -m dependabot
+USER dependabot
+WORKDIR /home/dependabot/dependabot-updater
+COPY --chown=dependabot --chmod=755 run bin/run
+COPY --chown=dependabot registry.cjs registry.cjs
+
+-- run --
+#!/bin/sh
+set -eu
+ruby -rtime -e 'start = Process.clock_gettime(Process::CLOCK_MONOTONIC); sleep 0.01; abort "monotonic clock stopped" unless Process.clock_gettime(Process::CLOCK_MONOTONIC) > start; puts "RUBY_TIME=#{Time.now.utc.iso8601(3)}"'
+node registry.cjs
+
+-- registry.cjs --
+const assert = require('node:assert/strict')
+const { execFile } = require('node:child_process')
+const fs = require('node:fs')
+const http = require('node:http')
+const os = require('node:os')
+const path = require('node:path')
+const { promisify } = require('node:util')
+
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'clock-registry-'))
+const server = http.createServer((request, response) => {
+  if (request.url !== '/clock-dependency') {
+    response.writeHead(404).end()
+    return
+  }
+  const origin = `http://127.0.0.1:${server.address().port}`
+  response.setHeader('content-type', 'application/json')
+  response.end(JSON.stringify({
+    name: 'clock-dependency',
+    'dist-tags': { latest: '1.1.0' },
+    versions: Object.fromEntries(['1.0.0', '1.1.0'].map(version => [version, {
+      name: 'clock-dependency', version,
+      dist: { tarball: `${origin}/clock-dependency-${version}.tgz` },
+    }])),
+    time: { '1.0.0': '2026-01-01T00:00:00Z', '1.1.0': '2026-10-01T13:52:31Z' },
+  }))
+})
+
+server.listen(0, '127.0.0.1', async () => {
+  try {
+    const manifest = { name: 'clock-test', version: '1.0.0', dependencies: { 'clock-dependency': '^1.0.0' } }
+    fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify(manifest))
+    fs.writeFileSync(path.join(directory, 'package-lock.json'), JSON.stringify({
+      name: 'clock-test', version: '1.0.0', lockfileVersion: 3,
+      packages: { '': manifest, 'node_modules/clock-dependency': { version: '1.0.0' } },
+    }))
+    const monotonic = process.hrtime.bigint()
+    await new Promise(resolve => setTimeout(resolve, 10))
+    assert(process.hrtime.bigint() > monotonic)
+    assert.equal(+new Date('2000-01-01T00:00:00Z'), 946684800000)
+    await promisify(execFile)('npm', [
+      'update', 'clock-dependency', '--package-lock-only', '--ignore-scripts',
+      '--no-audit', '--no-fund', '--min-release-age=3',
+      `--registry=http://127.0.0.1:${server.address().port}`, `--cache=${directory}/cache`,
+    ], { cwd: directory, env: { ...process.env, NO_PROXY: '127.0.0.1', no_proxy: '127.0.0.1' } })
+    const lock = JSON.parse(fs.readFileSync(path.join(directory, 'package-lock.json'), 'utf8'))
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(directory, 'package.json'), 'utf8')), manifest)
+    console.log(`NPM_CANDIDATE=${lock.packages['node_modules/clock-dependency'].version}`)
+  } catch (error) {
+    console.error(error)
+    process.exitCode = 1
+  } finally {
+    server.close()
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+-- input.yaml --
+recorded-at: 2026-10-02T06:10:32Z
+job:
+  package-manager: npm_and_yarn
+  source:
+    provider: github
+    repo: dependabot/smoke-tests
+    directory: /
+    commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+-- later.yaml --
+recorded-at: 2026-10-07T06:10:32Z
+job:
+  package-manager: npm_and_yarn
+  source:
+    provider: github
+    repo: dependabot/smoke-tests
+    directory: /
+    commit: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

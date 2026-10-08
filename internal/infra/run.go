@@ -95,6 +95,8 @@ type RunParams struct {
 	ApiUrl    string
 	// UpdaterEnvironmentVariables are additional environment variables to set in the update container
 	UpdaterEnvironmentVariables []string
+	// RecordedAt is the clock captured by a recording, independent of the host clock.
+	RecordedAt *time.Time
 }
 
 var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -119,6 +121,10 @@ func (p *RunParams) Validate() error {
 func Run(params RunParams) error {
 	if err := params.Validate(); err != nil {
 		return err
+	}
+	if params.RecordedAt == nil && params.Output != "" && params.Expected == nil {
+		recordedAt := time.Now().UTC().Truncate(time.Millisecond)
+		params.RecordedAt = &recordedAt
 	}
 
 	var ctx context.Context
@@ -189,6 +195,7 @@ func generateOutput(params RunParams, api *server.API, outFile *os.File) ([]byte
 		params.Job.Source.Commit = api.Actual.Input.Job.Source.Commit
 	}
 	api.Actual.Input.Job = *params.Job
+	api.Actual.Input.RecordedAt = params.RecordedAt
 
 	// ignore conditions help make tests reproducible, so they are generated if there aren't any yet
 	if len(api.Actual.Input.Job.IgnoreConditions) == 0 {
