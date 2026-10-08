@@ -9,6 +9,7 @@ const ConfigFilePath = "/config.json"
 type Config struct {
 	Credentials []model.Credential   `json:"all_credentials"`
 	CA          CertificateAuthority `json:"ca"`
+	Experiments model.Experiment     `json:"experiments,omitempty"`
 }
 
 // CertificateAuthority includes the MITM CA certificate and private key
