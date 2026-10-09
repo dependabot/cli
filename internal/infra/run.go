@@ -59,6 +59,8 @@ type RunParams struct {
 	LocalDir string
 	// credentials passed to the proxy
 	Creds []model.Credential
+	// CredentialsResolved disables environment expansion and credential capture in smoke test output.
+	CredentialsResolved bool
 	// local directory used for caching
 	CacheDir string
 	// write output to a file
@@ -117,23 +119,25 @@ func (p *RunParams) Validate() error {
 }
 
 func Run(params RunParams) error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	return RunContext(ctx, params)
+}
+
+// RunContext runs a job until completion, cancellation, or its configured timeout.
+func RunContext(ctx context.Context, params RunParams) error {
 	if err := params.Validate(); err != nil {
 		return err
 	}
 
-	var ctx context.Context
-	var cancel func()
 	if params.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(context.Background(), params.Timeout)
-	} else {
-		ctx, cancel = context.WithCancel(context.Background())
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, params.Timeout)
+		defer cancel()
 	}
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-signals
-		cancel()
-	}()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	api := server.NewAPI(params.Expected, params.Writer)
 	defer api.Stop()
@@ -334,6 +338,10 @@ func setImageNames(params *RunParams) error {
 }
 
 func expandEnvironmentVariables(api *server.API, params *RunParams) {
+	if params.CredentialsResolved {
+		return
+	}
+
 	if api != nil {
 		api.Actual.Input.Credentials = params.Creds
 
