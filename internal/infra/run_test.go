@@ -241,6 +241,24 @@ func Test_checkCredAccess(t *testing.T) {
 }
 
 func Test_expandEnvironmentVariables(t *testing.T) {
+	t.Run("keeps resolved API credentials literal and out of smoke test output", func(t *testing.T) {
+		t.Setenv("SECRET", "expanded")
+		api := &server.API{}
+		params := &RunParams{
+			CredentialsResolved: true,
+			Creds: []model.Credential{{
+				"type": "npm_registry", "token": "literal$SECRET",
+			}},
+		}
+		expandEnvironmentVariables(api, params)
+		if got := params.Creds[0]["token"]; got != "literal$SECRET" {
+			t.Fatalf("resolved credential changed: %v", got)
+		}
+		if len(api.Actual.Input.Credentials) != 0 {
+			t.Fatal("resolved credentials must not be included in smoke test output")
+		}
+	})
+
 	t.Run("injects environment variables", func(t *testing.T) {
 		os.Setenv("ENV1", "value1")
 		os.Setenv("ENV2", "value2")
@@ -269,6 +287,15 @@ func Test_expandEnvironmentVariables(t *testing.T) {
 			t.Error("expected pass NOT to be injected", api.Actual.Input.Credentials[0]["pass"])
 		}
 	})
+}
+
+func TestRunContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := RunContext(ctx, RunParams{Job: &model.Job{PackageManager: "npm_and_yarn"}})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("RunContext() = %v, want context.Canceled", err)
+	}
 }
 
 func Test_generateIgnoreConditions(t *testing.T) {
