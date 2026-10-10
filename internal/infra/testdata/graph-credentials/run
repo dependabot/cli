@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+if [ "$1" = fetch_files ]; then
+  exit 0
+fi
+if grep -Eq 'registry-secret|git-secret|opaque-' /home/dependabot/dependabot-updater/job.json; then
+  echo "Credentials were exposed to updater job input" >&2
+  exit 1
+fi
+curl --fail --silent --show-error "https://registry.test:$TEST_PORT/package"
+curl --fail --silent --show-error "https://private.test:$TEST_PORT/org/private.git/info/refs?service=git-upload-pack"
+curl --fail --silent --show-error -X POST -H 'Content-Type: application/json' \
+  --data '{"data":{"version":1,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","metadata":{"status":"ok"},"manifests":{}}}' \
+  "$DEPENDABOT_API_URL/update_jobs/1/create_dependency_submission"

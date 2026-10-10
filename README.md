@@ -96,6 +96,57 @@ and the CLI will pass that token to the proxy
 to authenticate API requests to GitHub
 (for example, to access private repositories or packages).
 
+### `dependabot graph`
+
+Capture a graph from an existing checkout without creating a backend job:
+
+```shell
+dependabot graph --file graph-job.yml --local ./repo --commit "$SHA" --output graph.yml
+```
+
+The graph command runs the normal updater and credential-injecting proxy.
+`--local` replaces repository fetching, not the proxy. The output is a captured
+scenario containing dependency-submission callbacks.
+
+For local private dependencies, supply a separate credentials file:
+
+```shell
+dependabot graph --file graph-job.yml --local ./repo \
+  --credentials-file registry-credentials.yml --output graph.yml
+```
+
+```yaml
+# registry-credentials.yml
+credentials:
+  - type: npm_registry
+    registry: https://registry.example.com
+    token: $NPM_TOKEN
+```
+
+The file replaces the job's credentials. Environment references are expanded
+for the proxy, and the credentials array is omitted from the output scenario.
+Keep credential files outside version control.
+
+For an existing hosted job, the command can retrieve authorized credentials
+without fetching or executing that job's details:
+
+```shell
+dependabot graph --file graph-job.yml --local ./repo \
+  --credentials-url "$DEPENDABOT_API_URL/update_jobs/$DEPENDABOT_JOB_ID/credentials" \
+  --proxy-api-url "$DEPENDABOT_API_URL" --output graph.yml
+```
+
+Supply the opaque credentials token through `DEPENDABOT_CREDENTIALS_TOKEN`.
+`--proxy-api-url` also requires `JOB_TOKEN`; it lets the proxy request just-in-time
+private Git access while graph-result callbacks still go to the local capture
+server. Do not pass `--api-url` in this mode: that option sends updater callbacks
+to the backend instead of capturing them. Hosted credentials are already resolved
+and are neither expanded as environment references nor recorded in the scenario.
+`--credentials-url` and `--credentials-file` are mutually exclusive.
+
+Credential retrieval does not select registry policy. The caller must use an
+endpoint authorized for the graph's repository, branch, and manifest directories.
+
 ### Job description file
 
 The command-line interface for the `update` subcommand

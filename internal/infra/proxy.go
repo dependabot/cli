@@ -79,7 +79,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 	config := &container.Config{
 		Image: params.ProxyImage,
-		Env:   proxyEnv(params.ApiUrl),
+		Env:   proxyEnv(firstNonEmpty(params.ProxyApiUrl, params.ApiUrl)),
 		Entrypoint: []string{
 			"sh", "-c", "update-ca-certificates && /dependabot-proxy",
 		},

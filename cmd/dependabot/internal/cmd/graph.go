@@ -2,19 +2,21 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/dependabot/cli/internal/credentials"
 	"github.com/dependabot/cli/internal/infra"
 	"github.com/dependabot/cli/internal/model"
 	"github.com/spf13/cobra"
 )
 
 var graphCmd = NewGraphCommand()
+var executeGraphJob = infra.Run
+var fetchGraphCredentials = (credentials.Client{}).Fetch
 
 func init() {
 	rootCmd.AddCommand(graphCmd)
@@ -22,6 +24,7 @@ func init() {
 
 func NewGraphCommand() *cobra.Command {
 	var flags UpdateFlags
+	var credentialsURL, credentialsFile, proxyAPIURL string
 
 	cmd := &cobra.Command{
 		Use:   "graph [<package_manager> <repo> | -f <input.yml>] [flags]",
@@ -37,22 +40,22 @@ func NewGraphCommand() *cobra.Command {
 		    $ dependabot graph -f input.yml
 	    `),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var outFile *os.File
-			if flags.output != "" {
-				var err error
-				outFile, err = os.Create(flags.output)
-				if err != nil {
-					return fmt.Errorf("failed to create output file: %w", err)
-				}
-				defer outFile.Close()
-			}
-
 			input, err := extractInput(cmd, &flags)
 			if err != nil {
 				return err
 			}
 
 			processInput(input, &flags)
+			started := time.Now()
+			ctx := cmd.Context()
+			if flags.timeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, flags.timeout)
+				defer cancel()
+			}
+			if err := loadGraphCredentials(ctx, input, credentialsURL, credentialsFile, proxyAPIURL, flags.apiUrl); err != nil {
+				return err
+			}
 
 			// It doesn't make sense to suppress the graph output when running the graph command,
 			// so forcing the experiment to true.
@@ -70,11 +73,20 @@ func NewGraphCommand() *cobra.Command {
 				writer = os.Stdout
 			}
 
-			if err := infra.Run(infra.RunParams{
+			timeout := flags.timeout
+			if timeout > 0 {
+				timeout -= time.Since(started)
+				if timeout <= 0 {
+					return context.DeadlineExceeded
+				}
+			}
+			if err := executeGraphJob(infra.RunParams{
 				CacheDir:                    flags.cache,
 				CollectorConfigPath:         flags.collectorConfigPath,
 				CollectorImage:              collectorImage,
 				Creds:                       input.Credentials,
+				CredentialsResolved:         credentialsURL != "",
+				OmitCredentials:             credentialsURL != "" || credentialsFile != "",
 				Debug:                       flags.debugging,
 				Flamegraph:                  flags.flamegraph,
 				Expected:                    nil, // graph subcommand doesn't use expectations
@@ -86,17 +98,15 @@ func NewGraphCommand() *cobra.Command {
 				ProxyCertPath:               flags.proxyCertPath,
 				ProxyImage:                  proxyImage,
 				PullImages:                  flags.pullImages,
-				Timeout:                     flags.timeout,
+				Timeout:                     timeout,
 				UpdaterImage:                updaterImage,
 				Volumes:                     flags.volumes,
 				Writer:                      writer,
 				ApiUrl:                      flags.apiUrl,
+				ProxyApiUrl:                 proxyAPIURL,
 				UpdaterEnvironmentVariables: flags.updaterEnvironmentVariables,
 			}); err != nil {
-				if errors.Is(err, context.DeadlineExceeded) {
-					log.Fatalf("update timed out after %s", flags.timeout)
-				}
-				log.Fatalf("updater failure: %v", err)
+				return fmt.Errorf("graph job failed: %w", err)
 			}
 
 			return nil
@@ -104,6 +114,10 @@ func NewGraphCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&flags.file, "file", "f", "", "path to input file")
+	cmd.Flags().StringVar(&credentialsURL, "credentials-url", "", "HTTPS job credentials endpoint (uses DEPENDABOT_CREDENTIALS_TOKEN)")
+	cmd.Flags().StringVar(&credentialsFile, "credentials-file", "", "YAML file containing credentials for the graph proxy")
+	cmd.Flags().StringVar(&proxyAPIURL, "proxy-api-url", "", "Dependabot backend for proxy authorization, separate from graph result callbacks (uses JOB_TOKEN)")
+	cmd.MarkFlagsMutuallyExclusive("credentials-url", "credentials-file")
 
 	cmd.Flags().StringVarP(&flags.provider, "provider", "p", "github", "provider of the repository")
 	cmd.Flags().StringVarP(&flags.branch, "branch", "b", "", "target branch to update")

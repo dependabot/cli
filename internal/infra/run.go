@@ -59,6 +59,10 @@ type RunParams struct {
 	LocalDir string
 	// credentials passed to the proxy
 	Creds []model.Credential
+	// CredentialsResolved prevents expanding or recording credentials fetched from the API.
+	CredentialsResolved bool
+	// OmitCredentials excludes explicit credential inputs from the output scenario.
+	OmitCredentials bool
 	// local directory used for caching
 	CacheDir string
 	// write output to a file
@@ -93,6 +97,8 @@ type RunParams struct {
 	InputName string
 	InputRaw  []byte
 	ApiUrl    string
+	// ProxyApiUrl can keep proxy authorization on the backend while updater callbacks are captured locally.
+	ProxyApiUrl string
 	// UpdaterEnvironmentVariables are additional environment variables to set in the update container
 	UpdaterEnvironmentVariables []string
 }
@@ -334,7 +340,10 @@ func setImageNames(params *RunParams) error {
 }
 
 func expandEnvironmentVariables(api *server.API, params *RunParams) {
-	if api != nil {
+	if params.CredentialsResolved {
+		return
+	}
+	if api != nil && !params.OmitCredentials {
 		api.Actual.Input.Credentials = params.Creds
 
 		// Make a copy of the credentials, so we don't inject them into the output file.
