@@ -30,6 +30,11 @@ jobs:
         # because any leftover state will generally cause the second run to fail.
         run: go test -shuffle=on -count=2 -race -cover -timeout=5m ./...
 
+      - name: Test private graph credentials
+        run: go test ./internal/infra -run '^TestGraphPrivateCredentials$' -count=1 -timeout=6m
+        env:
+          DEPENDABOT_GRAPH_INTEGRATION: '1'
+
   lint:
     runs-on: ubuntu-latest
     steps:
