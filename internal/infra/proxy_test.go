@@ -1,9 +1,12 @@
 package infra
 
 import (
+	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func envValue(env []string, key string) (string, bool) {
@@ -190,6 +193,86 @@ func Test_proxyEnv_DependabotAPIURL(t *testing.T) {
 
 		if _, ok := envValue(env, "DEPENDABOT_API_URL"); ok {
 			t.Error("expected DEPENDABOT_API_URL to be absent when JOB_TOKEN is empty")
+		}
+	})
+}
+
+func Test_waitForPortUntil(t *testing.T) {
+	t.Run("returns when a connection succeeds", func(t *testing.T) {
+		attempts := 0
+		err := waitForPortUntil(t.Context(), time.Millisecond, func(context.Context) (bool, error) {
+			attempts++
+			return attempts == 3, nil
+		})
+
+		if err != nil {
+			t.Fatalf("waitForPortUntil returned unexpected error: %v", err)
+		}
+		if attempts != 3 {
+			t.Fatalf("expected 3 connection attempts, got %d", attempts)
+		}
+	})
+
+	t.Run("returns probe errors", func(t *testing.T) {
+		probeErr := errors.New("docker exec failed")
+		err := waitForPortUntil(t.Context(), time.Millisecond, func(context.Context) (bool, error) {
+			return false, probeErr
+		})
+
+		if !errors.Is(err, probeErr) {
+			t.Fatalf("expected probe error, got %v", err)
+		}
+	})
+
+	t.Run("returns when the context is cancelled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		attempts := 0
+		err := waitForPortUntil(ctx, time.Hour, func(context.Context) (bool, error) {
+			attempts++
+			cancel()
+			return false, nil
+		})
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context cancellation, got %v", err)
+		}
+		if attempts != 1 {
+			t.Fatalf("expected 1 connection attempt, got %d", attempts)
+		}
+	})
+}
+
+func Test_proxyReadinessError(t *testing.T) {
+	t.Run("does not expose the internal readiness deadline", func(t *testing.T) {
+		err := proxyReadinessError(t.Context(), context.DeadlineExceeded)
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected internal readiness deadline to be hidden, got %v", err)
+		}
+		if !strings.Contains(err.Error(), context.DeadlineExceeded.Error()) {
+			t.Fatalf("expected readiness error to retain deadline details, got %v", err)
+		}
+	})
+
+	t.Run("preserves a parent deadline", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(t.Context(), 0)
+		defer cancel()
+		<-ctx.Done()
+
+		err := proxyReadinessError(ctx, ctx.Err())
+
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected parent deadline to remain identifiable, got %v", err)
+		}
+	})
+
+	t.Run("preserves probe errors", func(t *testing.T) {
+		probeErr := errors.New("docker exec failed")
+
+		err := proxyReadinessError(t.Context(), probeErr)
+
+		if !errors.Is(err, probeErr) {
+			t.Fatalf("expected probe error to remain identifiable, got %v", err)
 		}
 	})
 }
