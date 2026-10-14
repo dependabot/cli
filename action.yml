@@ -1,0 +1,37 @@
+name: Dependabot job
+description: Run an API-backed Dependabot job using the CLI's container runner
+author: Dependabot
+inputs:
+  api-url:
+    description: Dependabot API base URL, including any path prefix
+    required: true
+  job-id:
+    description: Dependabot update job ID
+    required: true
+  job-token:
+    description: Job token (alternatively set GITHUB_DEPENDABOT_JOB_TOKEN)
+    required: false
+  credentials-token:
+    description: Credentials token (alternatively set GITHUB_DEPENDABOT_CRED_TOKEN)
+    required: false
+  updater-image:
+    description: Updater image override; otherwise selected from the job's package manager
+    required: false
+  proxy-image:
+    description: Proxy image override
+    required: false
+  pull-images:
+    description: Pull images before running; false uses images already on the runner
+    default: 'true'
+  timeout:
+    description: Maximum execution duration, excluding API bootstrap (Go duration)
+    default: 60m
+  volumes:
+    description: Bind mounts, one absolute Action-container source:destination[:ro] per line
+    required: false
+  updater-env:
+    description: Additional updater environment variables, one NAME=value per line
+    required: false
+runs:
+  using: docker
+  image: docker://ghcr.io/dependabot/cli-action:v1

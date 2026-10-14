@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+[ "$DEPENDABOT_JOB_ID" = "42" ]
+[ -z "$DEPENDABOT_JOB_TOKEN" ]
+[ -z "${GITHUB_DEPENDABOT_JOB_TOKEN:-}" ]
+[ -z "${GITHUB_DEPENDABOT_CRED_TOKEN:-}" ]
+! grep -Eq 'target|registry-secret|dependency-secret' "$DEPENDABOT_JOB_PATH"
+grep -Fq '"commit":"0123456789012345678901234567890123456789"' "$DEPENDABOT_JOB_PATH"
+printf 'job=%s\n' "$DEPENDABOT_JOB_ID" > "$CACHE_PATH/result"
+for attempt in $(seq 1 20); do
+  if response=$(http_proxy= HTTP_PROXY= wget -qO- "$HTTP_PROXY"); then
+    printf '%s\n' "$response"
+    [ "$FAIL" = false ]
+    exit
+  fi
+  sleep 0.1
+done
+echo "proxy did not become ready" >&2
+exit 1

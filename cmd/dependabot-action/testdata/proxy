@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+grep -Fq '"password":"target$TOKEN"' /config.json
+grep -Fq '"token":"registry-secret"' /config.json
+grep -Fq '"accessible-repos":["org/private-library"]' /config.json
+[ "$JOB_TOKEN" = "job-secret" ]
+[ "$JOB_ID" = "42" ]
+printf '%s\n' proxy-credentials-ok > /srv/index.html
+exec httpd -f -p 1080 -h /srv

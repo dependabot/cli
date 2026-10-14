@@ -1,0 +1,4 @@
+.git
+.env*
+dependabot
+dependabot-action
