@@ -33,6 +33,7 @@ type imageTestDaemon struct {
 	copied        int
 	inspectStatus int
 	pullStatus    int
+	tagStatus     int
 	pullBody      string
 }
 
@@ -82,6 +83,24 @@ func newImageTestDaemon(t *testing.T, cached, available map[string]image.Inspect
 			}
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprintln(w, d.pullBody)
+		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v1.44/images/") && strings.HasSuffix(r.URL.Path, "/tag"):
+			source := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1.44/images/"), "/tag")
+			if _, err := name.NewDigest(source); err != nil {
+				t.Errorf("tag source is not an immutable reference: %s", source)
+			}
+			if d.tagStatus != 0 {
+				w.WriteHeader(d.tagStatus)
+				writeJSON(t, w, map[string]string{"message": "tag failed"})
+				return
+			}
+			inspect, ok := d.cached[source]
+			if !ok {
+				w.WriteHeader(http.StatusNotFound)
+				writeJSON(t, w, map[string]string{"message": "tag source not found"})
+				return
+			}
+			d.cached[r.URL.Query().Get("repo")+":"+r.URL.Query().Get("tag")] = inspect
+			w.WriteHeader(http.StatusCreated)
 		case r.Method == http.MethodGet && r.URL.Path == "/v1.44/info":
 			writeJSON(t, w, map[string]any{"SecurityOptions": []string{"name=seccomp,profile=builtin"}})
 		case r.Method == http.MethodPost && r.URL.Path == "/v1.44/containers/create":
@@ -140,6 +159,7 @@ func TestVerifyImagesPinsPullAndContainerReferences(t *testing.T) {
 	}
 	d := newImageTestDaemon(t, nil, available)
 	params := verifiedImageTestParams(reg, true)
+	requested := params
 	factories := 0
 	err := verifyImages(t.Context(), d.cli, &params, func(context.Context) (*imageVerifier, error) {
 		factories++
@@ -152,10 +172,11 @@ func TestVerifyImagesPinsPullAndContainerReferences(t *testing.T) {
 	reg.manifests["/v2/proxy/manifests/latest"] = attestationFixture(t, "updater-manifest.json")
 	reg.manifests["/v2/updater/manifests/latest"] = attestationFixture(t, "proxy-manifest.json")
 	reg.mu.Unlock()
-	for _, ref := range []string{params.ProxyImage, params.UpdaterImage} {
-		if err := pullVerifiedImage(t.Context(), d.cli, ref); err != nil {
-			t.Fatal(err)
-		}
+	if err := pullVerifiedImage(t.Context(), d.cli, params.ProxyImage, requested.ProxyImage); err != nil {
+		t.Fatal(err)
+	}
+	if err := pullVerifiedImage(t.Context(), d.cli, params.UpdaterImage, requested.UpdaterImage); err != nil {
+		t.Fatal(err)
 	}
 	proxy, err := NewProxy(t.Context(), d.cli, &params, nil)
 	if err != nil {
@@ -371,7 +392,7 @@ func TestPullVerifiedImage(t *testing.T) {
 			if tt.body != "" {
 				d.pullBody = tt.body
 			}
-			err := pullVerifiedImage(t.Context(), d.cli, ref.Name())
+			err := pullVerifiedImage(t.Context(), d.cli, ref.Name(), ref.Name())
 			if tt.wantErr == "" && err != nil || tt.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErr)) {
 				t.Fatalf("pullVerifiedImage() = %v, want %q", err, tt.wantErr)
 			}
@@ -385,6 +406,65 @@ func TestPullVerifiedImage(t *testing.T) {
 				if pulled != ref.Name() {
 					t.Fatalf("pulled %s, want exact digest %s", pulled, ref)
 				}
+			}
+		})
+	}
+}
+
+func TestPullVerifiedImageRefreshesRequestedTag(t *testing.T) {
+	ref, err := name.NewDigest("ghcr.io/dependabot/proxy@sha256:" + strings.Repeat("a", 64))
+	if err != nil {
+		t.Fatal(err)
+	}
+	requested := ref.Context().Tag("latest")
+	verified := image.InspectResponse{ID: "verified-image", RepoDigests: []string{ref.Name()}}
+	for _, tt := range []struct {
+		name      string
+		staleTag  bool
+		cached    bool
+		tagStatus int
+	}{
+		{name: "missing tag"},
+		{name: "stale tag", staleTag: true},
+		{name: "cached digest", staleTag: true, cached: true},
+		{name: "tag failure", tagStatus: http.StatusInternalServerError},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cached := make(map[string]image.InspectResponse)
+			if tt.staleTag {
+				cached[requested.Name()] = image.InspectResponse{
+					ID: "older-image", RepoDigests: []string{ref.Context().Digest("sha256:" + strings.Repeat("b", 64)).Name()},
+				}
+			}
+			if tt.cached {
+				cached[ref.Name()] = verified
+			}
+			d := newImageTestDaemon(t, cached, map[string]image.InspectResponse{ref.Name(): verified})
+			d.tagStatus = tt.tagStatus
+			err := pullVerifiedImage(t.Context(), d.cli, ref.Name(), requested.Name())
+			if tt.tagStatus != 0 {
+				if err == nil || !strings.Contains(err.Error(), "tag failed") {
+					t.Fatalf("pullVerifiedImage() = %v, want tag error", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			selected, err := selectImage(t.Context(), d.cli, requested.Name(), false)
+			if err != nil || selected.reference != ref || selected.localID != verified.ID {
+				t.Fatalf("subsequent --pull=false selected %s (%s), %v, want %s (%s)",
+					selected.reference, selected.localID, err, ref, verified.ID)
+			}
+			d.mu.Lock()
+			pulls := append([]string(nil), d.pulls...)
+			d.mu.Unlock()
+			wantPulls := 1
+			if tt.cached {
+				wantPulls = 0
+			}
+			if len(pulls) != wantPulls {
+				t.Fatalf("pulls = %v, want %d", pulls, wantPulls)
 			}
 		})
 	}

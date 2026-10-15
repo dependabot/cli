@@ -405,7 +405,10 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
-	pullProtectedImage := pullImage
+	requestedProxyImage, requestedUpdaterImage := params.ProxyImage, params.UpdaterImage
+	pullProtectedImage := func(ctx context.Context, cli *client.Client, imageName, _ string) error {
+		return pullImage(ctx, cli, imageName)
+	}
 	if params.SkipImageVerification {
 		log.Println("WARNING: updater and proxy image verification is disabled. Only run trusted development images.")
 	} else {
@@ -416,7 +419,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 	}
 
 	if params.PullImages {
-		err = pullProtectedImage(ctx, cli, params.ProxyImage)
+		err = pullProtectedImage(ctx, cli, params.ProxyImage, requestedProxyImage)
 		if err != nil {
 			return err
 		}
@@ -428,7 +431,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 			}
 		}
 
-		err = pullProtectedImage(ctx, cli, params.UpdaterImage)
+		err = pullProtectedImage(ctx, cli, params.UpdaterImage, requestedUpdaterImage)
 		if err != nil {
 			return err
 		}

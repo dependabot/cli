@@ -141,13 +141,13 @@ func inspectImageDigest(ctx context.Context, cli *client.Client, ref name.Digest
 	return inspect, nil
 }
 
-func pullVerifiedImage(ctx context.Context, cli *client.Client, imageName string) error {
+func pullVerifiedImage(ctx context.Context, cli *client.Client, imageName, requestedImage string) error {
 	ref, err := name.NewDigest(imageName)
 	if err != nil {
 		return fmt.Errorf("verified image requires an immutable reference: %w", err)
 	}
 	if _, err := inspectImageDigest(ctx, cli, ref); err == nil {
-		return nil
+		return tagVerifiedImage(ctx, cli, ref, requestedImage)
 	} else if !errdefs.IsNotFound(err) {
 		return fmt.Errorf("failed to inspect verified image %s: %w", ref, err)
 	}
@@ -175,6 +175,19 @@ func pullVerifiedImage(ctx context.Context, cli *client.Client, imageName string
 	}
 	if _, err := inspectImageDigest(ctx, cli, ref); err != nil {
 		return fmt.Errorf("failed to inspect verified image %s after pull: %w", ref, err)
+	}
+	return tagVerifiedImage(ctx, cli, ref, requestedImage)
+}
+
+func tagVerifiedImage(ctx context.Context, cli *client.Client, ref name.Digest, requestedImage string) error {
+	requested, err := name.ParseReference(requestedImage)
+	if err != nil {
+		return fmt.Errorf("invalid requested image reference: %w", err)
+	}
+	if tag, ok := requested.(name.Tag); ok {
+		if err := cli.ImageTag(ctx, ref.Name(), tag.Name()); err != nil {
+			return fmt.Errorf("failed to tag verified image %s as %s: %w", ref, tag, err)
+		}
 	}
 	return nil
 }
