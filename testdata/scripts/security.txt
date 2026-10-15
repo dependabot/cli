@@ -2,11 +2,11 @@
 exec docker build -qt runtime-security-updater .
 
 # Normal updater execution has no capabilities and enforces both NNP and seccomp.
-dependabot update go_modules test/repo --updater-image runtime-security-updater
+dependabot update go_modules test/repo --updater-image runtime-security-updater --skip-image-verification
 stderr 'runtime-security flow=normal capeff=0000000000000000 nonewprivs=1 seccomp=2'
 
 # Local staging remains writable without granting capabilities to the updater.
-dependabot update go_modules test/repo --updater-image runtime-security-updater --local my-repo
+dependabot update go_modules test/repo --updater-image runtime-security-updater --local my-repo --skip-image-verification
 stderr 'runtime-security flow=local capeff=0000000000000000 nonewprivs=1 seccomp=2'
 stderr 'local staging is writable'
 

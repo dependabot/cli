@@ -1,7 +1,7 @@
 # this test verifies the certificate generated allows us to connect to pypi.org
 exec docker build -qt pypi-updater .
 
-dependabot update go_modules dependabot/cli --updater-image pypi-updater
+dependabot update go_modules dependabot/cli --updater-image pypi-updater --skip-image-verification
 stderr '200 https://pypi.org:443/'
 
 exec docker rmi -f pypi-updater

@@ -2,10 +2,12 @@ package infra
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -53,6 +56,79 @@ func Test_setImageNames(t *testing.T) {
 			t.Error("expected error for unknown package manager, got nil")
 		}
 	})
+}
+
+func TestRunContainersRejectsUnverifiedImages(t *testing.T) {
+	var mu sync.Mutex
+	writes := 0
+	docker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			mu.Lock()
+			writes++
+			mu.Unlock()
+			t.Errorf("Docker write before image verification: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/json") {
+			writeJSON(t, w, map[string]any{"Id": "unsigned-image", "RepoDigests": []string{}})
+			return
+		}
+		w.Header().Set("API-Version", testDockerAPIVersion)
+		fmt.Fprint(w, "OK")
+	}))
+	defer docker.Close()
+	t.Setenv("DOCKER_HOST", docker.URL)
+	t.Setenv("DOCKER_API_VERSION", testDockerAPIVersion)
+	t.Setenv("DOCKER_TLS_VERIFY", "")
+	t.Setenv("DOCKER_CERT_PATH", "")
+	err := runContainers(t.Context(), RunParams{
+		Job: &model.Job{}, ProxyImage: "unsigned-proxy", UpdaterImage: "unsigned-updater",
+	})
+	if err == nil || !strings.Contains(err.Error(), "no matching repository digest") {
+		t.Fatalf("runContainers() = %v, want unsigned image rejection", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if writes != 0 {
+		t.Fatalf("performed %d Docker writes before verification", writes)
+	}
+}
+
+func TestRunContainersExplicitVerificationBypass(t *testing.T) {
+	var output bytes.Buffer
+	previousOutput := log.Writer()
+	log.SetOutput(&output)
+	t.Cleanup(func() { log.SetOutput(previousOutput) })
+	docker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/v1.44/networks/create" {
+			w.WriteHeader(http.StatusInternalServerError)
+			writeJSON(t, w, map[string]string{"message": "stopped after explicit bypass"})
+			return
+		}
+		if r.URL.Path == "/_ping" {
+			w.Header().Set("API-Version", testDockerAPIVersion)
+			fmt.Fprint(w, "OK")
+			return
+		}
+		t.Errorf("unexpected verification request during bypass: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer docker.Close()
+	t.Setenv("DOCKER_HOST", docker.URL)
+	t.Setenv("DOCKER_API_VERSION", testDockerAPIVersion)
+	t.Setenv("DOCKER_TLS_VERIFY", "")
+	t.Setenv("DOCKER_CERT_PATH", "")
+	err := runContainers(t.Context(), RunParams{
+		Job: &model.Job{}, ProxyImage: "unsigned-proxy", UpdaterImage: "unsigned-updater",
+		SkipImageVerification: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "stopped after explicit bypass") {
+		t.Fatalf("runContainers() = %v, want legacy execution after explicit bypass", err)
+	}
+	if !strings.Contains(output.String(), "WARNING: updater and proxy image verification is disabled") {
+		t.Fatalf("missing bypass warning: %s", output.String())
+	}
 }
 
 func Test_RunParamsValidateCooldown(t *testing.T) {

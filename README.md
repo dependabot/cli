@@ -51,11 +51,58 @@ Available Commands:
 Flags:
   -h, --help                   help for dependabot
       --proxy-image string     container image to use for the proxy (default "ghcr.io/dependabot/proxy:latest")
+      --skip-image-verification   skip updater and proxy image verification for trusted development images
       --updater-image string   container image to use for the updater
   -v, --version                version for dependabot
 
 Use "dependabot [command] --help" for more information about a command.
 ```
+
+### Image verification
+
+The CLI requires valid GitHub build attestations for updater and proxy images before it starts any containers.
+An attestation is a signed claim about an artifact.
+Provenance records an image's build origin.
+Bundles contain the signed claims and verification evidence.
+This policy is enabled by default for `update`, `test`, `graph`, and the Docker Action in this repository.
+
+An image digest identifies its exact content.
+The CLI requires a valid signature and matching digest, issuer, repository, workflow identity, and source ref.
+It uses the verified digest for image pulls and container creation.
+
+The accepted issuer is `https://token.actions.githubusercontent.com`, and the required source ref is `refs/heads/main`.
+The publisher workflows are:
+
+| Image | Repository | Workflow |
+| --- | --- | --- |
+| Updater | `dependabot/dependabot-core` | `.github/workflows/images-latest.yml` |
+| Proxy | `dependabot/proxy` | `.github/workflows/ghcr.yml` |
+
+Image overrides must satisfy the same producer policy.
+Registry mirrors must preserve the image digest and attestation bundles.
+Missing or invalid attestations cause an error.
+
+With `--pull=false`, the CLI verifies the cached image's repository digest and runs that image.
+It does not switch to a newer registry tag.
+It still needs network access for attestations and Sigstore trust metadata.
+The CLI uses existing registry credentials, not updater-job credentials, to retrieve bundles.
+
+Storage and OpenTelemetry collector images are not verified.
+The CLI records the signed producer commit, but does not enforce an independently approved commit or image freshness.
+Branch builds and images from other producers require the development bypass below.
+
+Only use `--skip-image-verification` with trusted development images.
+This flag disables both updater and proxy verification and prints a warning.
+For example:
+
+```sh
+dependabot update go_modules dependabot/cli \
+  --updater-image my-updater \
+  --skip-image-verification
+```
+
+The Docker Action exposes the same bypass through its `skip-image-verification` input, which defaults to `'false'`.
+Do not use this bypass to ignore unexpected provenance in production.
 
 ### `dependabot update`
 

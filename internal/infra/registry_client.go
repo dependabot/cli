@@ -1,7 +1,9 @@
 package infra
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -11,6 +13,22 @@ import (
 )
 
 const defaultDockerRegistry = "registry-1.docker.io"
+
+func imageRegistryAuth(ctx context.Context, ref name.Reference) (authn.Authenticator, error) {
+	user, pass, err := getRegistryAuthHeader(ref.Context().RegistryStr())
+	if err == nil && (user != "" || pass != "") {
+		return &authn.Basic{Username: user, Password: pass}, nil
+	}
+	return authn.Resolve(ctx, authn.DefaultKeychain, ref.Context().Registry)
+}
+
+func imageRemoteOptions(ctx context.Context, ref name.Reference) ([]remote.Option, error) {
+	auth, err := imageRegistryAuth(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load credentials for registry %s: %w", ref.Context().RegistryStr(), err)
+	}
+	return []remote.Option{remote.WithContext(ctx), remote.WithAuth(auth)}, nil
+}
 
 type RegistryClient struct {
 	registry      string
@@ -83,15 +101,15 @@ func (r *RegistryClient) DigestExists(repoDigests []string) (bool, error) {
 
 func getRegistryAuthHeader(image string) (string, string, error) {
 	switch {
-	case strings.HasPrefix(image, defaultDockerRegistry):
+	case image == defaultDockerRegistry:
 		return "", "", nil
-	case strings.HasPrefix(image, "ghcr.io"):
+	case image == "ghcr.io":
 		token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
 		if token == "" {
 			return "", "", errors.New("LOCAL_GITHUB_ACCESS_TOKEN not set") // More informative error
 		}
 		return "x-access-token", token, nil
-	case strings.Contains(image, ".azurecr.io"):
+	case strings.HasSuffix(image, ".azurecr.io"):
 		username := os.Getenv("AZURE_REGISTRY_USERNAME")
 		password := os.Getenv("AZURE_REGISTRY_PASSWORD")
 		if username == "" || password == "" {

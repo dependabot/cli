@@ -52,7 +52,8 @@ func TestRunHostedJob(t *testing.T) {
 	cfg := config{
 		apiURL: server.URL + "/prefix", jobID: "42", jobToken: "job-secret", credentialsToken: "cred-secret",
 		updaterImage: "custom:job", proxyImage: "custom:proxy", pullImages: false,
-		timeout: 3 * time.Hour, volumes: []string{"/github/workspace/cache:/cache"},
+		skipImageVerification: true,
+		timeout:               3 * time.Hour, volumes: []string{"/github/workspace/cache:/cache"},
 		updaterEnv: []string{"CUSTOM_CACHE_PATH=/cache"},
 	}
 	api := newJobClient(cfg)
@@ -75,7 +76,7 @@ func TestRunHostedJob(t *testing.T) {
 			}
 		}
 		if params.ApiUrl != cfg.apiURL || params.UpdaterImage != cfg.updaterImage || params.ProxyImage != cfg.proxyImage ||
-			params.PullImages || params.Timeout != cfg.timeout || params.StorageImage != infra.StorageImageName ||
+			params.PullImages || !params.SkipImageVerification || params.Timeout != cfg.timeout || params.StorageImage != infra.StorageImageName ||
 			!reflect.DeepEqual(params.Volumes, cfg.volumes) || !reflect.DeepEqual(params.UpdaterEnvironmentVariables, cfg.updaterEnv) {
 			t.Fatalf("incorrect runner options: %+v", params)
 		}

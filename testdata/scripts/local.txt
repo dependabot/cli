@@ -1,11 +1,11 @@
 exec docker build -qt local-updater .
 
 # The ls command in run will fail since the repo directory doesn't exist yet.
-! dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater
+! dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --skip-image-verification
 stderr 'No such file or directory'
 
 # The local flag should create the repo directory and put my-repo in it
-dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo --skip-image-verification
 ! stderr 'No such file or directory'
 
 # The local flag should create the repo directory if it isn't already one
@@ -21,7 +21,7 @@ exec git -C my-repo config user.email "test@example.com"
 exec git -C my-repo add hello.txt
 exec git -C my-repo commit -m 'assert this in the test'
 
-dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo --skip-image-verification
 stderr 'hello.txt'
 stderr 'assert this in the test'
 
@@ -29,7 +29,7 @@ stderr 'assert this in the test'
 # Otherwise changes would be lost during the update.
 exec git -C my-repo apply --unidiff-zero ../dirty.patch
 
-dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo
+dependabot update go_modules dependabot-fixtures/go-modules-lib --updater-image local-updater --local my-repo --skip-image-verification
 stderr 'hello.txt'
 stderr 'goodbye.txt'
 # check the CLI has made a commit

@@ -9,16 +9,17 @@ import (
 )
 
 type config struct {
-	apiURL           string
-	jobID            string
-	jobToken         string
-	credentialsToken string
-	updaterImage     string
-	proxyImage       string
-	pullImages       bool
-	timeout          time.Duration
-	volumes          []string
-	updaterEnv       []string
+	apiURL                string
+	jobID                 string
+	jobToken              string
+	credentialsToken      string
+	updaterImage          string
+	proxyImage            string
+	pullImages            bool
+	skipImageVerification bool
+	timeout               time.Duration
+	volumes               []string
+	updaterEnv            []string
 }
 
 func readConfig(getenv func(string) string) (config, error) {
@@ -51,6 +52,12 @@ func readConfig(getenv func(string) string) (config, error) {
 			return config{}, fmt.Errorf("pull-images must be true or false")
 		}
 		cfg.pullImages = value == "true"
+	}
+	if value := input("skip-image-verification"); value != "" {
+		if value != "true" && value != "false" {
+			return config{}, fmt.Errorf("skip-image-verification must be true or false")
+		}
+		cfg.skipImageVerification = value == "true"
 	}
 	if value := input("timeout"); value != "" {
 		cfg.timeout, err = time.ParseDuration(value)

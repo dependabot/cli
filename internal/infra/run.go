@@ -69,6 +69,8 @@ type RunParams struct {
 	ProxyCertPath string
 	// attempt to pull images if they aren't local?
 	PullImages bool
+	// SkipImageVerification permits unsigned development updater and proxy images.
+	SkipImageVerification bool
 	// run an interactive shell?
 	Debug bool
 	// generate performance metrics?
@@ -403,8 +405,18 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
+	pullProtectedImage := pullImage
+	if params.SkipImageVerification {
+		log.Println("WARNING: updater and proxy image verification is disabled. Only run trusted development images.")
+	} else {
+		if err := verifyImages(ctx, cli, &params, newImageVerifier); err != nil {
+			return err
+		}
+		pullProtectedImage = pullVerifiedImage
+	}
+
 	if params.PullImages {
-		err = pullImage(ctx, cli, params.ProxyImage)
+		err = pullProtectedImage(ctx, cli, params.ProxyImage)
 		if err != nil {
 			return err
 		}
@@ -416,7 +428,7 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 			}
 		}
 
-		err = pullImage(ctx, cli, params.UpdaterImage)
+		err = pullProtectedImage(ctx, cli, params.UpdaterImage)
 		if err != nil {
 			return err
 		}

@@ -1,10 +1,16 @@
 # Build the dummy Dockerfile
 exec docker build -qt dummy-updater .
 
+# Reject unsigned images unless the development bypass is explicit.
+! dependabot update go_modules dependabot/cli --pull=false --updater-image dummy-updater --proxy-image dummy-updater
+stderr 'proxy image .*verification'
+! stderr 'bin/run arguments'
+
 # Run the dependabot command
-dependabot update go_modules dependabot/cli --updater-image dummy-updater
+dependabot update go_modules dependabot/cli --updater-image dummy-updater --skip-image-verification
 
 # assert the dummy is working
+stderr 'WARNING: updater and proxy image verification is disabled'
 stderr 'bin/run arguments: fetch_files'
 stderr 'bin/run arguments: update_files'
 

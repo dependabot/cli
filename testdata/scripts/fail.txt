@@ -1,10 +1,10 @@
 exec docker build -t fail-updater .
 
-! dependabot update go_modules dependabot/cli --updater-image fail-updater
+! dependabot update go_modules dependabot/cli --updater-image fail-updater --skip-image-verification
 stderr 'updater failure: updater exited with code 2'
 
 # Assert that the test command doesn't fail if the updater fails
-dependabot test -f input.yml --updater-image fail-updater
+dependabot test -f input.yml --updater-image fail-updater --skip-image-verification
 
 exec docker rmi -f fail-updater
 
