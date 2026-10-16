@@ -99,17 +99,17 @@ func (r *RegistryClient) DigestExists(repoDigests []string) (bool, error) {
 	return true, nil
 }
 
-func getRegistryAuthHeader(image string) (string, string, error) {
+func getRegistryAuthHeader(domain string) (string, string, error) {
 	switch {
-	case image == defaultDockerRegistry:
+	case domain == defaultDockerRegistry:
 		return "", "", nil
-	case image == "ghcr.io":
+	case domain == "ghcr.io":
 		token := os.Getenv("LOCAL_GITHUB_ACCESS_TOKEN")
 		if token == "" {
 			return "", "", errors.New("LOCAL_GITHUB_ACCESS_TOKEN not set") // More informative error
 		}
 		return "x-access-token", token, nil
-	case strings.HasSuffix(image, ".azurecr.io"):
+	case strings.HasSuffix(domain, ".azurecr.io"):
 		username := os.Getenv("AZURE_REGISTRY_USERNAME")
 		password := os.Getenv("AZURE_REGISTRY_PASSWORD")
 		if username == "" || password == "" {
