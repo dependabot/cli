@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -118,7 +119,9 @@ func newImageTestDaemon(t *testing.T, cached, available map[string]image.Inspect
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1.44/containers/") && strings.HasSuffix(r.URL.Path, "/json"):
 			writeJSON(t, w, map[string]any{
 				"Id": "container-1", "State": map[string]any{"Running": true, "ExitCode": 0},
-				"NetworkSettings": map[string]any{"Networks": map[string]any{}},
+				"NetworkSettings": map[string]any{"Networks": map[string]any{
+					"no-internet": map[string]string{"IPAddress": "192.0.2.2"},
+				}},
 			})
 		default:
 			t.Errorf("unexpected Docker request: %s %s", r.Method, r.URL.Path)
@@ -134,7 +137,11 @@ func fixtureImageInspect(t *testing.T, reg *attestationTestRegistry, role string
 	if err := json.Unmarshal(attestationFixture(t, role+"-manifest.json"), &manifest); err != nil {
 		t.Fatal(err)
 	}
-	return image.InspectResponse{ID: manifest.Config.Digest.String(), RepoDigests: []string{reg.references[role].Name()}}
+	id := manifest.Config.Digest.String()
+	if manifest.MediaType == types.DockerManifestList || manifest.MediaType == types.OCIImageIndex {
+		id = "local-" + role
+	}
+	return image.InspectResponse{ID: id, RepoDigests: []string{reg.references[role].Name()}}
 }
 
 func verifiedImageTestParams(reg *attestationTestRegistry, pull bool) RunParams {
@@ -212,11 +219,136 @@ func TestVerifyImagesPinsPullAndContainerReferences(t *testing.T) {
 	}
 }
 
+func TestVerifyImagesCollector(t *testing.T) {
+	for _, configured := range []bool{false, true} {
+		t.Run(fmt.Sprintf("configured=%v", configured), func(t *testing.T) {
+			bundles := officialImageBundles(t)
+			bundles["collector"] = [][]byte{attestationFixture(t, "collector.json")}
+			reg := newAttestationTestRegistry(t, bundles, false)
+			cached := make(map[string]image.InspectResponse)
+			for _, role := range []string{"proxy", "updater"} {
+				cached[reg.references[role].Name()] = fixtureImageInspect(t, reg, role)
+			}
+			ref := reg.references["collector"]
+			d := newImageTestDaemon(t, cached, map[string]image.InspectResponse{ref.Name(): fixtureImageInspect(t, reg, "collector")})
+			params := verifiedImageTestParams(reg, true)
+			params.CollectorImage = ref.Context().Tag("latest").Name()
+			if configured {
+				params.CollectorConfigPath = filepath.Join(t.TempDir(), "collector.yaml")
+			}
+			requested := params.CollectorImage
+			if err := verifyImages(t.Context(), d.cli, &params, func(context.Context) (*imageVerifier, error) {
+				return testImageVerifier(t), nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if !configured {
+				if params.CollectorImage != requested {
+					t.Fatal("replaced the disabled Collector image")
+				}
+				reg.mu.Lock()
+				requests := slices.Clone(reg.requests)
+				reg.mu.Unlock()
+				for _, request := range requests {
+					if strings.Contains(request, "/collector/") {
+						t.Fatalf("requested disabled Collector metadata: %s", request)
+					}
+				}
+				return
+			}
+			if params.CollectorImage != ref.Name() {
+				t.Fatalf("Collector image = %s, want verified digest %s", params.CollectorImage, ref)
+			}
+			reg.mu.Lock()
+			reg.manifests["/v2/collector/manifests/latest"] = attestationFixture(t, "updater-manifest.json")
+			reg.mu.Unlock()
+			if err := pullVerifiedImage(t.Context(), d.cli, params.CollectorImage, requested); err != nil {
+				t.Fatal(err)
+			}
+			proxy, err := NewProxy(t.Context(), d.cli, &params, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			nets := &Networks{NoInternet: network.CreateResponse{ID: "no-internet"}, noInternetName: "no-internet"}
+			if _, err := NewCollector(t.Context(), d.cli, nets, &params, proxy); err != nil {
+				t.Fatal(err)
+			}
+			d.mu.Lock()
+			pulls, created := slices.Clone(d.pulls), slices.Clone(d.created)
+			d.mu.Unlock()
+			if !slices.Equal(pulls, []string{ref.Name()}) || !slices.Equal(created, []string{params.ProxyImage, ref.Name()}) {
+				t.Fatalf("pulls = %v, creates = %v, want the verified Collector index", pulls, created)
+			}
+		})
+	}
+}
+
+func TestVerifyImagesCollectorVersion(t *testing.T) {
+	for _, tt := range []struct {
+		tag     string
+		wantErr string
+		digest  bool
+	}{
+		{tag: "latest"},
+		{tag: "stable"},
+		{tag: "0.161.0"},
+		{tag: "v0.161.0"},
+		{tag: "digest"},
+		{tag: "0.160.0", wantErr: "refs/tags/v0.160.0"},
+		{tag: "0.161.0-rc.1", wantErr: "stable release version"},
+		{tag: "00.161.0", wantErr: "stable release version"},
+		{tag: "0.161.0", digest: true},
+		{tag: "0.160.0", wantErr: "refs/tags/v0.160.0", digest: true},
+		{tag: "0.161.0-rc.1", wantErr: "stable release version", digest: true},
+	} {
+		testName := tt.tag
+		if tt.digest {
+			testName += "@digest"
+		}
+		t.Run(testName, func(t *testing.T) {
+			bundles := officialImageBundles(t)
+			bundles["collector"] = [][]byte{attestationFixture(t, "collector.json")}
+			reg := newAttestationTestRegistry(t, bundles, false)
+			ref := reg.references["collector"]
+			params := verifiedImageTestParams(reg, true)
+			params.CollectorConfigPath = filepath.Join(t.TempDir(), "collector.yaml")
+			params.CollectorImage = ref.Context().Tag(tt.tag).Name()
+			if tt.tag == "digest" {
+				params.CollectorImage = ref.Name()
+			} else if tt.digest {
+				params.CollectorImage += "@" + ref.DigestStr()
+			}
+			reg.mu.Lock()
+			reg.manifests["/v2/collector/manifests/"+tt.tag] = attestationFixture(t, "collector-manifest.json")
+			reg.mu.Unlock()
+			original := params
+			d := newImageTestDaemon(t, nil, nil)
+			err := verifyImages(t.Context(), d.cli, &params, func(context.Context) (*imageVerifier, error) {
+				return testImageVerifier(t), nil
+			})
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("verifyImages() = %v, want %q", err, tt.wantErr)
+				}
+				if params.ProxyImage != original.ProxyImage || params.UpdaterImage != original.UpdaterImage || params.CollectorImage != original.CollectorImage {
+					t.Fatal("failed Collector verification replaced protected image references")
+				}
+			} else if err != nil || params.CollectorImage != ref.Name() {
+				t.Fatalf("Collector selection = %s, %v, want %s", params.CollectorImage, err, ref)
+			}
+		})
+	}
+}
+
 func TestVerifyImagesUsesCachedDigestWithoutPull(t *testing.T) {
-	reg := newAttestationTestRegistry(t, officialImageBundles(t), false)
+	bundles := officialImageBundles(t)
+	bundles["collector"] = [][]byte{attestationFixture(t, "collector.json")}
+	reg := newAttestationTestRegistry(t, bundles, false)
 	params := verifiedImageTestParams(reg, false)
+	params.CollectorConfigPath = filepath.Join(t.TempDir(), "collector.yaml")
+	params.CollectorImage = reg.references["collector"].Context().Tag("latest").Name()
 	cached := make(map[string]image.InspectResponse)
-	for _, role := range []string{"proxy", "updater"} {
+	for _, role := range []string{"proxy", "updater", "collector"} {
 		inspect := fixtureImageInspect(t, reg, role)
 		cached[reg.references[role].Name()] = inspect
 		cached[reg.references[role].Context().Tag("latest").Name()] = inspect
@@ -224,6 +356,7 @@ func TestVerifyImagesUsesCachedDigestWithoutPull(t *testing.T) {
 	reg.mu.Lock()
 	reg.manifests["/v2/proxy/manifests/latest"] = attestationFixture(t, "updater-manifest.json")
 	reg.manifests["/v2/updater/manifests/latest"] = attestationFixture(t, "proxy-manifest.json")
+	reg.manifests["/v2/collector/manifests/latest"] = attestationFixture(t, "proxy-manifest.json")
 	reg.mu.Unlock()
 	d := newImageTestDaemon(t, cached, nil)
 	if err := verifyImages(t.Context(), d.cli, &params, func(context.Context) (*imageVerifier, error) {
@@ -231,7 +364,8 @@ func TestVerifyImagesUsesCachedDigestWithoutPull(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if params.ProxyImage != reg.references["proxy"].Name() || params.UpdaterImage != reg.references["updater"].Name() {
+	if params.ProxyImage != reg.references["proxy"].Name() || params.UpdaterImage != reg.references["updater"].Name() ||
+		params.CollectorImage != reg.references["collector"].Name() {
 		t.Fatalf("cached image selections changed: %+v", params)
 	}
 	d.mu.Lock()
@@ -251,27 +385,35 @@ func TestVerifyImagesUsesCachedDigestWithoutPull(t *testing.T) {
 }
 
 func TestVerifyImagesRejectsInconsistentCachedImage(t *testing.T) {
-	reg := newAttestationTestRegistry(t, officialImageBundles(t), false)
-	params := verifiedImageTestParams(reg, false)
-	original := params
-	cached := make(map[string]image.InspectResponse)
-	for _, role := range []string{"proxy", "updater"} {
-		inspect := fixtureImageInspect(t, reg, role)
-		cached[reg.references[role].Context().Tag("latest").Name()] = inspect
-		if role == "updater" {
-			inspect.ID = "different-image"
-		}
-		cached[reg.references[role].Name()] = inspect
-	}
-	d := newImageTestDaemon(t, cached, nil)
-	err := verifyImages(t.Context(), d.cli, &params, func(context.Context) (*imageVerifier, error) {
-		return testImageVerifier(t), nil
-	})
-	if err == nil || !strings.Contains(err.Error(), "does not match the selected cached image") {
-		t.Fatalf("verifyImages() = %v, want cached identity error", err)
-	}
-	if params.ProxyImage != original.ProxyImage || params.UpdaterImage != original.UpdaterImage {
-		t.Fatal("failed verification replaced image references")
+	for _, mismatchedRole := range []string{"updater", "collector"} {
+		t.Run(mismatchedRole, func(t *testing.T) {
+			bundles := officialImageBundles(t)
+			bundles["collector"] = [][]byte{attestationFixture(t, "collector.json")}
+			reg := newAttestationTestRegistry(t, bundles, false)
+			params := verifiedImageTestParams(reg, false)
+			params.CollectorConfigPath = filepath.Join(t.TempDir(), "collector.yaml")
+			params.CollectorImage = reg.references["collector"].Context().Tag("latest").Name()
+			original := params
+			cached := make(map[string]image.InspectResponse)
+			for _, role := range []string{"proxy", "updater", "collector"} {
+				inspect := fixtureImageInspect(t, reg, role)
+				cached[reg.references[role].Context().Tag("latest").Name()] = inspect
+				if role == mismatchedRole {
+					inspect.ID = "different-image"
+				}
+				cached[reg.references[role].Name()] = inspect
+			}
+			d := newImageTestDaemon(t, cached, nil)
+			err := verifyImages(t.Context(), d.cli, &params, func(context.Context) (*imageVerifier, error) {
+				return testImageVerifier(t), nil
+			})
+			if err == nil || !strings.Contains(err.Error(), mismatchedRole+" image") || !strings.Contains(err.Error(), "does not match the selected cached image") {
+				t.Fatalf("verifyImages() = %v, want cached identity error", err)
+			}
+			if params.ProxyImage != original.ProxyImage || params.UpdaterImage != original.UpdaterImage || params.CollectorImage != original.CollectorImage {
+				t.Fatal("failed verification replaced image references")
+			}
+		})
 	}
 }
 

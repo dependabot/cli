@@ -23,14 +23,22 @@ type imageSelection struct {
 }
 
 func verifyImages(ctx context.Context, cli *client.Client, params *RunParams, newVerifier func(context.Context) (*imageVerifier, error)) error {
-	images := []struct {
+	type protectedImage struct {
 		role      imageRole
 		target    *string
 		selection imageSelection
 		verified  verifiedImage
-	}{
+	}
+	images := []protectedImage{
 		{role: proxyImageRole, target: &params.ProxyImage},
 		{role: updaterImageRole, target: &params.UpdaterImage},
+	}
+	if params.CollectorConfigPath != "" {
+		role, err := collectorRoleForImage(params.CollectorImage)
+		if err != nil {
+			return fmt.Errorf("collector image %s: failed to select release policy: %w", params.CollectorImage, err)
+		}
+		images = append(images, protectedImage{role: role, target: &params.CollectorImage})
 	}
 	for i := range images {
 		selected, err := selectImage(ctx, cli, *images[i].target, params.PullImages)
@@ -41,7 +49,7 @@ func verifyImages(ctx context.Context, cli *client.Client, params *RunParams, ne
 	}
 	verifier, err := newVerifier(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to initialize updater/proxy image verification: %w", err)
+		return fmt.Errorf("failed to initialize image verification: %w", err)
 	}
 	for i := range images {
 		verified, err := verifier.Verify(ctx, images[i].selection.reference, images[i].role)

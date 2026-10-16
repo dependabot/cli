@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/static"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
+	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 	sigroot "github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
@@ -104,7 +105,11 @@ func newAttestationTestRegistry(t *testing.T, bundles map[string][][]byte, fallb
 		backing.ServeHTTP(w, req)
 	}))
 	t.Cleanup(r.server.Close)
-	for _, role := range []string{"updater", "proxy"} {
+	roles := []string{"updater", "proxy"}
+	if _, ok := bundles["collector"]; ok {
+		roles = append(roles, "collector")
+	}
+	for _, role := range roles {
 		repo, err := name.NewRepository(strings.TrimPrefix(r.server.URL, "http://") + "/" + role)
 		if err != nil {
 			t.Fatal(err)
@@ -185,6 +190,44 @@ func TestImageVerifier(t *testing.T) {
 						t.Fatalf("Verify() = %+v, want %s at %s", got, ref, tt.commit)
 					}
 				})
+			}
+		})
+	}
+}
+
+func TestImageVerifierCollectorRelease(t *testing.T) {
+	for _, fallback := range []bool{false, true} {
+		t.Run(fmt.Sprintf("fallback=%v", fallback), func(t *testing.T) {
+			reg := newAttestationTestRegistry(t, map[string][][]byte{
+				"collector": {attestationFixture(t, "collector.json")},
+			}, fallback)
+			ref := reg.references["collector"]
+			got, err := testImageVerifier(t).Verify(t.Context(), ref, collectorImageRole)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := ref.Context().Digest("sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1")
+			if got.reference != want || got.producerCommit != "619d1d0d06e9488a4a38e993f09605bbc13db592" {
+				t.Fatalf("Verify() = %+v, want %s at the signed release commit", got, want)
+			}
+		})
+	}
+}
+
+func TestImageVerifierCollectorPinnedRelease(t *testing.T) {
+	reg := newAttestationTestRegistry(t, map[string][][]byte{
+		"collector": {attestationFixture(t, "collector.json")},
+	}, false)
+	for _, release := range []string{"v0.161.0", "v0.160.0"} {
+		t.Run(release, func(t *testing.T) {
+			role := collectorImageRole
+			role.sourceRef = "refs/tags/" + release
+			_, err := testImageVerifier(t).Verify(t.Context(), reg.references["collector"], role)
+			if release == "v0.161.0" && err != nil {
+				t.Fatal(err)
+			}
+			if release == "v0.160.0" && err == nil {
+				t.Fatal("accepted a signature from a different release")
 			}
 		})
 	}
@@ -285,13 +328,61 @@ func TestVerifiedProducerCommit(t *testing.T) {
 		{"missing commit", provenancePredicate, ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			data := fmt.Sprintf(`{"statement":{"predicateType":%q},"signature":{"certificate":{"sourceRepositoryDigest":%q}}}`, tt.predicate, tt.commit)
+			data := fmt.Sprintf(`{"statement":{"predicateType":%q}}`, tt.predicate)
 			var result verify.VerificationResult
 			if err := json.Unmarshal([]byte(data), &result); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := verifiedProducerCommit(&result); err == nil {
+			result.Signature = &verify.SignatureVerificationResult{
+				Certificate: &certificate.Summary{Extensions: certificate.Extensions{SourceRepositoryDigest: tt.commit}},
+			}
+			if _, err := verifiedProducerCommit(&result, updaterImageRole); err == nil {
 				t.Fatalf("accepted %s", tt.name)
+			}
+		})
+	}
+}
+
+func TestCollectorClaimPolicy(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		modify  func(*verify.VerificationResult)
+		wantErr string
+	}{
+		{"wrong predicate", func(r *verify.VerificationResult) { r.Statement.PredicateType = provenancePredicate }, imageSignaturePredicate},
+		{"wrong statement type", func(r *verify.VerificationResult) { r.Statement.Type = "https://in-toto.io/Statement/v0.1" }, "in-toto v1"},
+		{"missing ref", func(r *verify.VerificationResult) { r.Signature.Certificate.SourceRepositoryRef = "" }, "stable release ref"},
+		{"branch ref", func(r *verify.VerificationResult) { r.Signature.Certificate.SourceRepositoryRef = "refs/heads/main" }, "stable release ref"},
+		{"prerelease ref", func(r *verify.VerificationResult) {
+			r.Signature.Certificate.SourceRepositoryRef = "refs/tags/v0.161.0-rc.1"
+		}, "stable release ref"},
+		{"different release", func(r *verify.VerificationResult) { r.Signature.Certificate.SourceRepositoryRef = "refs/tags/v0.160.0" }, "does not match its source ref"},
+		{"workflow prefix", func(r *verify.VerificationResult) {
+			r.Signature.Certificate.SubjectAlternativeName = "https://unexpected.example/" + r.Signature.Certificate.SubjectAlternativeName
+		}, "does not match its source ref"},
+		{"workflow suffix", func(r *verify.VerificationResult) { r.Signature.Certificate.SubjectAlternativeName += "/extra" }, "does not match its source ref"},
+		{"email identity", func(r *verify.VerificationResult) {
+			r.Signature.Certificate.SubjectAlternativeName = "operator@example.com"
+		}, "does not match its source ref"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			data := fmt.Sprintf(`{"statement":{"_type":"https://in-toto.io/Statement/v1","predicateType":%q}}`, imageSignaturePredicate)
+			var result verify.VerificationResult
+			if err := json.Unmarshal([]byte(data), &result); err != nil {
+				t.Fatal(err)
+			}
+			result.Signature = &verify.SignatureVerificationResult{
+				Certificate: &certificate.Summary{
+					SubjectAlternativeName: "https://github.com/open-telemetry/opentelemetry-collector-releases/.github/workflows/base-release.yaml@refs/tags/v0.161.0",
+					Extensions: certificate.Extensions{
+						SourceRepositoryDigest: "producer",
+						SourceRepositoryRef:    "refs/tags/v0.161.0",
+					},
+				},
+			}
+			tt.modify(&result)
+			if _, err := verifiedProducerCommit(&result, collectorImageRole); err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("accepted invalid Collector claim or returned the wrong error: %v", err)
 			}
 		})
 	}
