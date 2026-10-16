@@ -10,7 +10,7 @@ Next, clone https://github.com/dependabot/dependabot-core. This project contains
 
 Use `--skip-image-verification` only with trusted development images.
 Locally built images do not carry the required publisher attestations.
-This flag disables updater and proxy verification and prints a warning.
+This flag disables updater, proxy, and configured OpenTelemetry Collector verification and prints a warning.
 Verification remains enabled in debug mode unless you set this flag.
 
 In the `dependabot-core` project directory, run:

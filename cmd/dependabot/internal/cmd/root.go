@@ -63,5 +63,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", infra.ProxyImageName, "container image to use for the proxy")
 	rootCmd.PersistentFlags().StringVar(&collectorImage, "collector-image", infra.CollectorImageName, "container image to use for the OpenTelemetry collector")
 	rootCmd.PersistentFlags().StringVar(&storageImage, "storage-image", infra.StorageImageName, "container image to use for the storage service")
-	rootCmd.PersistentFlags().BoolVar(&skipImageVerification, "skip-image-verification", false, "skip updater and proxy image verification for trusted development images")
+	rootCmd.PersistentFlags().BoolVar(&skipImageVerification, "skip-image-verification", false, "skip updater, proxy, and configured OpenTelemetry collector image verification for trusted development images")
 }
