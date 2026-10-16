@@ -22,7 +22,7 @@ Please do:
 
 Prerequisites:
 
-* Go 1.19+
+* Go 1.27+
 * Docker
 
 Run with:
