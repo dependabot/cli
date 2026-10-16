@@ -137,6 +137,7 @@ func TestDockerAction(t *testing.T) {
 				"--env", "INPUT_UPDATER-IMAGE=" + updaterImage,
 				"--env", "INPUT_PROXY-IMAGE=" + proxyImage,
 				"--env", "INPUT_PULL-IMAGES=false",
+				"--env", "INPUT_SKIP-IMAGE-VERIFICATION=true",
 				"--env", "INPUT_TIMEOUT=1m",
 				"--env", "INPUT_VOLUMES=/github/workspace/cache:/cache",
 				"--env", fmt.Sprintf("INPUT_UPDATER-ENV=CACHE_PATH=/cache\nFAIL=%v", failure),

@@ -8,7 +8,18 @@ First, test to make sure you have a working Dependabot CLI by performing a simpl
 
 Next, clone https://github.com/dependabot/dependabot-core. This project contains all the source for the updater images, and a helpful script `script/dependabot` which will mount the ecosystems in the container that the CLI starts.
 
-Try opening a terminal and run `script/dependabot update go_modules dependabot/cli --debug` in the `dependabot-core` project directory. This will drop you in an interactive session with the update ready to proceed.
+Use `--skip-image-verification` only with trusted development images.
+Locally built images do not carry the required publisher attestations.
+This flag disables updater and proxy verification and prints a warning.
+Verification remains enabled in debug mode unless you set this flag.
+
+In the `dependabot-core` project directory, run:
+
+```sh
+script/dependabot update go_modules dependabot/cli --debug --skip-image-verification
+```
+
+This starts an interactive session for the update.
 
 To perform the update, you need to run two commands:
 

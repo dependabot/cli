@@ -2,7 +2,7 @@
 exec docker build -qt dummy-local-nocase-updater .
 
 # Combine local staging with the case-insensitive filesystem experiment.
-dependabot update -f job.yml --updater-image dummy-local-nocase-updater --local my-repo
+dependabot update -f job.yml --updater-image dummy-local-nocase-updater --local my-repo --skip-image-verification
 
 stderr 'case-insensitive local Git operation succeeded'
 stderr 'runtime-security flow=local-case-insensitive capeff=0000000000000000 nonewprivs=1 seccomp=2'

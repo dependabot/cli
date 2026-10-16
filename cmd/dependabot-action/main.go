@@ -56,7 +56,8 @@ func run(ctx context.Context, cfg config, api *jobClient, output io.Writer, runn
 			Job: job, Creds: creds, CredentialsResolved: true,
 			ApiUrl: cfg.apiURL, UpdaterImage: cfg.updaterImage, ProxyImage: cfg.proxyImage,
 			StorageImage: infra.StorageImageName, PullImages: cfg.pullImages,
-			Timeout: cfg.timeout, Volumes: cfg.volumes, UpdaterEnvironmentVariables: cfg.updaterEnv,
+			SkipImageVerification: cfg.skipImageVerification,
+			Timeout:               cfg.timeout, Volumes: cfg.volumes, UpdaterEnvironmentVariables: cfg.updaterEnv,
 		})
 	}
 	if err == nil {

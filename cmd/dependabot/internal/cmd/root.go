@@ -29,10 +29,11 @@ type SharedFlags struct {
 
 // root flags
 var (
-	updaterImage   string
-	proxyImage     string
-	collectorImage string
-	storageImage   string
+	updaterImage          string
+	proxyImage            string
+	collectorImage        string
+	storageImage          string
+	skipImageVerification bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -62,4 +63,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&proxyImage, "proxy-image", infra.ProxyImageName, "container image to use for the proxy")
 	rootCmd.PersistentFlags().StringVar(&collectorImage, "collector-image", infra.CollectorImageName, "container image to use for the OpenTelemetry collector")
 	rootCmd.PersistentFlags().StringVar(&storageImage, "storage-image", infra.StorageImageName, "container image to use for the storage service")
+	rootCmd.PersistentFlags().BoolVar(&skipImageVerification, "skip-image-verification", false, "skip updater and proxy image verification for trusted development images")
 }

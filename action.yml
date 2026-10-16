@@ -23,6 +23,9 @@ inputs:
   pull-images:
     description: Pull images before running; false uses images already on the runner
     default: 'true'
+  skip-image-verification:
+    description: Skip updater and proxy image verification for trusted development images
+    default: 'false'
   timeout:
     description: Maximum execution duration, excluding API bootstrap (Go duration)
     default: 60m

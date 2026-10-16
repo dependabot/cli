@@ -2,7 +2,7 @@
 exec docker build -qt dummy-nocase-updater .
 
 # Run the dependabot command
-dependabot update -f job.yml --updater-image dummy-nocase-updater
+dependabot update -f job.yml --updater-image dummy-nocase-updater --skip-image-verification
 
 # assert the dummy is working
 stderr 'case-insensitive storage is working'

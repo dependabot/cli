@@ -12,29 +12,31 @@ import (
 
 func TestReadConfig(t *testing.T) {
 	env := map[string]string{
-		"INPUT_API-URL":                "https://dependabot.example/api/",
-		"INPUT_JOB-ID":                 "42",
-		"GITHUB_DEPENDABOT_JOB_TOKEN":  "job",
-		"GITHUB_DEPENDABOT_CRED_TOKEN": "cred",
-		"INPUT_UPDATER-IMAGE":          "custom:job",
-		"INPUT_PULL-IMAGES":            "false",
-		"INPUT_TIMEOUT":                "3h",
-		"INPUT_VOLUMES":                "\n/github/workspace/cache:/cache\n/github/workspace/data:/data:ro\n",
-		"INPUT_UPDATER-ENV":            "CACHE_PATH=/cache\nVALUE=a=b\n",
+		"INPUT_API-URL":                 "https://dependabot.example/api/",
+		"INPUT_JOB-ID":                  "42",
+		"GITHUB_DEPENDABOT_JOB_TOKEN":   "job",
+		"GITHUB_DEPENDABOT_CRED_TOKEN":  "cred",
+		"INPUT_UPDATER-IMAGE":           "custom:job",
+		"INPUT_PULL-IMAGES":             "false",
+		"INPUT_SKIP-IMAGE-VERIFICATION": "true",
+		"INPUT_TIMEOUT":                 "3h",
+		"INPUT_VOLUMES":                 "\n/github/workspace/cache:/cache\n/github/workspace/data:/data:ro\n",
+		"INPUT_UPDATER-ENV":             "CACHE_PATH=/cache\nVALUE=a=b\n",
 	}
 	cfg, err := readConfig(func(k string) string { return env[k] })
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.apiURL != "https://dependabot.example/api" || cfg.jobToken != "job" || cfg.credentialsToken != "cred" ||
-		cfg.pullImages || cfg.timeout != 3*time.Hour || cfg.updaterImage != "custom:job" ||
+		cfg.pullImages || !cfg.skipImageVerification || cfg.timeout != 3*time.Hour || cfg.updaterImage != "custom:job" ||
 		len(cfg.volumes) != 2 || !reflect.DeepEqual(cfg.updaterEnv, []string{"CACHE_PATH=/cache", "VALUE=a=b"}) {
 		t.Fatalf("incorrect config: %+v", cfg)
 	}
 	for key, invalid := range map[string]string{
 		"INPUT_API-URL": "http://example.com", "INPUT_JOB-ID": "../42",
 		"INPUT_PULL-IMAGES": "yes", "INPUT_TIMEOUT": "0",
-		"INPUT_UPDATER-ENV": "INVALID", "GITHUB_DEPENDABOT_JOB_TOKEN": "",
+		"INPUT_SKIP-IMAGE-VERIFICATION": "yes",
+		"INPUT_UPDATER-ENV":             "INVALID", "GITHUB_DEPENDABOT_JOB_TOKEN": "",
 	} {
 		t.Run(key, func(t *testing.T) {
 			_, err := readConfig(func(k string) string {
@@ -45,6 +47,19 @@ func TestReadConfig(t *testing.T) {
 			})
 			if err == nil {
 				t.Fatalf("accepted invalid %s", key)
+			}
+		})
+	}
+	for _, value := range []string{"", "false", "true"} {
+		t.Run("skip-image-verification="+value, func(t *testing.T) {
+			cfg, err := readConfig(func(k string) string {
+				if k == "INPUT_SKIP-IMAGE-VERIFICATION" {
+					return value
+				}
+				return env[k]
+			})
+			if err != nil || cfg.skipImageVerification != (value == "true") {
+				t.Fatalf("verification input %q = %v, %v", value, cfg.skipImageVerification, err)
 			}
 		})
 	}
