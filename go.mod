@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/containerd/errdefs v1.0.0
-	github.com/docker/cli v29.9.0+incompatible
+	github.com/docker/cli v29.9.1+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/google/go-containerregistry v0.22.1
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
