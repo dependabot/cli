@@ -52,6 +52,9 @@ Maintainers can create a new release by following these instructions:
 2. Determine the appropriate version number for the release
    following [SemVer] guidelines.
 3. Click the <kbd>Draft a new release</kbd> button
+   Include the minimum Go version in the release notes whenever it changes,
+   including changes required by dependencies. Keep the README installation
+   requirements and the minimum-version CI job in sync with `go.mod`.
 4. Click the <kbd>Choose a tag</kbd> button
 5. Type in the version number for the release preceded by a `v`
 6. Click the <kbd>Publish release</kbd> button

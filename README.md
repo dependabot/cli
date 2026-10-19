@@ -12,11 +12,14 @@ The `dependabot` CLI is a tool for running Dependabot update jobs.
 
 Use any of the following for a pain-free installation:
 
-* If you have [`go`](https://go.dev/doc/install) installed, you can run:
+* If you have [`Go 1.27.0 or newer`](https://go.dev/doc/install) installed, you can run:
    ```shell
    go install github.com/dependabot/cli/cmd/dependabot@latest
    ```
    The benefit of this method is that re-running the command will always update to the latest version.
+   The minimum Go version is required by the CLI's Sigstore dependencies.
+   If `GOTOOLCHAIN=local` is set, Go cannot download a newer toolchain automatically;
+   upgrade Go before installing, or use a pre-built binary instead.
 * You can download a pre-built binary from the [releases] page.
 * On Mac or Linux, you can run `brew install dependabot`
 
