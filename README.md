@@ -20,6 +20,9 @@ Use any of the following for a pain-free installation:
    The minimum Go version is required by the CLI's Sigstore dependencies.
    If `GOTOOLCHAIN=local` is set, Go cannot download a newer toolchain automatically;
    upgrade Go before installing, or use a pre-built binary instead.
+   If you must build with Go 1.26, use
+   `go install github.com/dependabot/cli/cmd/dependabot@v1.95.0`.
+   This older release omits subsequent fixes and features; prefer a current pre-built binary.
 * You can download a pre-built binary from the [releases] page.
 * On Mac or Linux, you can run `brew install dependabot`
 
