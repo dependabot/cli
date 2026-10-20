@@ -287,6 +287,7 @@ func checkCredAccess(ctx context.Context, job *model.Job, creds []model.Credenti
 }
 
 var packageManagerLookup = map[string]string{
+	"apm":           "apm",
 	"bazel":          "bazel",
 	"bun":            "bun",
 	"bundler":        "bundler",
