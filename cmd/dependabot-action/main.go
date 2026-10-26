@@ -52,9 +52,13 @@ func run(ctx context.Context, cfg config, api *jobClient, output io.Writer, runn
 		err = os.Setenv("DEPENDABOT_JOB_ID", cfg.jobID)
 	}
 	if err == nil {
+		apiURL := cfg.apiDockerURL
+		if apiURL == "" {
+			apiURL = cfg.apiURL
+		}
 		err = runner(ctx, infra.RunParams{
 			Job: job, Creds: creds, CredentialsResolved: true,
-			ApiUrl: cfg.apiURL, UpdaterImage: cfg.updaterImage, ProxyImage: cfg.proxyImage,
+			ApiUrl: apiURL, UpdaterImage: cfg.updaterImage, ProxyImage: cfg.proxyImage,
 			StorageImage: infra.StorageImageName, PullImages: cfg.pullImages,
 			SkipImageVerification: cfg.skipImageVerification,
 			Timeout:               cfg.timeout, Volumes: cfg.volumes, UpdaterEnvironmentVariables: cfg.updaterEnv,

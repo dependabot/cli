@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +12,7 @@ import (
 
 type config struct {
 	apiURL                string
+	apiDockerURL          string
 	jobID                 string
 	jobToken              string
 	credentialsToken      string
@@ -22,27 +25,85 @@ type config struct {
 	updaterEnv            []string
 }
 
+type eventInputs struct {
+	APIURL           string `json:"dependabotApiUrl"`
+	APIDockerURL     string `json:"dependabotApiDockerUrl"`
+	JobID            string `json:"jobId"`
+	JobToken         string `json:"jobToken"`
+	CredentialsToken string `json:"credentialsToken"`
+	UpdaterImage     string `json:"updaterImage"`
+}
+
+func readEventInputs(getenv func(string) string) (eventInputs, error) {
+	if getenv("GITHUB_EVENT_NAME") != "dynamic" {
+		return eventInputs{}, nil
+	}
+	path := getenv("GITHUB_EVENT_PATH")
+	if path == "" {
+		return eventInputs{}, fmt.Errorf("GITHUB_EVENT_PATH is required for Dependabot dynamic events")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return eventInputs{}, fmt.Errorf("cannot read GITHUB_EVENT_PATH")
+	}
+	var event struct {
+		Inputs *eventInputs `json:"inputs"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		return eventInputs{}, fmt.Errorf("invalid Dependabot event JSON")
+	}
+	if event.Inputs == nil {
+		return eventInputs{}, fmt.Errorf("Dependabot event must contain inputs")
+	}
+	return *event.Inputs, nil
+}
+
 func readConfig(getenv func(string) string) (config, error) {
+	event, err := readEventInputs(getenv)
+	if err != nil {
+		return config{}, err
+	}
 	input := func(name string) string { return strings.TrimSpace(getenv("INPUT_" + strings.ToUpper(name))) }
+	inputOrEvent := func(name, fallback string) string {
+		if value := input(name); value != "" {
+			return value
+		}
+		return strings.TrimSpace(fallback)
+	}
 	cfg := config{
-		apiURL: strings.TrimRight(input("api-url"), "/"), jobID: input("job-id"),
-		jobToken: getenv("GITHUB_DEPENDABOT_JOB_TOKEN"), credentialsToken: getenv("GITHUB_DEPENDABOT_CRED_TOKEN"),
-		updaterImage: input("updater-image"), proxyImage: input("proxy-image"),
+		apiURL:       strings.TrimRight(inputOrEvent("api-url", event.APIURL), "/"),
+		apiDockerURL: strings.TrimRight(inputOrEvent("api-docker-url", event.APIDockerURL), "/"),
+		jobID:        inputOrEvent("job-id", event.JobID),
+		jobToken:     getenv("GITHUB_DEPENDABOT_JOB_TOKEN"), credentialsToken: getenv("GITHUB_DEPENDABOT_CRED_TOKEN"),
+		updaterImage: inputOrEvent("updater-image", event.UpdaterImage), proxyImage: input("proxy-image"),
 		pullImages: true, timeout: time.Hour,
 		volumes: inputLines(input("volumes")), updaterEnv: inputLines(input("updater-env")),
 	}
+	if cfg.apiDockerURL == "" {
+		cfg.apiDockerURL = cfg.apiURL
+	}
 	if cfg.jobToken == "" {
-		cfg.jobToken = input("job-token")
+		cfg.jobToken = inputOrEvent("job-token", event.JobToken)
 	}
 	if cfg.credentialsToken == "" {
-		cfg.credentialsToken = input("credentials-token")
+		cfg.credentialsToken = inputOrEvent("credentials-token", event.CredentialsToken)
 	}
 	if cfg.jobToken == "" || cfg.credentialsToken == "" {
-		return config{}, fmt.Errorf("job-token and credentials-token are required (or their GITHUB_DEPENDABOT_* environment variables)")
+		return config{}, fmt.Errorf("job-token and credentials-token are required (or their GITHUB_DEPENDABOT_* environment variables or Dependabot dynamic event inputs)")
 	}
-	apiURL, err := url.Parse(cfg.apiURL)
-	if err != nil || apiURL.Scheme != "https" || apiURL.Host == "" || apiURL.User != nil || apiURL.RawQuery != "" || apiURL.Fragment != "" {
-		return config{}, fmt.Errorf("api-url must be an HTTPS URL without credentials, query, or fragment")
+	if cfg.apiURL == "" {
+		return config{}, fmt.Errorf("api-url is required: set the action input or Dependabot event inputs.dependabotApiUrl")
+	}
+	for _, endpoint := range []struct{ name, value string }{
+		{"api-url", cfg.apiURL}, {"api-docker-url", cfg.apiDockerURL},
+	} {
+		apiURL, err := url.Parse(endpoint.value)
+		if err != nil || apiURL.Scheme != "https" || apiURL.Host == "" || apiURL.User != nil || apiURL.RawQuery != "" || apiURL.Fragment != "" {
+			return config{}, fmt.Errorf("%s must be an HTTPS URL without credentials, query, or fragment", endpoint.name)
+		}
+	}
+	if cfg.jobID == "" {
+		return config{}, fmt.Errorf("job-id is required: set the action input or Dependabot event inputs.jobId")
 	}
 	if id, err := strconv.ParseUint(cfg.jobID, 10, 64); err != nil || id == 0 {
 		return config{}, fmt.Errorf("job-id must be a positive integer")

@@ -3,19 +3,22 @@ description: Run an API-backed Dependabot job using the CLI's container runner
 author: Dependabot
 inputs:
   api-url:
-    description: Dependabot API base URL, including any path prefix
-    required: true
+    description: Dependabot API base URL, including any path prefix; required unless supplied by a Dependabot dynamic event
+    required: false
+  api-docker-url:
+    description: API base URL for updater and proxy containers; defaults to the dynamic event's Docker URL or api-url
+    required: false
   job-id:
-    description: Dependabot update job ID
-    required: true
+    description: Dependabot update job ID; required unless supplied by a Dependabot dynamic event
+    required: false
   job-token:
-    description: Job token (alternatively set GITHUB_DEPENDABOT_JOB_TOKEN)
+    description: Job token (alternatively set GITHUB_DEPENDABOT_JOB_TOKEN or use the Dependabot dynamic event)
     required: false
   credentials-token:
-    description: Credentials token (alternatively set GITHUB_DEPENDABOT_CRED_TOKEN)
+    description: Credentials token (alternatively set GITHUB_DEPENDABOT_CRED_TOKEN or use the Dependabot dynamic event)
     required: false
   updater-image:
-    description: Updater image override; otherwise selected from the job's package manager
+    description: Updater image override; otherwise taken from the dynamic event or selected from the job's package manager
     required: false
   proxy-image:
     description: Proxy image override
