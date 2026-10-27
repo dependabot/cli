@@ -3,6 +3,11 @@ set -eu
 grep -Fq '"password":"target$TOKEN"' /config.json
 grep -Fq '"token":"registry-secret"' /config.json
 grep -Fq '"accessible-repos":["org/private-library"]' /config.json
+grep -Fq '"token":"env$TOKEN"' /config.json
+grep -Fq '"custom-secret":"env-custom-secret"' /config.json
+grep -Fq '"token":"env-duplicate-secret"' /config.json
+grep -Fq '"password":"env-proxy-secret"' /config.json
+grep -Fq '"proxy-only":true' /config.json
 [ "$JOB_TOKEN" = "job-secret" ]
 [ "$JOB_ID" = "42" ]
 printf '%s\n' proxy-credentials-ok > /srv/index.html

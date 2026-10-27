@@ -43,7 +43,15 @@ func run(ctx context.Context, cfg config, api *jobClient, output io.Writer, runn
 	}
 	creds, err := api.credentials(ctx)
 	if err == nil {
+		var registryCreds []model.Credential
+		registryCreds, err = registryCredentials(os.Getenv("GITHUB_REGISTRIES_PROXY"), output)
+		creds = append(creds, registryCreds...)
+	}
+	if err == nil {
 		err = mask.credentials(creds)
+	}
+	if err == nil {
+		job.CredentialsMetadata, err = credentialsMetadata(creds)
 	}
 	if err == nil {
 		err = os.Setenv("JOB_TOKEN", cfg.jobToken)
@@ -119,7 +127,10 @@ func (m *masker) credentials(creds []model.Credential) error {
 	for _, cred := range creds {
 		for key, value := range cred {
 			switch key {
-			case "password", "token", "key", "auth-key", "private-key", "client-secret", "secret", "username":
+			case "type", "host", "registry", "url", "index-url", "env-key", "organization",
+				"replaces-base", "scope", "public-key-fingerprint", "repo", "proxy-only":
+				continue
+			default:
 				if secret, ok := value.(string); ok {
 					if err := m.add(secret); err != nil {
 						return err

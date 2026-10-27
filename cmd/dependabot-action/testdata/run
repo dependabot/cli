@@ -4,7 +4,10 @@ set -eu
 [ -z "$DEPENDABOT_JOB_TOKEN" ]
 [ -z "${GITHUB_DEPENDABOT_JOB_TOKEN:-}" ]
 [ -z "${GITHUB_DEPENDABOT_CRED_TOKEN:-}" ]
-! grep -Eq 'target|registry-secret|dependency-secret' "$DEPENDABOT_JOB_PATH"
+[ -z "${GITHUB_REGISTRIES_PROXY:-}" ]
+! grep -Eq 'target|registry-secret|dependency-secret|env[$]TOKEN|env-custom-secret|env-duplicate-secret|env-proxy-secret|proxy-only.example|jit_access|accessible-repos' "$DEPENDABOT_JOB_PATH"
+grep -Fq '"registry":"registry.example/npm/"' "$DEPENDABOT_JOB_PATH"
+[ "$(grep -o '"registry":"registry.example/npm/"' "$DEPENDABOT_JOB_PATH" | wc -l)" -eq 1 ]
 grep -Fq '"commit":"0123456789012345678901234567890123456789"' "$DEPENDABOT_JOB_PATH"
 printf 'job=%s\n' "$DEPENDABOT_JOB_ID" > "$CACHE_PATH/result"
 for attempt in $(seq 1 20); do

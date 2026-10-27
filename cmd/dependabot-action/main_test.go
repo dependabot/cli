@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,8 +23,26 @@ const testJob = `{"data":{"attributes":{"command":"update","package-manager":"np
 const testCredentials = `{"data":{"attributes":{"credentials":[{"type":"git_source","host":"github.com","password":"target$TOKEN","accessible-repos":["org/repo"]},{"type":"git_source","host":"github.com","password":"dependency-secret","accessible-repos":["org/private-library"]},{"type":"npm_registry","token":"registry-secret"},{"type":"jit_access","endpoint":"/update_jobs/42/create_jit_access"}]}}}`
 
 func TestRunHostedJob(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		registries string
+		added      bool
+	}{
+		{name: "API credentials only"},
+		{name: "API and environment credentials", registries: base64.StdEncoding.EncodeToString([]byte(`[{"type":"npm_registry","url":"https://registry.example/npm/","token":"env$TOKEN","custom-secret":"env-custom-secret"},{"type":"docker_registry","registry":"proxy.example","password":"proxy-secret","proxy-only":true}]`)), added: true},
+		{name: "malformed environment credentials", registries: "do-not-log-secret%%%"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testRunHostedJob(t, tc.registries, tc.added)
+		})
+	}
+}
+
+func testRunHostedJob(t *testing.T, registries string, added bool) {
+	t.Helper()
 	t.Setenv("JOB_TOKEN", "")
 	t.Setenv("DEPENDABOT_JOB_ID", "")
+	t.Setenv("GITHUB_REGISTRIES_PROXY", registries)
 	var paths []string
 	var output bytes.Buffer
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +93,26 @@ func TestRunHostedJob(t *testing.T) {
 		if params.Job.Command != "update" || params.Job.Source.Hostname == nil || *params.Job.Source.Hostname != "github.com" || params.Job.Source.Commit != "0123456789012345678901234567890123456789" {
 			t.Fatalf("job was changed: %+v", params.Job)
 		}
-		if len(params.Creds) != 4 || params.Creds[0]["password"] != "target$TOKEN" || !params.CredentialsResolved {
+		wantCreds := 4
+		wantMetadata := []model.Credential{{"type": "git_source", "host": "github.com"}, {"type": "npm_registry"}}
+		if added {
+			wantCreds += 2
+			wantMetadata = append(wantMetadata, model.Credential{
+				"type": "npm_registry", "url": "https://registry.example/npm/", "registry": "registry.example/npm/",
+			})
+			if params.Creds[4]["token"] != "env$TOKEN" || params.Creds[4]["registry"] != nil || params.Creds[5]["proxy-only"] != true {
+				t.Fatalf("environment credentials were changed: %+v", params.Creds)
+			}
+			for _, secret := range []string{"env$TOKEN", "env-custom-secret", "proxy-secret"} {
+				if !strings.Contains(output.String(), "::add-mask::"+secret+"\n") {
+					t.Errorf("environment secret %q not masked before execution", secret)
+				}
+			}
+		}
+		if !reflect.DeepEqual(params.Job.CredentialsMetadata, wantMetadata) {
+			t.Fatalf("incorrect credential metadata: %+v; want %+v", params.Job.CredentialsMetadata, wantMetadata)
+		}
+		if len(params.Creds) != wantCreds || params.Creds[0]["password"] != "target$TOKEN" || !params.CredentialsResolved {
 			t.Fatalf("credentials not passed intact: %+v", params.Creds)
 		}
 		for _, secret := range []string{"target$TOKEN", "dependency-secret", "registry-secret", "cred-secret"} {
@@ -101,6 +139,9 @@ func TestRunHostedJob(t *testing.T) {
 	if err != nil || !called {
 		t.Fatalf("run() = %v, called = %v", err, called)
 	}
+	if strings.Contains(output.String(), "do-not-log-secret") {
+		t.Fatal("malformed environment value was logged")
+	}
 }
 
 func TestHostedJobFailures(t *testing.T) {
@@ -108,6 +149,7 @@ func TestHostedJobFailures(t *testing.T) {
 		t.Run(failure, func(t *testing.T) {
 			t.Setenv("JOB_TOKEN", "")
 			t.Setenv("DEPENDABOT_JOB_ID", "")
+			t.Setenv("GITHUB_REGISTRIES_PROXY", base64.StdEncoding.EncodeToString([]byte(`[{"type":"npm_registry","custom-secret":"env-custom-secret"}]`)))
 			var paths []string
 			var report string
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -167,12 +209,13 @@ func TestHostedJobFailures(t *testing.T) {
 					cancel()
 					return context.Canceled
 				}
-				return errors.New("updater failed with registry-secret")
+				return errors.New("updater failed with registry-secret and env-custom-secret")
 			})
 			if err == nil {
 				t.Fatal("failure was swallowed")
 			}
-			if strings.Contains(err.Error(), "do-not-log-response") || strings.Contains(err.Error(), "registry-secret") || strings.Contains(report, "registry-secret") {
+			if strings.Contains(err.Error(), "do-not-log-response") || strings.Contains(err.Error(), "registry-secret") || strings.Contains(report, "registry-secret") ||
+				strings.Contains(err.Error(), "env-custom-secret") || strings.Contains(report, "env-custom-secret") {
 				t.Fatalf("secret or response leaked: %v, %s", err, report)
 			}
 			switch failure {
@@ -221,7 +264,8 @@ func TestMaskCredentialFields(t *testing.T) {
 		"password": "password-value", "token": "token-value", "key": "key-value",
 		"auth-key": "auth-key-value", "username": "username-value",
 		"client-secret": "client-secret-value", "private-key": "private-key-value",
-		"secret": "secret-value",
+		"secret":        "secret-value",
+		"custom-secret": "custom-secret-value",
 	}}
 	if err := mask.credentials(creds); err != nil {
 		t.Fatal(err)

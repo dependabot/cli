@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -98,6 +99,11 @@ func TestDockerAction(t *testing.T) {
 	server.StartTLS()
 	defer server.Close()
 	port := server.Listener.Addr().(*net.TCPAddr).Port
+	registryCredentials := base64.StdEncoding.EncodeToString([]byte(`[
+		{"type":"npm_registry","url":"https://registry.example/npm/","token":"env$TOKEN","custom-secret":"env-custom-secret"},
+		{"type":"npm_registry","url":"https://registry.example/npm/","token":"env-duplicate-secret"},
+		{"type":"docker_registry","registry":"proxy-only.example","password":"env-proxy-secret","proxy-only":true}
+	]`))
 
 	for _, tc := range []struct {
 		event   bool
@@ -140,6 +146,7 @@ func TestDockerAction(t *testing.T) {
 				"--env", "SSL_CERT_FILE=/github/workspace/ca.pem",
 				"--env", "GITHUB_DEPENDABOT_JOB_TOKEN=job-secret",
 				"--env", "GITHUB_DEPENDABOT_CRED_TOKEN=cred-secret",
+				"--env", "GITHUB_REGISTRIES_PROXY=" + registryCredentials,
 				"--env", "INPUT_PROXY-IMAGE=" + proxyImage,
 				"--env", "INPUT_PULL-IMAGES=false",
 				"--env", "INPUT_SKIP-IMAGE-VERIFICATION=true",
@@ -173,7 +180,10 @@ func TestDockerAction(t *testing.T) {
 			if !bytes.Contains(out, []byte("proxy-credentials-ok")) {
 				t.Fatalf("proxy did not receive literal credentials\n%s", out)
 			}
-			for _, secret := range []string{"job-secret", "cred-secret", "target$TOKEN", "dependency-secret", "registry-secret"} {
+			for _, secret := range []string{
+				"job-secret", "cred-secret", "target$TOKEN", "dependency-secret", "registry-secret",
+				"env$TOKEN", "env-custom-secret", "env-duplicate-secret", "env-proxy-secret",
+			} {
 				if !bytes.Contains(out, []byte("::add-mask::"+secret)) {
 					t.Errorf("missing mask for %q", secret)
 				}
