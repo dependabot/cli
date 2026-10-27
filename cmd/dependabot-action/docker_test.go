@@ -99,8 +99,16 @@ func TestDockerAction(t *testing.T) {
 	defer server.Close()
 	port := server.Listener.Addr().(*net.TCPAddr).Port
 
-	for _, failure := range []bool{false, true} {
-		t.Run(fmt.Sprintf("update/failure=%v", failure), func(t *testing.T) {
+	for _, tc := range []struct {
+		event   bool
+		failure bool
+	}{
+		{event: false, failure: false},
+		{event: false, failure: true},
+		{event: true, failure: false},
+		{event: true, failure: true},
+	} {
+		t.Run(fmt.Sprintf("update/event=%v/failure=%v", tc.event, tc.failure), func(t *testing.T) {
 			dir := t.TempDir()
 			if err := os.Chmod(dir, 0755); err != nil {
 				t.Fatal(err)
@@ -118,7 +126,7 @@ func TestDockerAction(t *testing.T) {
 			mu.Lock()
 			requests = nil
 			mu.Unlock()
-			name := fmt.Sprintf("dependabot-action-test-%s-update-%v", suffix, failure)
+			name := fmt.Sprintf("dependabot-action-test-%s-event-%v-failure-%v", suffix, tc.event, tc.failure)
 			t.Cleanup(func() {
 				if out, err := exec.Command("docker", "rm", "-f", name).CombinedOutput(); err != nil {
 					t.Logf("Action container cleanup: %v\n%s", err, out)
@@ -130,22 +138,32 @@ func TestDockerAction(t *testing.T) {
 				"--volume", "/var/run/docker.sock:/var/run/docker.sock",
 				"--volume", dir + ":/github/workspace",
 				"--env", "SSL_CERT_FILE=/github/workspace/ca.pem",
-				"--env", fmt.Sprintf("INPUT_API-URL=https://host.docker.internal:%d/api", port),
-				"--env", "INPUT_JOB-ID=42",
 				"--env", "GITHUB_DEPENDABOT_JOB_TOKEN=job-secret",
 				"--env", "GITHUB_DEPENDABOT_CRED_TOKEN=cred-secret",
-				"--env", "INPUT_UPDATER-IMAGE=" + updaterImage,
 				"--env", "INPUT_PROXY-IMAGE=" + proxyImage,
 				"--env", "INPUT_PULL-IMAGES=false",
 				"--env", "INPUT_SKIP-IMAGE-VERIFICATION=true",
 				"--env", "INPUT_TIMEOUT=1m",
 				"--env", "INPUT_VOLUMES=/github/workspace/cache:/cache",
-				"--env", fmt.Sprintf("INPUT_UPDATER-ENV=CACHE_PATH=/cache\nFAIL=%v", failure),
+				"--env", fmt.Sprintf("INPUT_UPDATER-ENV=CACHE_PATH=/cache\nFAIL=%v", tc.failure),
 				"--env", "TOKEN=must-not-be-expanded",
-				actionImage,
 			}
+			if tc.event {
+				payload := fmt.Sprintf(`{"inputs":{"dependabotApiUrl":"https://host.docker.internal:%d/api","jobId":"42","updaterImage":%q}}`, port, updaterImage)
+				if err := os.WriteFile(filepath.Join(dir, "event.json"), []byte(payload), 0644); err != nil {
+					t.Fatal(err)
+				}
+				args = append(args, "--env", "GITHUB_EVENT_NAME=dynamic", "--env", "GITHUB_EVENT_PATH=/github/workspace/event.json")
+			} else {
+				args = append(args,
+					"--env", fmt.Sprintf("INPUT_API-URL=https://host.docker.internal:%d/api", port),
+					"--env", "INPUT_JOB-ID=42",
+					"--env", "INPUT_UPDATER-IMAGE="+updaterImage,
+				)
+			}
+			args = append(args, actionImage)
 			out, err := exec.CommandContext(t.Context(), "docker", args...).CombinedOutput()
-			if (err != nil) != failure {
+			if (err != nil) != tc.failure {
 				t.Fatalf("Action exit = %v\n%s", err, out)
 			}
 			data, readErr := os.ReadFile(filepath.Join(cache, "result"))
@@ -164,7 +182,7 @@ func TestDockerAction(t *testing.T) {
 			got := strings.Join(requests, ",")
 			mu.Unlock()
 			want := "details,credentials"
-			if failure {
+			if tc.failure {
 				want += ",record_update_job_error,mark_as_processed"
 			}
 			if got != want {

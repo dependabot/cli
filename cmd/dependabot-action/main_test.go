@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/dependabot/cli/internal/infra"
 	"github.com/dependabot/cli/internal/model"
@@ -49,17 +48,25 @@ func TestRunHostedJob(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	cfg := config{
-		apiURL: server.URL + "/prefix", jobID: "42", jobToken: "job-secret", credentialsToken: "cred-secret",
-		updaterImage: "custom:job", proxyImage: "custom:proxy", pullImages: false,
-		skipImageVerification: true,
-		timeout:               3 * time.Hour, volumes: []string{"/github/workspace/cache:/cache"},
-		updaterEnv: []string{"CUSTOM_CACHE_PATH=/cache"},
+	eventPath := writeEventFile(t, fmt.Sprintf(`{"inputs":{
+		"dependabotApiUrl":%q,"dependabotApiDockerUrl":"https://updater.example/prefix",
+		"jobId":"42","updaterImage":"custom:job"
+	}}`, server.URL+"/prefix"))
+	env := map[string]string{
+		"GITHUB_EVENT_NAME": "dynamic", "GITHUB_EVENT_PATH": eventPath,
+		"GITHUB_DEPENDABOT_JOB_TOKEN": "job-secret", "GITHUB_DEPENDABOT_CRED_TOKEN": "cred-secret",
+		"INPUT_PROXY-IMAGE": "custom:proxy", "INPUT_PULL-IMAGES": "false",
+		"INPUT_SKIP-IMAGE-VERIFICATION": "true", "INPUT_TIMEOUT": "3h",
+		"INPUT_VOLUMES": "/github/workspace/cache:/cache", "INPUT_UPDATER-ENV": "CUSTOM_CACHE_PATH=/cache",
+	}
+	cfg, err := readConfig(func(key string) string { return env[key] })
+	if err != nil {
+		t.Fatal(err)
 	}
 	api := newJobClient(cfg)
 	api.http = server.Client()
 	called := false
-	err := run(context.Background(), cfg, api, &output, func(ctx context.Context, params infra.RunParams) error {
+	err = run(context.Background(), cfg, api, &output, func(ctx context.Context, params infra.RunParams) error {
 		called = true
 		if len(paths) != 2 {
 			t.Fatal("runner invoked before fetching both responses")
@@ -75,7 +82,7 @@ func TestRunHostedJob(t *testing.T) {
 				t.Errorf("%q not masked before execution", secret)
 			}
 		}
-		if params.ApiUrl != cfg.apiURL || params.UpdaterImage != cfg.updaterImage || params.ProxyImage != cfg.proxyImage ||
+		if params.ApiUrl != cfg.apiDockerURL || params.UpdaterImage != cfg.updaterImage || params.ProxyImage != cfg.proxyImage ||
 			params.PullImages || !params.SkipImageVerification || params.Timeout != cfg.timeout || params.StorageImage != infra.StorageImageName ||
 			!reflect.DeepEqual(params.Volumes, cfg.volumes) || !reflect.DeepEqual(params.UpdaterEnvironmentVariables, cfg.updaterEnv) {
 			t.Fatalf("incorrect runner options: %+v", params)
