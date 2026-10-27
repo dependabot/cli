@@ -67,6 +67,8 @@ type RunParams struct {
 	Output string
 	// ProxyCertPath is the path to a cert for the proxy to trust
 	ProxyCertPath string
+	// ProxyOptions configures hosted action behavior without changing CLI defaults.
+	ProxyOptions *ProxyOptions
 	// attempt to pull images if they aren't local?
 	PullImages bool
 	// SkipImageVerification permits unsigned development updater, proxy, and collector images.

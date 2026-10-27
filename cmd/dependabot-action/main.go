@@ -53,6 +53,10 @@ func run(ctx context.Context, cfg config, api *jobClient, output io.Writer, runn
 	if err == nil {
 		job.CredentialsMetadata, err = credentialsMetadata(creds)
 	}
+	var proxyOptions *infra.ProxyOptions
+	if err == nil {
+		proxyOptions, err = actionProxyOptions(cfg.apiURL, job.Experiments)
+	}
 	if err == nil {
 		err = os.Setenv("JOB_TOKEN", cfg.jobToken)
 	}
@@ -67,6 +71,7 @@ func run(ctx context.Context, cfg config, api *jobClient, output io.Writer, runn
 		err = runner(ctx, infra.RunParams{
 			Job: job, Creds: creds, CredentialsResolved: true,
 			ApiUrl: apiURL, UpdaterImage: cfg.updaterImage, ProxyImage: cfg.proxyImage,
+			ProxyOptions: proxyOptions,
 			StorageImage: infra.StorageImageName, PullImages: cfg.pullImages,
 			SkipImageVerification: cfg.skipImageVerification,
 			Timeout:               cfg.timeout, Volumes: cfg.volumes, UpdaterEnvironmentVariables: cfg.updaterEnv,

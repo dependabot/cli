@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -19,7 +20,7 @@ import (
 	"github.com/dependabot/cli/internal/model"
 )
 
-const testJob = `{"data":{"attributes":{"command":"update","package-manager":"npm_and_yarn","source":{"provider":"github","repo":"org/repo","hostname":"github.com","api-endpoint":"https://api.github.com","commit":"0123456789012345678901234567890123456789"},"credentials-metadata":[{"type":"git_source","host":"github.com"}]}}}`
+const testJob = `{"data":{"attributes":{"command":"update","package-manager":"npm_and_yarn","source":{"provider":"github","repo":"org/repo","hostname":"github.com","api-endpoint":"https://api.github.com","commit":"0123456789012345678901234567890123456789"},"credentials-metadata":[{"type":"git_source","host":"github.com"}],"experiments":{"proxy-feature":true}}}}`
 const testCredentials = `{"data":{"attributes":{"credentials":[{"type":"git_source","host":"github.com","password":"target$TOKEN","accessible-repos":["org/repo"]},{"type":"git_source","host":"github.com","password":"dependency-secret","accessible-repos":["org/private-library"]},{"type":"npm_registry","token":"registry-secret"},{"type":"jit_access","endpoint":"/update_jobs/42/create_jit_access"}]}}}`
 
 func TestRunHostedJob(t *testing.T) {
@@ -43,6 +44,7 @@ func testRunHostedJob(t *testing.T, registries string, added bool) {
 	t.Setenv("JOB_TOKEN", "")
 	t.Setenv("DEPENDABOT_JOB_ID", "")
 	t.Setenv("GITHUB_REGISTRIES_PROXY", registries)
+	t.Setenv("CUSTOM_CA_PATH", "")
 	var paths []string
 	var output bytes.Buffer
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +127,10 @@ func testRunHostedJob(t *testing.T, registries string, added bool) {
 			!reflect.DeepEqual(params.Volumes, cfg.volumes) || !reflect.DeepEqual(params.UpdaterEnvironmentVariables, cfg.updaterEnv) {
 			t.Fatalf("incorrect runner options: %+v", params)
 		}
+		if params.ProxyOptions == nil || params.ProxyOptions.APIURL != cfg.apiURL || !params.ProxyOptions.WaitForReady ||
+			!reflect.DeepEqual(params.ProxyOptions.Experiments, params.Job.Experiments) {
+			t.Fatalf("incorrect proxy options: %+v", params.ProxyOptions)
+		}
 		if params.Output != "" || params.Writer != nil {
 			t.Error("hosted jobs must not emit smoke test files or fake API output")
 		}
@@ -145,11 +151,15 @@ func testRunHostedJob(t *testing.T, registries string, added bool) {
 }
 
 func TestHostedJobFailures(t *testing.T) {
-	for _, failure := range []string{"details", "credentials", "runner", "report", "complete", "cancel"} {
+	for _, failure := range []string{"details", "credentials", "custom-ca", "runner", "report", "complete", "cancel"} {
 		t.Run(failure, func(t *testing.T) {
 			t.Setenv("JOB_TOKEN", "")
 			t.Setenv("DEPENDABOT_JOB_ID", "")
 			t.Setenv("GITHUB_REGISTRIES_PROXY", base64.StdEncoding.EncodeToString([]byte(`[{"type":"npm_registry","custom-secret":"env-custom-secret"}]`)))
+			t.Setenv("CUSTOM_CA_PATH", "")
+			if failure == "custom-ca" {
+				t.Setenv("CUSTOM_CA_PATH", filepath.Join(t.TempDir(), "missing.pem"))
+			}
 			var paths []string
 			var report string
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -205,6 +215,9 @@ func TestHostedJobFailures(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			err := run(ctx, cfg, api, &output, func(context.Context, infra.RunParams) error {
+				if failure == "custom-ca" {
+					t.Fatal("runner invoked after custom CA read failed")
+				}
 				if failure == "cancel" {
 					cancel()
 					return context.Canceled

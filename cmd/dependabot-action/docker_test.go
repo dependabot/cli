@@ -144,6 +144,7 @@ func TestDockerAction(t *testing.T) {
 				"--volume", "/var/run/docker.sock:/var/run/docker.sock",
 				"--volume", dir + ":/github/workspace",
 				"--env", "SSL_CERT_FILE=/github/workspace/ca.pem",
+				"--env", "CUSTOM_CA_PATH=/github/workspace/ca.pem",
 				"--env", "GITHUB_DEPENDABOT_JOB_TOKEN=job-secret",
 				"--env", "GITHUB_DEPENDABOT_CRED_TOKEN=cred-secret",
 				"--env", "GITHUB_REGISTRIES_PROXY=" + registryCredentials,
@@ -152,11 +153,11 @@ func TestDockerAction(t *testing.T) {
 				"--env", "INPUT_SKIP-IMAGE-VERIFICATION=true",
 				"--env", "INPUT_TIMEOUT=1m",
 				"--env", "INPUT_VOLUMES=/github/workspace/cache:/cache",
-				"--env", fmt.Sprintf("INPUT_UPDATER-ENV=CACHE_PATH=/cache\nFAIL=%v", tc.failure),
+				"--env", fmt.Sprintf("INPUT_UPDATER-ENV=CACHE_PATH=/cache\nFAIL=%v\nEXPECTED_UPDATER_API_URL=https://updater.example/api", tc.failure),
 				"--env", "TOKEN=must-not-be-expanded",
 			}
 			if tc.event {
-				payload := fmt.Sprintf(`{"inputs":{"dependabotApiUrl":"https://host.docker.internal:%d/api","jobId":"42","updaterImage":%q}}`, port, updaterImage)
+				payload := fmt.Sprintf(`{"inputs":{"dependabotApiUrl":"https://host.docker.internal:%d/api","dependabotApiDockerUrl":"https://updater.example/api","jobId":"42","updaterImage":%q}}`, port, updaterImage)
 				if err := os.WriteFile(filepath.Join(dir, "event.json"), []byte(payload), 0644); err != nil {
 					t.Fatal(err)
 				}
@@ -164,6 +165,7 @@ func TestDockerAction(t *testing.T) {
 			} else {
 				args = append(args,
 					"--env", fmt.Sprintf("INPUT_API-URL=https://host.docker.internal:%d/api", port),
+					"--env", "INPUT_API-DOCKER-URL=https://updater.example/api",
 					"--env", "INPUT_JOB-ID=42",
 					"--env", "INPUT_UPDATER-IMAGE="+updaterImage,
 				)

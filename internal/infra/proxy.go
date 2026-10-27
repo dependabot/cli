@@ -9,7 +9,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/dependabot/cli/internal/model"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
@@ -23,6 +26,16 @@ const proxyCertPath = "/usr/local/share/ca-certificates/custom-ca-cert.crt"
 
 // ProxyImageName is the default Docker image used by the proxy
 const ProxyImageName = "ghcr.io/dependabot/proxy:latest"
+
+type ProxyOptions struct {
+	APIURL       string
+	Experiments  model.Experiment
+	CACert       []byte
+	HTTPProxy    string
+	HTTPSProxy   string
+	NoProxy      string
+	WaitForReady bool
+}
 
 type Proxy struct {
 	cli         *client.Client
@@ -42,6 +55,27 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	proxyConfig := &Config{
 		Credentials: params.Creds,
 		CA:          ca,
+	}
+	apiURL := params.ApiUrl
+	if options := params.ProxyOptions; options != nil {
+		proxyConfig.Experiments = options.Experiments
+		if options.APIURL != "" {
+			apiURL = options.APIURL
+		}
+	}
+	env := proxyEnv(apiURL)
+	if options := params.ProxyOptions; options != nil {
+		for i, entry := range env {
+			name, _, _ := strings.Cut(entry, "=")
+			switch name {
+			case "HTTP_PROXY":
+				env[i] = name + "=" + options.HTTPProxy
+			case "HTTPS_PROXY":
+				env[i] = name + "=" + options.HTTPSProxy
+			case "NO_PROXY":
+				env[i] = name + "=" + options.NoProxy
+			}
+		}
 	}
 
 	hostCfg := &container.HostConfig{
@@ -79,7 +113,7 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	}
 	config := &container.Config{
 		Image: params.ProxyImage,
-		Env:   proxyEnv(params.ApiUrl),
+		Env:   env,
 		Entrypoint: []string{
 			"sh", "-c", "update-ca-certificates && /dependabot-proxy",
 		},
@@ -99,6 +133,16 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 	if err = putProxyConfig(ctx, cli, proxyConfig, proxyContainer.ID); err != nil {
 		_ = proxy.Close()
 		return nil, fmt.Errorf("failed to connect to network: %w", err)
+	}
+	if options := params.ProxyOptions; options != nil && len(options.CACert) != 0 {
+		cert, certErr := tarball(proxyCertPath, string(options.CACert))
+		if certErr == nil {
+			certErr = cli.CopyToContainer(ctx, proxyContainer.ID, "/", cert, container.CopyToContainerOptions{})
+		}
+		if certErr != nil {
+			_ = proxy.Close()
+			return nil, fmt.Errorf("failed to copy custom proxy CA certificate: %w", certErr)
+		}
 	}
 
 	// nil check since tests don't always need networks
@@ -128,8 +172,51 @@ func NewProxy(ctx context.Context, cli *client.Client, params *RunParams, nets *
 		// This should only happen during testing, adding a warning in case
 		log.Println("Warning: no-internet network not found")
 	}
+	if options := params.ProxyOptions; options != nil && options.WaitForReady {
+		if err := proxy.waitUntilReady(ctx); err != nil {
+			_ = proxy.Close()
+			return nil, err
+		}
+	}
 
 	return proxy, nil
+}
+
+func (p *Proxy) waitUntilReady(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	exec, err := p.cli.ContainerExecCreate(ctx, p.containerID, container.ExecOptions{
+		User: root,
+		Cmd: []string{
+			"timeout", "60", "sh", "-c",
+			`until nc -w 1 "$0" "$1" </dev/null; do sleep 0.1; done`, "127.0.0.1", "1080",
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("create proxy readiness check: %w", err)
+	}
+	if err := p.cli.ContainerExecStart(ctx, exec.ID, container.ExecStartOptions{Detach: true}); err != nil {
+		return fmt.Errorf("start proxy readiness check: %w", err)
+	}
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		status, err := p.cli.ContainerExecInspect(ctx, exec.ID)
+		if err != nil {
+			return fmt.Errorf("inspect proxy readiness check: %w", err)
+		}
+		if !status.Running {
+			if status.ExitCode != 0 {
+				return fmt.Errorf("proxy did not start accepting connections on port 1080 within 60 seconds")
+			}
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for proxy readiness: %w", ctx.Err())
+		case <-ticker.C:
+		}
+	}
 }
 
 // proxyEnv builds the environment variables passed to the proxy container.

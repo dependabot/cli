@@ -5,6 +5,7 @@ set -eu
 [ -z "${GITHUB_DEPENDABOT_JOB_TOKEN:-}" ]
 [ -z "${GITHUB_DEPENDABOT_CRED_TOKEN:-}" ]
 [ -z "${GITHUB_REGISTRIES_PROXY:-}" ]
+[ "$DEPENDABOT_API_URL" = "$EXPECTED_UPDATER_API_URL" ]
 ! grep -Eq 'target|registry-secret|dependency-secret|env[$]TOKEN|env-custom-secret|env-duplicate-secret|env-proxy-secret|proxy-only.example|jit_access|accessible-repos' "$DEPENDABOT_JOB_PATH"
 grep -Fq '"registry":"registry.example/npm/"' "$DEPENDABOT_JOB_PATH"
 [ "$(grep -o '"registry":"registry.example/npm/"' "$DEPENDABOT_JOB_PATH" | wc -l)" -eq 1 ]

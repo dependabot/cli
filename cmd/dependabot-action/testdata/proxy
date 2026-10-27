@@ -8,7 +8,13 @@ grep -Fq '"custom-secret":"env-custom-secret"' /config.json
 grep -Fq '"token":"env-duplicate-secret"' /config.json
 grep -Fq '"password":"env-proxy-secret"' /config.json
 grep -Fq '"proxy-only":true' /config.json
+grep -Fq '"experiments":{"proxy-feature":true}' /config.json
+grep -Fq 'BEGIN CERTIFICATE' /usr/local/share/ca-certificates/custom-ca-cert.crt
 [ "$JOB_TOKEN" = "job-secret" ]
 [ "$JOB_ID" = "42" ]
+case "$DEPENDABOT_API_URL" in
+  https://host.docker.internal:*/api) ;;
+  *) exit 1 ;;
+esac
 printf '%s\n' proxy-credentials-ok > /srv/index.html
 exec httpd -f -p 1080 -h /srv
