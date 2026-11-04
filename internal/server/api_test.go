@@ -51,6 +51,32 @@ func TestAPI_ServeHTTP(t *testing.T) {
 	})
 }
 
+func TestAPI_UnsupportedGet(t *testing.T) {
+	for _, path := range []string{
+		"/update_jobs/cli/blocked_versions?package-manager=go_modules",
+		"/update_jobs/cli/unknown_read",
+	} {
+		t.Run(path, func(t *testing.T) {
+			var stdout bytes.Buffer
+			api := &API{writer: &stdout}
+			request := httptest.NewRequest(http.MethodGet, path, nil)
+			response := httptest.NewRecorder()
+
+			api.ServeHTTP(response, request)
+
+			if response.Code != http.StatusNotImplemented {
+				t.Errorf("expected status %d, got %d", http.StatusNotImplemented, response.Code)
+			}
+			if len(api.Errors) != 0 || len(api.Actual.Output) != 0 || stdout.Len() != 0 {
+				t.Errorf("unsupported read recorded as an event: errors=%v outputs=%v stdout=%q", api.Errors, api.Actual.Output, stdout.String())
+			}
+			if api.cursor != 0 {
+				t.Errorf("unsupported read consumed an expectation: cursor=%d", api.cursor)
+			}
+		})
+	}
+}
+
 type Wrapper[T any] struct {
 	Data T `json:"data"`
 }

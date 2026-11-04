@@ -107,6 +107,12 @@ func (a *API) Complete() {
 
 // ServeHTTP handles requests to the server
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		// Updaters can tolerate unavailable read APIs, but an empty success response is malformed.
+		http.Error(w, "read API is not implemented by the local CLI", http.StatusNotImplemented)
+		return
+	}
+
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		err = fmt.Errorf("failed to read body: %w", err)
