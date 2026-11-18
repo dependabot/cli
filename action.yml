@@ -23,6 +23,12 @@ inputs:
   proxy-image:
     description: Proxy image override
     required: false
+  attestation-updater:
+    description: Expected GitHub signing workflow URL for the updater image
+    required: false
+  attestation-proxy:
+    description: Expected GitHub signing workflow URL for the proxy image
+    required: false
   pull-images:
     description: Pull images before running; false uses images already on the runner
     default: 'true'

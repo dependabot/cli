@@ -18,6 +18,8 @@ type config struct {
 	credentialsToken      string
 	updaterImage          string
 	proxyImage            string
+	attestationUpdater    string
+	attestationProxy      string
 	pullImages            bool
 	skipImageVerification bool
 	timeout               time.Duration
@@ -76,6 +78,7 @@ func readConfig(getenv func(string) string) (config, error) {
 		jobID:        inputOrEvent("job-id", event.JobID),
 		jobToken:     getenv("GITHUB_DEPENDABOT_JOB_TOKEN"), credentialsToken: getenv("GITHUB_DEPENDABOT_CRED_TOKEN"),
 		updaterImage: inputOrEvent("updater-image", event.UpdaterImage), proxyImage: input("proxy-image"),
+		attestationUpdater: input("attestation-updater"), attestationProxy: input("attestation-proxy"),
 		pullImages: true, timeout: time.Hour,
 		volumes: inputLines(input("volumes")), updaterEnv: inputLines(input("updater-env")),
 	}

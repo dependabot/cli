@@ -103,6 +103,52 @@ func TestRunHostedJob(t *testing.T) {
 	}
 }
 
+func TestActionSigningWorkflowInputs(t *testing.T) {
+	t.Setenv("JOB_TOKEN", "")
+	t.Setenv("DEPENDABOT_JOB_ID", "")
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/update_jobs/42/details":
+			fmt.Fprint(w, testJob)
+		case "/update_jobs/42/credentials":
+			fmt.Fprint(w, testCredentials)
+		default:
+			t.Errorf("unexpected request: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	const updater = "https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml"
+	const proxy = "https://github.com/example/proxy/.github/workflows/build.yml"
+	for _, tt := range []struct{ name, updater, proxy string }{
+		{"defaults", "", ""}, {"updater", updater, ""}, {"proxy", "", proxy}, {"both", updater, proxy},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			env := map[string]string{
+				"INPUT_API-URL": server.URL, "INPUT_JOB-ID": "42",
+				"INPUT_JOB-TOKEN": "job-token", "INPUT_CREDENTIALS-TOKEN": "credentials-token",
+				"INPUT_ATTESTATION-UPDATER": tt.updater, "INPUT_ATTESTATION-PROXY": tt.proxy,
+			}
+			cfg, err := readConfig(func(k string) string { return env[k] })
+			if err != nil {
+				t.Fatal(err)
+			}
+			api := newJobClient(cfg)
+			api.http = server.Client()
+			called := false
+			err = run(t.Context(), cfg, api, io.Discard, func(_ context.Context, params infra.RunParams) error {
+				called = true
+				if params.AttestationUpdater != tt.updater || params.AttestationProxy != tt.proxy || params.SkipImageVerification {
+					t.Fatalf("unexpected signing policies: updater=%q proxy=%q skip=%t", params.AttestationUpdater, params.AttestationProxy, params.SkipImageVerification)
+				}
+				return params.Validate()
+			})
+			if !called || err != nil {
+				t.Fatalf("called=%t err=%v", called, err)
+			}
+		})
+	}
+}
+
 func TestHostedJobFailures(t *testing.T) {
 	for _, failure := range []string{"details", "credentials", "runner", "report", "complete", "cancel"} {
 		t.Run(failure, func(t *testing.T) {

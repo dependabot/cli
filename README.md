@@ -95,6 +95,7 @@ Collector verification, pull, or startup failures stop the job.
 For another signed updater or proxy, pass `--attestation-updater` or `--attestation-proxy`
 with the workflow you trust, for example `https://github.com/example/builds/.github/workflows/proxy.yml`.
 Each CLI flag replaces the expected signer for that image only. Supply the workflow file URL without a ref.
+The Docker Action accepts the same workflow URLs through its `attestation-updater` and `attestation-proxy` inputs.
 The CLI checks the exact repository and workflow on `refs/heads/main` and looks for bundles in the image registry.
 Registry mirrors must preserve the image digest and attestation bundles.
 Missing or invalid attestations cause an error.
