@@ -23,6 +23,7 @@ import (
 
 const (
 	actionsIssuer               = "https://token.actions.githubusercontent.com"
+	corePRWorkflow              = "https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml"
 	provenancePredicate         = "https://slsa.dev/provenance/v1"
 	imageSignaturePredicate     = "https://sigstore.dev/cosign/sign/v1"
 	stableReleaseVersionPattern = `(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)`
@@ -39,6 +40,7 @@ type imageRole struct {
 	sourceRef       string
 	predicate       string
 	releaseWorkflow bool
+	prWorkflow      bool
 }
 
 var (
@@ -69,7 +71,29 @@ var (
 	stableReleaseRefRegex   = regexp.MustCompile("^" + stableReleaseRefPattern + "$")
 	stableImageVersionRegex = regexp.MustCompile("^v?" + stableReleaseVersionPattern + "$")
 	versionedImageTagRegex  = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+($|-)`)
+	workflowURLRegex        = regexp.MustCompile(`^(https://github\.com/[A-Za-z0-9-]+/[A-Za-z0-9_.-]+)/\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml$`)
 )
+
+func (role imageRole) withWorkflow(url string) (imageRole, error) {
+	if url == "" {
+		return role, nil
+	}
+	match := workflowURLRegex.FindStringSubmatch(url)
+	if match == nil {
+		return imageRole{}, fmt.Errorf("--attestation-%s expects https://github.com/OWNER/REPO/.github/workflows/FILE.yml", role.name)
+	}
+	role.repository = match[1]
+	role.workflow = url + "@" + role.sourceRef
+	if url == corePRWorkflow {
+		if role.name != updaterImageRole.name {
+			return imageRole{}, errors.New("the Core PR workflow is only supported for updater images")
+		}
+		role.prWorkflow = true
+		role.workflow = url
+		role.sourceRef = ""
+	}
+	return role, nil
+}
 
 func collectorRoleForImage(imageName string) (imageRole, error) {
 	ref, err := name.ParseReference(imageName)
@@ -141,23 +165,7 @@ func (v *imageVerifier) Verify(ctx context.Context, ref name.Digest, role imageR
 	if err := ctx.Err(); err != nil {
 		return verifiedImage{}, err
 	}
-	sanValue, sanPattern := workflow, ""
-	if role.releaseWorkflow && role.sourceRef == "" {
-		sanValue = ""
-		sanPattern = "^" + regexp.QuoteMeta(workflow) + "@" + stableReleaseRefPattern + "$"
-	}
-	san, err := verify.NewSANMatcher(sanValue, sanPattern)
-	if err != nil {
-		return verifiedImage{}, err
-	}
-	issuer, err := verify.NewIssuerMatcher(role.issuer, "")
-	if err != nil {
-		return verifiedImage{}, err
-	}
-	identity, err := verify.NewCertificateIdentity(san, issuer, certificate.Extensions{
-		SourceRepositoryURI: role.repository,
-		SourceRepositoryRef: role.sourceRef,
-	})
+	identity, err := role.certificateIdentity(workflow)
 	if err != nil {
 		return verifiedImage{}, err
 	}
@@ -245,6 +253,30 @@ func (v *imageVerifier) Verify(ctx context.Context, ref name.Digest, role imageR
 	return verifiedImage{}, errors.Join(failures...)
 }
 
+func (role imageRole) certificateIdentity(workflow string) (verify.CertificateIdentity, error) {
+	value, pattern := workflow, ""
+	switch {
+	case role.releaseWorkflow && role.sourceRef == "":
+		value = ""
+		pattern = "^" + regexp.QuoteMeta(workflow) + "@" + stableReleaseRefPattern + "$"
+	case role.prWorkflow:
+		value = ""
+		pattern = "^" + regexp.QuoteMeta(workflow) + `@refs/pull/[1-9][0-9]*/merge$`
+	}
+	san, err := verify.NewSANMatcher(value, pattern)
+	if err != nil {
+		return verify.CertificateIdentity{}, err
+	}
+	issuer, err := verify.NewIssuerMatcher(role.issuer, "")
+	if err != nil {
+		return verify.CertificateIdentity{}, err
+	}
+	return verify.NewCertificateIdentity(san, issuer, certificate.Extensions{
+		SourceRepositoryURI: role.repository,
+		SourceRepositoryRef: role.sourceRef,
+	})
+}
+
 func readImageBundle(reader io.ReadCloser) (*bundle.Bundle, error) {
 	defer reader.Close()
 	data, err := io.ReadAll(io.LimitReader(reader, maxBundleBytes+1))
@@ -269,6 +301,14 @@ func verifiedProducerCommit(result *verify.VerificationResult, role imageRole) (
 		return "", errors.New("attestation certificate has no producer commit")
 	}
 	cert := result.Signature.Certificate
+	if role.prWorkflow {
+		if cert.BuildTrigger != "pull_request" && cert.BuildTrigger != "pull_request_review" {
+			return "", fmt.Errorf("unexpected Core PR build event: %q", cert.BuildTrigger)
+		}
+		if cert.SubjectAlternativeName != role.workflow+"@"+cert.SourceRepositoryRef || cert.BuildConfigURI != cert.SubjectAlternativeName {
+			return "", errors.New("Core PR signer does not match the source ref and initiating workflow")
+		}
+	}
 	if role.releaseWorkflow {
 		if result.Statement.Type != "https://in-toto.io/Statement/v1" {
 			return "", errors.New("image signature must contain an in-toto v1 statement")

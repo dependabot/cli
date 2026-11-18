@@ -214,6 +214,47 @@ func TestImageVerifierCollectorRelease(t *testing.T) {
 	}
 }
 
+func TestCorePRWorkflowClaims(t *testing.T) {
+	role, err := updaterImageRole.withWorkflow(corePRWorkflow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := role.certificateIdentity(role.workflow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const ref = "refs/pull/42/merge"
+	for _, tt := range []struct {
+		signer, source, initiator, event string
+		want                             bool
+	}{
+		{ref, ref, ref, "pull_request_review", true},
+		{ref, "refs/pull/43/merge", ref, "pull_request", false},
+		{ref, ref, "refs/heads/main", "pull_request", false},
+		{ref, ref, ref, "workflow_dispatch", false},
+		{"refs/pull/topic/merge", "refs/pull/topic/merge", "refs/pull/topic/merge", "pull_request", false},
+		{"refs/pull/42/head", "refs/pull/42/head", "refs/pull/42/head", "pull_request", false},
+		{"refs/heads/main", "refs/heads/main", "refs/heads/main", "pull_request", false},
+	} {
+		cert := certificate.Summary{
+			SubjectAlternativeName: corePRWorkflow + "@" + tt.signer,
+			Extensions: certificate.Extensions{
+				Issuer: actionsIssuer, SourceRepositoryURI: role.repository, SourceRepositoryDigest: "producer",
+				SourceRepositoryRef: tt.source, BuildTrigger: tt.event, BuildConfigURI: corePRWorkflow + "@" + tt.initiator,
+			},
+		}
+		var result verify.VerificationResult
+		if err := json.Unmarshal([]byte(`{"statement":{"predicateType":"https://slsa.dev/provenance/v1"}}`), &result); err != nil {
+			t.Fatal(err)
+		}
+		result.Signature = &verify.SignatureVerificationResult{Certificate: &cert}
+		_, err := verifiedProducerCommit(&result, role)
+		if got := identity.Verify(cert) == nil && err == nil; got != tt.want {
+			t.Errorf("accepted=%v for %+v", got, tt)
+		}
+	}
+}
+
 func TestImageVerifierCollectorPinnedRelease(t *testing.T) {
 	reg := newAttestationTestRegistry(t, map[string][][]byte{
 		"collector": {attestationFixture(t, "collector.json")},

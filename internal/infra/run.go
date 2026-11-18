@@ -71,6 +71,9 @@ type RunParams struct {
 	PullImages bool
 	// SkipImageVerification permits unsigned development updater, proxy, and collector images.
 	SkipImageVerification bool
+	// Optional expected signing workflow URLs for the selected images.
+	AttestationUpdater string
+	AttestationProxy   string
 	// run an interactive shell?
 	Debug bool
 	// generate performance metrics?
@@ -104,6 +107,9 @@ type RunParams struct {
 var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 func (p *RunParams) Validate() error {
+	if p.SkipImageVerification && (p.AttestationUpdater != "" || p.AttestationProxy != "") {
+		return fmt.Errorf("expected signing workflows cannot be used with --skip-image-verification")
+	}
 	if p.Job == nil {
 		return fmt.Errorf("job is required")
 	}

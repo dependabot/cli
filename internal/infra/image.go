@@ -29,9 +29,17 @@ func verifyImages(ctx context.Context, cli *client.Client, params *RunParams, ne
 		selection imageSelection
 		verified  verifiedImage
 	}
+	proxy, err := proxyImageRole.withWorkflow(params.AttestationProxy)
+	if err != nil {
+		return err
+	}
+	updater, err := updaterImageRole.withWorkflow(params.AttestationUpdater)
+	if err != nil {
+		return err
+	}
 	images := []protectedImage{
-		{role: proxyImageRole, target: &params.ProxyImage},
-		{role: updaterImageRole, target: &params.UpdaterImage},
+		{role: proxy, target: &params.ProxyImage},
+		{role: updater, target: &params.UpdaterImage},
 	}
 	if params.CollectorConfigPath != "" {
 		role, err := collectorRoleForImage(params.CollectorImage)

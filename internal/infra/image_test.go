@@ -219,6 +219,42 @@ func TestVerifyImagesPinsPullAndContainerReferences(t *testing.T) {
 	}
 }
 
+func TestVerifyImagesCustomSigners(t *testing.T) {
+	reg := newAttestationTestRegistry(t, officialImageBundles(t), false)
+	const core = "https://github.com/dependabot/dependabot-core/.github/workflows/images-latest.yml"
+	const proxy = "https://github.com/dependabot/proxy/.github/workflows/ghcr.yml"
+	for _, tt := range []struct {
+		name, updater, proxy, wantErr string
+	}{
+		{"both expected workflows", proxy, core, ""},
+		{"updater override leaves default proxy", proxy, "", "proxy image"},
+		{"proxy override leaves default updater", "", core, "updater image"},
+		{"wrong repository", "https://github.com/example/proxy/.github/workflows/ghcr.yml", core, "updater image"},
+		{"wrong workflow", proxy + ".yml", core, "updater image"},
+		{"PR workflow for proxy", proxy, corePRWorkflow, "only supported for updater"},
+		{"URL includes a ref", proxy + "@refs/heads/topic", core, "--attestation-updater expects"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			params := verifiedImageTestParams(reg, true)
+			// Use a real signed image from a different producer for each role.
+			params.UpdaterImage, params.ProxyImage = params.ProxyImage, params.UpdaterImage
+			params.AttestationUpdater, params.AttestationProxy = tt.updater, tt.proxy
+			err := verifyImages(t.Context(), nil, &params, func(context.Context) (*imageVerifier, error) {
+				return testImageVerifier(t), nil
+			})
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("got %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil || params.UpdaterImage != reg.references["proxy"].Name() || params.ProxyImage != reg.references["updater"].Name() {
+				t.Fatalf("unexpected verified images: %s, %s: %v", params.UpdaterImage, params.ProxyImage, err)
+			}
+		})
+	}
+}
+
 func TestVerifyImagesCollector(t *testing.T) {
 	for _, configured := range []bool{false, true} {
 		t.Run(fmt.Sprintf("configured=%v", configured), func(t *testing.T) {
