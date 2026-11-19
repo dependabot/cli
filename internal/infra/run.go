@@ -71,7 +71,7 @@ type RunParams struct {
 	PullImages bool
 	// SkipImageVerification permits unsigned development updater, proxy, and collector images.
 	SkipImageVerification bool
-	// Optional expected signing workflow URLs for the selected images.
+	// Optional signing workflow selectors, or "none" for a trusted development image.
 	AttestationUpdater string
 	AttestationProxy   string
 	// run an interactive shell?
@@ -106,9 +106,21 @@ type RunParams struct {
 
 var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
+// ValidateImagePolicies checks CLI and Action inputs before either starts a job.
+func ValidateImagePolicies(updater, proxy string, skip bool) error {
+	if skip && (strings.TrimSpace(updater) != "" || strings.TrimSpace(proxy) != "") {
+		return fmt.Errorf("image policies cannot be used with --skip-image-verification")
+	}
+	if _, err := updaterImageRole.withWorkflow(updater); err != nil {
+		return err
+	}
+	_, err := proxyImageRole.withWorkflow(proxy)
+	return err
+}
+
 func (p *RunParams) Validate() error {
-	if p.SkipImageVerification && (p.AttestationUpdater != "" || p.AttestationProxy != "") {
-		return fmt.Errorf("expected signing workflows cannot be used with --skip-image-verification")
+	if err := ValidateImagePolicies(p.AttestationUpdater, p.AttestationProxy, p.SkipImageVerification); err != nil {
+		return err
 	}
 	if p.Job == nil {
 		return fmt.Errorf("job is required")
@@ -414,8 +426,11 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 
 	requestedProxyImage, requestedUpdaterImage := params.ProxyImage, params.UpdaterImage
 	requestedCollectorImage := params.CollectorImage
-	pullProtectedImage := func(ctx context.Context, cli *client.Client, imageName, _ string) error {
-		return pullImage(ctx, cli, imageName)
+	pullProtectedImage := func(imageName, requestedImage, policy string) error {
+		if params.SkipImageVerification || strings.TrimSpace(policy) == "none" {
+			return pullImage(ctx, cli, imageName)
+		}
+		return pullVerifiedImage(ctx, cli, imageName, requestedImage)
 	}
 	if params.SkipImageVerification {
 		log.Println("WARNING: updater, proxy, and OpenTelemetry collector image verification is disabled. Only run trusted development images.")
@@ -423,23 +438,22 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if err := verifyImages(ctx, cli, &params, newImageVerifier); err != nil {
 			return err
 		}
-		pullProtectedImage = pullVerifiedImage
 	}
 
 	if params.PullImages {
-		err = pullProtectedImage(ctx, cli, params.ProxyImage, requestedProxyImage)
+		err = pullProtectedImage(params.ProxyImage, requestedProxyImage, params.AttestationProxy)
 		if err != nil {
 			return err
 		}
 
 		if params.CollectorConfigPath != "" {
-			err = pullProtectedImage(ctx, cli, params.CollectorImage, requestedCollectorImage)
+			err = pullProtectedImage(params.CollectorImage, requestedCollectorImage, "")
 			if err != nil {
 				return fmt.Errorf("failed to pull OpenTelemetry collector image: %w", err)
 			}
 		}
 
-		err = pullProtectedImage(ctx, cli, params.UpdaterImage, requestedUpdaterImage)
+		err = pullProtectedImage(params.UpdaterImage, requestedUpdaterImage, params.AttestationUpdater)
 		if err != nil {
 			return err
 		}

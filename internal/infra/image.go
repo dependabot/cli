@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/image"
@@ -29,17 +30,24 @@ func verifyImages(ctx context.Context, cli *client.Client, params *RunParams, ne
 		selection imageSelection
 		verified  verifiedImage
 	}
-	proxy, err := proxyImageRole.withWorkflow(params.AttestationProxy)
-	if err != nil {
-		return err
-	}
-	updater, err := updaterImageRole.withWorkflow(params.AttestationUpdater)
-	if err != nil {
-		return err
-	}
-	images := []protectedImage{
-		{role: proxy, target: &params.ProxyImage},
-		{role: updater, target: &params.UpdaterImage},
+	var images []protectedImage
+	for _, img := range []struct {
+		role   imageRole
+		target *string
+		option string
+	}{
+		{proxyImageRole, &params.ProxyImage, params.AttestationProxy},
+		{updaterImageRole, &params.UpdaterImage, params.AttestationUpdater},
+	} {
+		if strings.TrimSpace(img.option) == "none" {
+			log.Printf("WARNING: %s image verification is disabled. Only run trusted development images.", img.role.name)
+			continue
+		}
+		role, err := img.role.withWorkflow(img.option)
+		if err != nil {
+			return err
+		}
+		images = append(images, protectedImage{role: role, target: img.target})
 	}
 	if params.CollectorConfigPath != "" {
 		role, err := collectorRoleForImage(params.CollectorImage)
@@ -47,6 +55,9 @@ func verifyImages(ctx context.Context, cli *client.Client, params *RunParams, ne
 			return fmt.Errorf("collector image %s: failed to select release policy: %w", params.CollectorImage, err)
 		}
 		images = append(images, protectedImage{role: role, target: &params.CollectorImage})
+	}
+	if len(images) == 0 {
+		return nil
 	}
 	for i := range images {
 		selected, err := selectImage(ctx, cli, *images[i].target, params.PullImages)
@@ -135,7 +146,7 @@ func cachedImageReference(ref name.Reference, repoDigests []string) (name.Digest
 		matched = digest
 	}
 	if len(matches) == 0 {
-		return name.Digest{}, errors.New("no matching repository digest for cached image. Unsigned development images require --skip-image-verification")
+		return name.Digest{}, errors.New("no matching repository digest for cached image")
 	}
 	if len(matches) > 1 {
 		return name.Digest{}, errors.New("multiple repository digests for cached image. Use an immutable image reference")

@@ -49,8 +49,8 @@ Available Commands:
   update      Perform an update job
 
 Flags:
-      --attestation-proxy string     expected GitHub signing workflow URL for the proxy image
-      --attestation-updater string   expected GitHub signing workflow URL for the updater image
+      --attestation-proxy string     proxy signing workflow URL[@ref], or none for a trusted local image
+      --attestation-updater string   updater signing workflow URL[@ref], or none for a trusted local image
   -h, --help                   help for dependabot
       --proxy-image string     container image to use for the proxy (default "ghcr.io/dependabot/proxy:latest")
       --skip-image-verification   skip updater, proxy, and configured OpenTelemetry collector image verification for trusted development images
@@ -94,9 +94,10 @@ Collector verification, pull, or startup failures stop the job.
 
 For another signed updater or proxy, pass `--attestation-updater` or `--attestation-proxy`
 with the workflow you trust, for example `https://github.com/example/builds/.github/workflows/proxy.yml`.
-Each CLI flag replaces the expected signer for that image only. Supply the workflow file URL without a ref.
-The Docker Action accepts the same workflow URLs through its `attestation-updater` and `attestation-proxy` inputs.
-The CLI checks the exact repository and workflow on `refs/heads/main` and looks for bundles in the image registry.
+Each flag applies to one image. A bare URL selects `refs/heads/main`. Append `@ref` to select
+another ref. In a ref, `*` matches one or more characters, including `/`. Quote patterns in the shell.
+The source repository and ref must match the signing workflow's repository and actual ref.
+The Docker Action accepts the same values through `attestation-updater` and `attestation-proxy`.
 Registry mirrors must preserve the image digest and attestation bundles.
 Missing or invalid attestations cause an error.
 
@@ -105,12 +106,12 @@ For an updater built by Dependabot Core's PR workflow, use its merge-commit imag
 ```sh
 dependabot update go_modules dependabot/cli \
   --updater-image "ghcr.io/dependabot/dependabot-updater-gomod:${MERGE_SHA:?set MERGE_SHA}" \
-  --attestation-updater https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml
+  --attestation-updater 'https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml@refs/pull/16708/merge'
 ```
 
-Only this updater workflow accepts `refs/pull/<positive number>/merge`, instead of `main`.
-The signed certificate must identify the same initiating and signing workflow on the same PR merge ref,
-with a `pull_request` or `pull_request_review` event. This verifies who built the image; it doesn't establish PR approval.
+Use `@refs/pull/*/merge` only if you trust builds from any PR.
+For a locally built updater, use `--pull=false --updater-image my-updater:dev --attestation-updater=none`.
+This skips verification for the updater only. Proxy and configured Collector images are still verified.
 
 With `--pull=false`, the CLI verifies the cached image's repository digest and runs that image.
 It does not switch to a newer registry tag.

@@ -231,8 +231,8 @@ func TestVerifyImagesCustomSigners(t *testing.T) {
 		{"proxy override leaves default updater", "", core, "updater image"},
 		{"wrong repository", "https://github.com/example/proxy/.github/workflows/ghcr.yml", core, "updater image"},
 		{"wrong workflow", proxy + ".yml", core, "updater image"},
-		{"PR workflow for proxy", proxy, corePRWorkflow, "only supported for updater"},
-		{"URL includes a ref", proxy + "@refs/heads/topic", core, "--attestation-updater expects"},
+		{"explicit refs", proxy + "@refs/heads/main", core + "@refs/heads/*", ""},
+		{"wrong ref", proxy + "@refs/heads/topic", core, "updater image"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			params := verifiedImageTestParams(reg, true)
@@ -255,6 +255,44 @@ func TestVerifyImagesCustomSigners(t *testing.T) {
 	}
 }
 
+func TestVerifyLocalImageWithoutAttestation(t *testing.T) {
+	for _, bypass := range []string{"updater", "proxy"} {
+		for _, signed := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/signed-peer=%t", bypass, signed), func(t *testing.T) {
+				bundles := officialImageBundles(t)
+				peer := "proxy"
+				if bypass == "proxy" {
+					peer = "updater"
+				}
+				if !signed {
+					delete(bundles, peer)
+				}
+				reg := newAttestationTestRegistry(t, bundles, false)
+				params := verifiedImageTestParams(reg, false)
+				skipped, checked := &params.UpdaterImage, &params.ProxyImage
+				if bypass == "proxy" {
+					params.AttestationProxy = " none "
+					skipped, checked = checked, skipped
+				} else {
+					params.AttestationUpdater = " none "
+				}
+				*skipped = "local/dev:latest"
+				ref := reg.references[peer].Name()
+				inspect := fixtureImageInspect(t, reg, peer)
+				d := newImageTestDaemon(t, map[string]image.InspectResponse{*skipped: {ID: "local-only"}, *checked: inspect, ref: inspect}, nil)
+				err := verifyImages(t.Context(), d.cli, &params, func(context.Context) (*imageVerifier, error) { return testImageVerifier(t), nil })
+				if signed {
+					if err != nil || *checked != ref || *skipped != "local/dev:latest" {
+						t.Fatalf("checked=%s skipped=%s err=%v", *checked, *skipped, err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), peer+" image") {
+					t.Fatalf("expected unsigned %s rejection: %v", peer, err)
+				}
+			})
+		}
+	}
+}
+
 func TestVerifyImagesCollector(t *testing.T) {
 	for _, configured := range []bool{false, true} {
 		t.Run(fmt.Sprintf("configured=%v", configured), func(t *testing.T) {
@@ -268,6 +306,7 @@ func TestVerifyImagesCollector(t *testing.T) {
 			ref := reg.references["collector"]
 			d := newImageTestDaemon(t, cached, map[string]image.InspectResponse{ref.Name(): fixtureImageInspect(t, reg, "collector")})
 			params := verifiedImageTestParams(reg, true)
+			params.AttestationUpdater, params.AttestationProxy = "none", "none"
 			params.CollectorImage = ref.Context().Tag("latest").Name()
 			if configured {
 				params.CollectorConfigPath = filepath.Join(t.TempDir(), "collector.yaml")

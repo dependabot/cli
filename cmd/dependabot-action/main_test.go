@@ -117,8 +117,8 @@ func TestActionSigningWorkflowInputs(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	const updater = "https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml"
-	const proxy = "https://github.com/example/proxy/.github/workflows/build.yml"
+	const updater = "none"
+	const proxy = "https://github.com/example/proxy/.github/workflows/build.yml@refs/tags/v*"
 	for _, tt := range []struct{ name, updater, proxy string }{
 		{"defaults", "", ""}, {"updater", updater, ""}, {"proxy", "", proxy}, {"both", updater, proxy},
 	} {

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -49,14 +48,6 @@ var rootCmd = &cobra.Command{
         $ dependabot test -f input.yml
 	`),
 	Version: Version(),
-	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-		for _, name := range []string{"attestation-updater", "attestation-proxy"} {
-			if flag := cmd.Flags().Lookup(name); flag.Changed && flag.Value.String() == "" {
-				return fmt.Errorf("--%s requires a signing workflow URL", name)
-			}
-		}
-		return nil
-	},
 }
 
 func Execute() {
@@ -75,6 +66,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&collectorImage, "collector-image", infra.CollectorImageName, "container image to use for the OpenTelemetry collector")
 	rootCmd.PersistentFlags().StringVar(&storageImage, "storage-image", infra.StorageImageName, "container image to use for the storage service")
 	rootCmd.PersistentFlags().BoolVar(&skipImageVerification, "skip-image-verification", false, "skip updater, proxy, and configured OpenTelemetry collector image verification for trusted development images")
-	rootCmd.PersistentFlags().StringVar(&attestationUpdater, "attestation-updater", "", "expected GitHub signing workflow URL for the updater image")
-	rootCmd.PersistentFlags().StringVar(&attestationProxy, "attestation-proxy", "", "expected GitHub signing workflow URL for the proxy image")
+	rootCmd.PersistentFlags().StringVar(&attestationUpdater, "attestation-updater", "", "updater signing workflow URL[@ref], or none for a trusted local image")
+	rootCmd.PersistentFlags().StringVar(&attestationProxy, "attestation-proxy", "", "proxy signing workflow URL[@ref], or none for a trusted local image")
 }

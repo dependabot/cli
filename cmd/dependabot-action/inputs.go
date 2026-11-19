@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dependabot/cli/internal/infra"
 )
 
 type config struct {
@@ -135,7 +137,7 @@ func readConfig(getenv func(string) string) (config, error) {
 			return config{}, fmt.Errorf("updater-env must contain one NAME=value per line")
 		}
 	}
-	return cfg, nil
+	return cfg, infra.ValidateImagePolicies(cfg.attestationUpdater, cfg.attestationProxy, cfg.skipImageVerification)
 }
 
 func inputLines(value string) []string {

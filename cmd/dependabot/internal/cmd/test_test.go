@@ -47,8 +47,8 @@ func TestSignerFlags(t *testing.T) {
 		old, changed := flag.Value.String(), flag.Changed
 		t.Cleanup(func() { _ = flag.Value.Set(old); flag.Changed = changed })
 	}
-	const updater = "https://github.com/example/images/.github/workflows/updater.yml"
-	const proxy = "https://github.com/example/images/.github/workflows/proxy.yml"
+	const updater = "https://github.com/example/images/.github/workflows/updater.yml@refs/pull/*/merge"
+	const proxy = "none"
 	called := false
 	executeTestJob = func(p infra.RunParams) error {
 		called = true

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -23,7 +24,6 @@ import (
 
 const (
 	actionsIssuer               = "https://token.actions.githubusercontent.com"
-	corePRWorkflow              = "https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml"
 	provenancePredicate         = "https://slsa.dev/provenance/v1"
 	imageSignaturePredicate     = "https://sigstore.dev/cosign/sign/v1"
 	stableReleaseVersionPattern = `(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)`
@@ -40,14 +40,13 @@ type imageRole struct {
 	sourceRef       string
 	predicate       string
 	releaseWorkflow bool
-	prWorkflow      bool
 }
 
 var (
 	updaterImageRole = imageRole{
 		name:       "updater",
 		repository: "https://github.com/dependabot/dependabot-core",
-		workflow:   "https://github.com/dependabot/dependabot-core/.github/workflows/images-latest.yml@refs/heads/main",
+		workflow:   "https://github.com/dependabot/dependabot-core/.github/workflows/images-latest.yml",
 		issuer:     actionsIssuer,
 		sourceRef:  "refs/heads/main",
 		predicate:  provenancePredicate,
@@ -55,7 +54,7 @@ var (
 	proxyImageRole = imageRole{
 		name:       "proxy",
 		repository: "https://github.com/dependabot/proxy",
-		workflow:   "https://github.com/dependabot/proxy/.github/workflows/ghcr.yml@refs/heads/main",
+		workflow:   "https://github.com/dependabot/proxy/.github/workflows/ghcr.yml",
 		issuer:     actionsIssuer,
 		sourceRef:  "refs/heads/main",
 		predicate:  provenancePredicate,
@@ -71,26 +70,27 @@ var (
 	stableReleaseRefRegex   = regexp.MustCompile("^" + stableReleaseRefPattern + "$")
 	stableImageVersionRegex = regexp.MustCompile("^v?" + stableReleaseVersionPattern + "$")
 	versionedImageTagRegex  = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+($|-)`)
-	workflowURLRegex        = regexp.MustCompile(`^(https://github\.com/[A-Za-z0-9-]+/[A-Za-z0-9_.-]+)/\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml$`)
+	workflowPath            = regexp.MustCompile(`^(/[^/]+/[^/]+)/\.github/workflows/[^/]+(?:/[^/]+)*$`)
 )
 
-func (role imageRole) withWorkflow(url string) (imageRole, error) {
-	if url == "" {
+func (role imageRole) withWorkflow(option string) (imageRole, error) {
+	option = strings.TrimSpace(option)
+	if option == "" || option == "none" {
 		return role, nil
 	}
-	match := workflowURLRegex.FindStringSubmatch(url)
-	if match == nil {
-		return imageRole{}, fmt.Errorf("--attestation-%s expects https://github.com/OWNER/REPO/.github/workflows/FILE.yml", role.name)
+	workflow, ref, hasRef := strings.Cut(option, "@")
+	u, err := url.Parse(workflow)
+	if err != nil || u.Scheme != "https" || u.Hostname() == "" || strings.ContainsAny(option, "?# \t\r\n") || (hasRef && ref == "") {
+		return imageRole{}, fmt.Errorf("invalid --attestation-%s: expected an HTTPS workflow URL with an optional @ref", role.name)
 	}
-	role.repository = match[1]
-	role.workflow = url + "@" + role.sourceRef
-	if url == corePRWorkflow {
-		if role.name != updaterImageRole.name {
-			return imageRole{}, errors.New("the Core PR workflow is only supported for updater images")
-		}
-		role.prWorkflow = true
-		role.workflow = url
-		role.sourceRef = ""
+	match := workflowPath.FindStringSubmatch(u.EscapedPath())
+	if match == nil {
+		return imageRole{}, fmt.Errorf("--attestation-%s expects /OWNER/REPO/.github/workflows/FILE", role.name)
+	}
+	role.repository = "https://" + u.Host + match[1]
+	role.workflow = workflow
+	if hasRef {
+		role.sourceRef = ref
 	}
 	return role, nil
 }
@@ -154,7 +154,7 @@ func (c contextHTTPClient) Do(req *http.Request) (*http.Response, error) {
 
 func (v *imageVerifier) Verify(ctx context.Context, ref name.Digest, role imageRole) (verified verifiedImage, err error) {
 	workflow := role.workflow
-	if role.releaseWorkflow && role.sourceRef != "" {
+	if role.sourceRef != "" {
 		workflow += "@" + role.sourceRef
 	}
 	defer func() {
@@ -255,13 +255,15 @@ func (v *imageVerifier) Verify(ctx context.Context, ref name.Digest, role imageR
 
 func (role imageRole) certificateIdentity(workflow string) (verify.CertificateIdentity, error) {
 	value, pattern := workflow, ""
+	exactRef := role.sourceRef
 	switch {
 	case role.releaseWorkflow && role.sourceRef == "":
 		value = ""
 		pattern = "^" + regexp.QuoteMeta(workflow) + "@" + stableReleaseRefPattern + "$"
-	case role.prWorkflow:
+	case strings.Contains(role.sourceRef, "*"):
 		value = ""
-		pattern = "^" + regexp.QuoteMeta(workflow) + `@refs/pull/[1-9][0-9]*/merge$`
+		pattern = "^" + regexp.QuoteMeta(role.workflow+"@") + strings.ReplaceAll(regexp.QuoteMeta(role.sourceRef), `\*`, ".+") + "$"
+		exactRef = "" // The source ref must match the verified SAN below.
 	}
 	san, err := verify.NewSANMatcher(value, pattern)
 	if err != nil {
@@ -273,7 +275,7 @@ func (role imageRole) certificateIdentity(workflow string) (verify.CertificateId
 	}
 	return verify.NewCertificateIdentity(san, issuer, certificate.Extensions{
 		SourceRepositoryURI: role.repository,
-		SourceRepositoryRef: role.sourceRef,
+		SourceRepositoryRef: exactRef,
 	})
 }
 
@@ -301,14 +303,6 @@ func verifiedProducerCommit(result *verify.VerificationResult, role imageRole) (
 		return "", errors.New("attestation certificate has no producer commit")
 	}
 	cert := result.Signature.Certificate
-	if role.prWorkflow {
-		if cert.BuildTrigger != "pull_request" && cert.BuildTrigger != "pull_request_review" {
-			return "", fmt.Errorf("unexpected Core PR build event: %q", cert.BuildTrigger)
-		}
-		if cert.SubjectAlternativeName != role.workflow+"@"+cert.SourceRepositoryRef || cert.BuildConfigURI != cert.SubjectAlternativeName {
-			return "", errors.New("Core PR signer does not match the source ref and initiating workflow")
-		}
-	}
 	if role.releaseWorkflow {
 		if result.Statement.Type != "https://in-toto.io/Statement/v1" {
 			return "", errors.New("image signature must contain an in-toto v1 statement")
@@ -316,9 +310,9 @@ func verifiedProducerCommit(result *verify.VerificationResult, role imageRole) (
 		if !stableReleaseRefRegex.MatchString(cert.SourceRepositoryRef) {
 			return "", fmt.Errorf("image signature certificate has no stable release ref: %q", cert.SourceRepositoryRef)
 		}
-		if cert.SubjectAlternativeName != role.workflow+"@"+cert.SourceRepositoryRef {
-			return "", errors.New("image signature workflow identity does not match its source ref")
-		}
+	}
+	if cert.SubjectAlternativeName != role.workflow+"@"+cert.SourceRepositoryRef {
+		return "", errors.New("image signature workflow identity does not match its source ref")
 	}
 	return cert.SourceRepositoryDigest, nil
 }
