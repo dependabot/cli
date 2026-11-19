@@ -56,6 +56,7 @@ func TestRunHostedJob(t *testing.T) {
 		"GITHUB_EVENT_NAME": "dynamic", "GITHUB_EVENT_PATH": eventPath,
 		"GITHUB_DEPENDABOT_JOB_TOKEN": "job-secret", "GITHUB_DEPENDABOT_CRED_TOKEN": "cred-secret",
 		"INPUT_PROXY-IMAGE": "custom:proxy", "INPUT_PULL-IMAGES": "false",
+		"INPUT_ATTESTATION-UPDATER": "none", "INPUT_ATTESTATION-PROXY": "https://github.com/example/images/.github/workflows/proxy.yml",
 		"INPUT_SKIP-IMAGE-VERIFICATION": "true", "INPUT_TIMEOUT": "3h",
 		"INPUT_VOLUMES": "/github/workspace/cache:/cache", "INPUT_UPDATER-ENV": "CUSTOM_CACHE_PATH=/cache",
 	}
@@ -83,6 +84,7 @@ func TestRunHostedJob(t *testing.T) {
 			}
 		}
 		if params.ApiUrl != cfg.apiDockerURL || params.UpdaterImage != cfg.updaterImage || params.ProxyImage != cfg.proxyImage ||
+			params.AttestationUpdater != "none" || params.AttestationProxy != env["INPUT_ATTESTATION-PROXY"] ||
 			params.PullImages || !params.SkipImageVerification || params.Timeout != cfg.timeout || params.StorageImage != infra.StorageImageName ||
 			!reflect.DeepEqual(params.Volumes, cfg.volumes) || !reflect.DeepEqual(params.UpdaterEnvironmentVariables, cfg.updaterEnv) {
 			t.Fatalf("incorrect runner options: %+v", params)

@@ -39,6 +39,37 @@ func TestTestCommand(t *testing.T) {
 	})
 }
 
+func TestSignerFlags(t *testing.T) {
+	original := executeTestJob
+	t.Cleanup(func() { executeTestJob = original })
+	for _, name := range []string{"attestation-updater", "attestation-proxy"} {
+		flag := rootCmd.PersistentFlags().Lookup(name)
+		old, changed := flag.Value.String(), flag.Changed
+		t.Cleanup(func() { _ = flag.Value.Set(old); flag.Changed = changed })
+	}
+	const updater = "https://github.com/example/images/.github/workflows/updater.yml@refs/pull/*/merge"
+	const proxy = "none"
+	called := false
+	executeTestJob = func(p infra.RunParams) error {
+		called = true
+		if p.AttestationUpdater != updater || p.AttestationProxy != proxy || p.SkipImageVerification {
+			t.Fatalf("unexpected verification options: %q, %q, skip=%v", p.AttestationUpdater, p.AttestationProxy, p.SkipImageVerification)
+		}
+		return nil
+	}
+	cmd := NewTestCommand()
+	cmd.Flags().AddFlagSet(rootCmd.PersistentFlags())
+	if err := cmd.ParseFlags([]string{"-f", "../../../../testdata/smoke-test.yml", "--attestation-updater", updater, "--attestation-proxy", proxy}); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("command did not call runner")
+	}
+}
+
 func TestTestCommandVerificationFlag(t *testing.T) {
 	flag := rootCmd.PersistentFlags().Lookup("skip-image-verification")
 	if flag == nil || flag.DefValue != "false" {

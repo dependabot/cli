@@ -71,6 +71,9 @@ type RunParams struct {
 	PullImages bool
 	// SkipImageVerification permits unsigned development updater, proxy, and collector images.
 	SkipImageVerification bool
+	// Optional signing workflow selectors, or "none" for a trusted development image.
+	AttestationUpdater string
+	AttestationProxy   string
 	// run an interactive shell?
 	Debug bool
 	// generate performance metrics?
@@ -408,8 +411,11 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 
 	requestedProxyImage, requestedUpdaterImage := params.ProxyImage, params.UpdaterImage
 	requestedCollectorImage := params.CollectorImage
-	pullProtectedImage := func(ctx context.Context, cli *client.Client, imageName, _ string) error {
-		return pullImage(ctx, cli, imageName)
+	pullProtectedImage := func(imageName, requestedImage, policy string) error {
+		if params.SkipImageVerification || strings.TrimSpace(policy) == "none" {
+			return pullImage(ctx, cli, imageName)
+		}
+		return pullVerifiedImage(ctx, cli, imageName, requestedImage)
 	}
 	if params.SkipImageVerification {
 		log.Println("WARNING: updater, proxy, and OpenTelemetry collector image verification is disabled. Only run trusted development images.")
@@ -417,23 +423,22 @@ func runContainers(ctx context.Context, params RunParams) (err error) {
 		if err := verifyImages(ctx, cli, &params, newImageVerifier); err != nil {
 			return err
 		}
-		pullProtectedImage = pullVerifiedImage
 	}
 
 	if params.PullImages {
-		err = pullProtectedImage(ctx, cli, params.ProxyImage, requestedProxyImage)
+		err = pullProtectedImage(params.ProxyImage, requestedProxyImage, params.AttestationProxy)
 		if err != nil {
 			return err
 		}
 
 		if params.CollectorConfigPath != "" {
-			err = pullProtectedImage(ctx, cli, params.CollectorImage, requestedCollectorImage)
+			err = pullProtectedImage(params.CollectorImage, requestedCollectorImage, "")
 			if err != nil {
 				return fmt.Errorf("failed to pull OpenTelemetry collector image: %w", err)
 			}
 		}
 
-		err = pullProtectedImage(ctx, cli, params.UpdaterImage, requestedUpdaterImage)
+		err = pullProtectedImage(params.UpdaterImage, requestedUpdaterImage, params.AttestationUpdater)
 		if err != nil {
 			return err
 		}

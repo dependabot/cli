@@ -45,7 +45,7 @@ var (
 	updaterImageRole = imageRole{
 		name:       "updater",
 		repository: "https://github.com/dependabot/dependabot-core",
-		workflow:   "https://github.com/dependabot/dependabot-core/.github/workflows/images-latest.yml@refs/heads/main",
+		workflow:   "https://github.com/dependabot/dependabot-core/.github/workflows/images-latest.yml",
 		issuer:     actionsIssuer,
 		sourceRef:  "refs/heads/main",
 		predicate:  provenancePredicate,
@@ -53,7 +53,7 @@ var (
 	proxyImageRole = imageRole{
 		name:       "proxy",
 		repository: "https://github.com/dependabot/proxy",
-		workflow:   "https://github.com/dependabot/proxy/.github/workflows/ghcr.yml@refs/heads/main",
+		workflow:   "https://github.com/dependabot/proxy/.github/workflows/ghcr.yml",
 		issuer:     actionsIssuer,
 		sourceRef:  "refs/heads/main",
 		predicate:  provenancePredicate,
@@ -70,6 +70,24 @@ var (
 	stableImageVersionRegex = regexp.MustCompile("^v?" + stableReleaseVersionPattern + "$")
 	versionedImageTagRegex  = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+($|-)`)
 )
+
+func (role imageRole) withWorkflow(option string) (imageRole, error) {
+	option = strings.TrimSpace(option)
+	if option == "" || option == "none" {
+		return role, nil
+	}
+	workflow, ref, hasRef := strings.Cut(option, "@")
+	repo, file, ok := strings.Cut(workflow, "/.github/workflows/")
+	if !ok || repo == "" || file == "" || (hasRef && ref == "") {
+		return imageRole{}, fmt.Errorf("--attestation-%s expects a workflow URL with an optional @ref", role.name)
+	}
+	role.repository = repo
+	role.workflow = workflow
+	if hasRef {
+		role.sourceRef = ref
+	}
+	return role, nil
+}
 
 func collectorRoleForImage(imageName string) (imageRole, error) {
 	ref, err := name.ParseReference(imageName)
@@ -130,7 +148,7 @@ func (c contextHTTPClient) Do(req *http.Request) (*http.Response, error) {
 
 func (v *imageVerifier) Verify(ctx context.Context, ref name.Digest, role imageRole) (verified verifiedImage, err error) {
 	workflow := role.workflow
-	if role.releaseWorkflow && role.sourceRef != "" {
+	if role.sourceRef != "" {
 		workflow += "@" + role.sourceRef
 	}
 	defer func() {
@@ -141,23 +159,7 @@ func (v *imageVerifier) Verify(ctx context.Context, ref name.Digest, role imageR
 	if err := ctx.Err(); err != nil {
 		return verifiedImage{}, err
 	}
-	sanValue, sanPattern := workflow, ""
-	if role.releaseWorkflow && role.sourceRef == "" {
-		sanValue = ""
-		sanPattern = "^" + regexp.QuoteMeta(workflow) + "@" + stableReleaseRefPattern + "$"
-	}
-	san, err := verify.NewSANMatcher(sanValue, sanPattern)
-	if err != nil {
-		return verifiedImage{}, err
-	}
-	issuer, err := verify.NewIssuerMatcher(role.issuer, "")
-	if err != nil {
-		return verifiedImage{}, err
-	}
-	identity, err := verify.NewCertificateIdentity(san, issuer, certificate.Extensions{
-		SourceRepositoryURI: role.repository,
-		SourceRepositoryRef: role.sourceRef,
-	})
+	identity, err := role.certificateIdentity(workflow)
 	if err != nil {
 		return verifiedImage{}, err
 	}
@@ -245,6 +247,32 @@ func (v *imageVerifier) Verify(ctx context.Context, ref name.Digest, role imageR
 	return verifiedImage{}, errors.Join(failures...)
 }
 
+func (role imageRole) certificateIdentity(workflow string) (verify.CertificateIdentity, error) {
+	value, pattern := workflow, ""
+	exactRef := role.sourceRef
+	switch {
+	case role.releaseWorkflow && role.sourceRef == "":
+		value = ""
+		pattern = "^" + regexp.QuoteMeta(workflow) + "@" + stableReleaseRefPattern + "$"
+	case strings.Contains(role.sourceRef, "*"):
+		value = ""
+		pattern = "^" + regexp.QuoteMeta(role.workflow+"@") + strings.ReplaceAll(regexp.QuoteMeta(role.sourceRef), `\*`, ".+") + "$"
+		exactRef = "" // The source ref must match the verified SAN below.
+	}
+	san, err := verify.NewSANMatcher(value, pattern)
+	if err != nil {
+		return verify.CertificateIdentity{}, err
+	}
+	issuer, err := verify.NewIssuerMatcher(role.issuer, "")
+	if err != nil {
+		return verify.CertificateIdentity{}, err
+	}
+	return verify.NewCertificateIdentity(san, issuer, certificate.Extensions{
+		SourceRepositoryURI: role.repository,
+		SourceRepositoryRef: exactRef,
+	})
+}
+
 func readImageBundle(reader io.ReadCloser) (*bundle.Bundle, error) {
 	defer reader.Close()
 	data, err := io.ReadAll(io.LimitReader(reader, maxBundleBytes+1))
@@ -276,9 +304,9 @@ func verifiedProducerCommit(result *verify.VerificationResult, role imageRole) (
 		if !stableReleaseRefRegex.MatchString(cert.SourceRepositoryRef) {
 			return "", fmt.Errorf("image signature certificate has no stable release ref: %q", cert.SourceRepositoryRef)
 		}
-		if cert.SubjectAlternativeName != role.workflow+"@"+cert.SourceRepositoryRef {
-			return "", errors.New("image signature workflow identity does not match its source ref")
-		}
+	}
+	if cert.SubjectAlternativeName != role.workflow+"@"+cert.SourceRepositoryRef {
+		return "", errors.New("image signature workflow identity does not match its source ref")
 	}
 	return cert.SourceRepositoryDigest, nil
 }

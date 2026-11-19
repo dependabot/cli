@@ -34,6 +34,8 @@ var (
 	collectorImage        string
 	storageImage          string
 	skipImageVerification bool
+	attestationUpdater    string
+	attestationProxy      string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -64,4 +66,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&collectorImage, "collector-image", infra.CollectorImageName, "container image to use for the OpenTelemetry collector")
 	rootCmd.PersistentFlags().StringVar(&storageImage, "storage-image", infra.StorageImageName, "container image to use for the storage service")
 	rootCmd.PersistentFlags().BoolVar(&skipImageVerification, "skip-image-verification", false, "skip updater, proxy, and configured OpenTelemetry collector image verification for trusted development images")
+	rootCmd.PersistentFlags().StringVar(&attestationUpdater, "attestation-updater", "", "updater signing workflow URL[@ref], or none for a trusted local image")
+	rootCmd.PersistentFlags().StringVar(&attestationProxy, "attestation-proxy", "", "proxy signing workflow URL[@ref], or none for a trusted local image")
 }

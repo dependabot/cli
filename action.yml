@@ -23,6 +23,12 @@ inputs:
   proxy-image:
     description: Proxy image override
     required: false
+  attestation-updater:
+    description: Updater signing workflow URL[@ref], or none for a trusted local image
+    required: false
+  attestation-proxy:
+    description: Proxy signing workflow URL[@ref], or none for a trusted local image
+    required: false
   pull-images:
     description: Pull images before running; false uses images already on the runner
     default: 'true'

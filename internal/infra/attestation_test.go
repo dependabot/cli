@@ -214,6 +214,106 @@ func TestImageVerifierCollectorRelease(t *testing.T) {
 	}
 }
 
+func TestSignedUpdaterFromPR(t *testing.T) {
+	const workflow = "https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml"
+	reg := newAttestationTestRegistry(t, map[string][][]byte{"updater": {attestationFixture(t, "updater-pr.json")}}, false)
+	ref := reg.references["updater"].Context().Digest("sha256:a1335f2aa7018177cbf2870269e4bd61984ed1bf9aa2c857d8938d34be8540ac")
+	for _, tt := range []struct {
+		option string
+		want   bool
+	}{
+		{"", false}, {workflow, false}, {workflow + "@refs/pull/16708/merge", true},
+		{workflow + "@refs/pull/*/merge", true}, {workflow + "@refs/pull/*/head", false},
+	} {
+		role, err := updaterImageRole.withWorkflow(tt.option)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := testImageVerifier(t).Verify(t.Context(), ref, role)
+		if (err == nil) != tt.want || (tt.want && got.producerCommit != "bdd7e180c32e5a08b7bed8d9c7f86c3a2275a170") {
+			t.Errorf("%q: producer=%q, err=%v", tt.option, got.producerCommit, err)
+		}
+		if tt.want {
+			if _, err := testImageVerifier(t).Verify(t.Context(), reg.references["updater"], role); err == nil {
+				t.Error("accepted a different digest")
+			}
+		}
+	}
+	role, err := updaterImageRole.withWorkflow(workflow + "@refs/pull/*/merge")
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherIssuer := role
+	otherIssuer.issuer = "https://unexpected.example"
+	if _, err := testImageVerifier(t).Verify(t.Context(), ref, otherIssuer); err == nil {
+		t.Fatal("accepted a different issuer")
+	}
+	b := &bundle.Bundle{}
+	if err := b.UnmarshalJSON(attestationFixture(t, "updater-pr.json")); err != nil {
+		t.Fatal(err)
+	}
+	b.GetDsseEnvelope().Signatures[0].Sig[0] ^= 1
+	data, err := b.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg = newAttestationTestRegistry(t, map[string][][]byte{"updater": {data}}, false)
+	if _, err := testImageVerifier(t).Verify(t.Context(), reg.references["updater"].Context().Digest(ref.DigestStr()), role); err == nil {
+		t.Fatal("accepted a tampered PR signature")
+	}
+}
+
+func TestWorkflowClaims(t *testing.T) {
+	const repo = "https://github.com/example/builds"
+	const workflow = repo + "/.github/workflows/build.yml"
+	for _, tt := range []struct {
+		pattern, signer, repo, source string
+		want                          bool
+	}{
+		{"refs/heads/*", "refs/heads/feat/x", repo, "refs/heads/feat/x", true},
+		{"refs/tags/v*", "refs/tags/v1.2.3", repo, "refs/tags/v1.2.3", true},
+		{"refs/tags/v*", "refs/tags/v", repo, "refs/tags/v", false},
+		{"refs/pull/*/merge", "refs/pull/42/merge", repo, "refs/heads/attacker", false},
+		{"refs/pull/*/merge", "refs/pull/42/merge", repo, "refs/pull/43/merge", false},
+		{"refs/heads/main", "refs/heads/main", "https://github.com/fork/builds", "refs/heads/main", false},
+	} {
+		role, err := proxyImageRole.withWorkflow(workflow + "@" + tt.pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		identity, err := role.certificateIdentity(role.workflow + "@" + role.sourceRef)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cert := certificate.Summary{
+			SubjectAlternativeName: workflow + "@" + tt.signer,
+			Extensions: certificate.Extensions{
+				Issuer: actionsIssuer, SourceRepositoryURI: tt.repo, SourceRepositoryDigest: "producer",
+				SourceRepositoryRef: tt.source,
+			},
+		}
+		var result verify.VerificationResult
+		if err := json.Unmarshal([]byte(`{"statement":{"predicateType":"https://slsa.dev/provenance/v1"}}`), &result); err != nil {
+			t.Fatal(err)
+		}
+		result.Signature = &verify.SignatureVerificationResult{Certificate: &cert}
+		_, err = verifiedProducerCommit(&result, role)
+		if got := identity.Verify(cert) == nil && err == nil; got != tt.want {
+			t.Errorf("accepted=%v for %+v", got, tt)
+		}
+	}
+}
+
+func TestInvalidWorkflowOptions(t *testing.T) {
+	const workflow = "https://github.com/example/builds/.github/workflows/build.yml"
+	for _, option := range []string{"https://github.com/example/builds/build.yml", workflow + "@"} {
+		if _, err := updaterImageRole.withWorkflow(option); err == nil {
+			t.Errorf("accepted %q", option)
+		}
+	}
+}
+
 func TestImageVerifierCollectorPinnedRelease(t *testing.T) {
 	reg := newAttestationTestRegistry(t, map[string][][]byte{
 		"collector": {attestationFixture(t, "collector.json")},
@@ -246,7 +346,7 @@ func TestImageVerifierRejectsUnexpectedProvenance(t *testing.T) {
 			case "repository":
 				role.repository = "https://github.com/unexpected/repository"
 			case "workflow":
-				role.workflow = "https://github.com/dependabot/dependabot-core/.github/workflows/other.yml@refs/heads/main"
+				role.workflow = "https://github.com/dependabot/dependabot-core/.github/workflows/other.yml"
 			case "source ref":
 				role.sourceRef = "refs/heads/other"
 			case "subject digest":
