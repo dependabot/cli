@@ -56,6 +56,7 @@ func TestRunHostedJob(t *testing.T) {
 		"GITHUB_EVENT_NAME": "dynamic", "GITHUB_EVENT_PATH": eventPath,
 		"GITHUB_DEPENDABOT_JOB_TOKEN": "job-secret", "GITHUB_DEPENDABOT_CRED_TOKEN": "cred-secret",
 		"INPUT_PROXY-IMAGE": "custom:proxy", "INPUT_PULL-IMAGES": "false",
+		"INPUT_ATTESTATION-UPDATER": "none", "INPUT_ATTESTATION-PROXY": "https://github.com/example/images/.github/workflows/proxy.yml",
 		"INPUT_SKIP-IMAGE-VERIFICATION": "true", "INPUT_TIMEOUT": "3h",
 		"INPUT_VOLUMES": "/github/workspace/cache:/cache", "INPUT_UPDATER-ENV": "CUSTOM_CACHE_PATH=/cache",
 	}
@@ -83,6 +84,7 @@ func TestRunHostedJob(t *testing.T) {
 			}
 		}
 		if params.ApiUrl != cfg.apiDockerURL || params.UpdaterImage != cfg.updaterImage || params.ProxyImage != cfg.proxyImage ||
+			params.AttestationUpdater != "none" || params.AttestationProxy != env["INPUT_ATTESTATION-PROXY"] ||
 			params.PullImages || !params.SkipImageVerification || params.Timeout != cfg.timeout || params.StorageImage != infra.StorageImageName ||
 			!reflect.DeepEqual(params.Volumes, cfg.volumes) || !reflect.DeepEqual(params.UpdaterEnvironmentVariables, cfg.updaterEnv) {
 			t.Fatalf("incorrect runner options: %+v", params)
@@ -100,52 +102,6 @@ func TestRunHostedJob(t *testing.T) {
 	})
 	if err != nil || !called {
 		t.Fatalf("run() = %v, called = %v", err, called)
-	}
-}
-
-func TestActionSigningWorkflowInputs(t *testing.T) {
-	t.Setenv("JOB_TOKEN", "")
-	t.Setenv("DEPENDABOT_JOB_ID", "")
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/update_jobs/42/details":
-			fmt.Fprint(w, testJob)
-		case "/update_jobs/42/credentials":
-			fmt.Fprint(w, testCredentials)
-		default:
-			t.Errorf("unexpected request: %s", r.URL.Path)
-		}
-	}))
-	defer server.Close()
-	const updater = "none"
-	const proxy = "https://github.com/example/proxy/.github/workflows/build.yml@refs/tags/v*"
-	for _, tt := range []struct{ name, updater, proxy string }{
-		{"defaults", "", ""}, {"updater", updater, ""}, {"proxy", "", proxy}, {"both", updater, proxy},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			env := map[string]string{
-				"INPUT_API-URL": server.URL, "INPUT_JOB-ID": "42",
-				"INPUT_JOB-TOKEN": "job-token", "INPUT_CREDENTIALS-TOKEN": "credentials-token",
-				"INPUT_ATTESTATION-UPDATER": tt.updater, "INPUT_ATTESTATION-PROXY": tt.proxy,
-			}
-			cfg, err := readConfig(func(k string) string { return env[k] })
-			if err != nil {
-				t.Fatal(err)
-			}
-			api := newJobClient(cfg)
-			api.http = server.Client()
-			called := false
-			err = run(t.Context(), cfg, api, io.Discard, func(_ context.Context, params infra.RunParams) error {
-				called = true
-				if params.AttestationUpdater != tt.updater || params.AttestationProxy != tt.proxy || params.SkipImageVerification {
-					t.Fatalf("unexpected signing policies: updater=%q proxy=%q skip=%t", params.AttestationUpdater, params.AttestationProxy, params.SkipImageVerification)
-				}
-				return params.Validate()
-			})
-			if !called || err != nil {
-				t.Fatalf("called=%t err=%v", called, err)
-			}
-		})
 	}
 }
 

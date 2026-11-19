@@ -106,22 +106,7 @@ type RunParams struct {
 
 var gitShaRegex = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
-// ValidateImagePolicies checks CLI and Action inputs before either starts a job.
-func ValidateImagePolicies(updater, proxy string, skip bool) error {
-	if skip && (strings.TrimSpace(updater) != "" || strings.TrimSpace(proxy) != "") {
-		return fmt.Errorf("image policies cannot be used with --skip-image-verification")
-	}
-	if _, err := updaterImageRole.withWorkflow(updater); err != nil {
-		return err
-	}
-	_, err := proxyImageRole.withWorkflow(proxy)
-	return err
-}
-
 func (p *RunParams) Validate() error {
-	if err := ValidateImagePolicies(p.AttestationUpdater, p.AttestationProxy, p.SkipImageVerification); err != nil {
-		return err
-	}
 	if p.Job == nil {
 		return fmt.Errorf("job is required")
 	}

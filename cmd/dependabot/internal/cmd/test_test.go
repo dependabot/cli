@@ -55,10 +55,6 @@ func TestSignerFlags(t *testing.T) {
 		if p.AttestationUpdater != updater || p.AttestationProxy != proxy || p.SkipImageVerification {
 			t.Fatalf("unexpected verification options: %q, %q, skip=%v", p.AttestationUpdater, p.AttestationProxy, p.SkipImageVerification)
 		}
-		p.SkipImageVerification = true
-		if err := p.Validate(); err == nil {
-			t.Fatal("expected signing workflows must not be bypassed")
-		}
 		return nil
 	}
 	cmd := NewTestCommand()

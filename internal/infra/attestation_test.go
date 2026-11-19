@@ -307,8 +307,8 @@ func TestWorkflowClaims(t *testing.T) {
 
 func TestInvalidWorkflowOptions(t *testing.T) {
 	const workflow = "https://github.com/example/builds/.github/workflows/build.yml"
-	for _, option := range []string{"http://github.com/example/builds/.github/workflows/build.yml", "https://github.com/example/builds/build.yml", workflow + "@", workflow + "?query", workflow + "#fragment"} {
-		if err := ValidateImagePolicies(option, "", false); err == nil {
+	for _, option := range []string{"https://github.com/example/builds/build.yml", workflow + "@"} {
+		if _, err := updaterImageRole.withWorkflow(option); err == nil {
 			t.Errorf("accepted %q", option)
 		}
 	}

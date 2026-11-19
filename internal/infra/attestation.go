@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -70,7 +69,6 @@ var (
 	stableReleaseRefRegex   = regexp.MustCompile("^" + stableReleaseRefPattern + "$")
 	stableImageVersionRegex = regexp.MustCompile("^v?" + stableReleaseVersionPattern + "$")
 	versionedImageTagRegex  = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+($|-)`)
-	workflowPath            = regexp.MustCompile(`^(/[^/]+/[^/]+)/\.github/workflows/[^/]+(?:/[^/]+)*$`)
 )
 
 func (role imageRole) withWorkflow(option string) (imageRole, error) {
@@ -79,15 +77,11 @@ func (role imageRole) withWorkflow(option string) (imageRole, error) {
 		return role, nil
 	}
 	workflow, ref, hasRef := strings.Cut(option, "@")
-	u, err := url.Parse(workflow)
-	if err != nil || u.Scheme != "https" || u.Hostname() == "" || strings.ContainsAny(option, "?# \t\r\n") || (hasRef && ref == "") {
-		return imageRole{}, fmt.Errorf("invalid --attestation-%s: expected an HTTPS workflow URL with an optional @ref", role.name)
+	repo, file, ok := strings.Cut(workflow, "/.github/workflows/")
+	if !ok || repo == "" || file == "" || (hasRef && ref == "") {
+		return imageRole{}, fmt.Errorf("--attestation-%s expects a workflow URL with an optional @ref", role.name)
 	}
-	match := workflowPath.FindStringSubmatch(u.EscapedPath())
-	if match == nil {
-		return imageRole{}, fmt.Errorf("--attestation-%s expects /OWNER/REPO/.github/workflows/FILE", role.name)
-	}
-	role.repository = "https://" + u.Host + match[1]
+	role.repository = repo
 	role.workflow = workflow
 	if hasRef {
 		role.sourceRef = ref

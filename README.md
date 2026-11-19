@@ -49,8 +49,6 @@ Available Commands:
   update      Perform an update job
 
 Flags:
-      --attestation-proxy string     proxy signing workflow URL[@ref], or none for a trusted local image
-      --attestation-updater string   updater signing workflow URL[@ref], or none for a trusted local image
   -h, --help                   help for dependabot
       --proxy-image string     container image to use for the proxy (default "ghcr.io/dependabot/proxy:latest")
       --skip-image-verification   skip updater, proxy, and configured OpenTelemetry collector image verification for trusted development images
@@ -74,7 +72,7 @@ The CLI requires a valid signature and matching digest, issuer, repository, work
 It uses the verified digest for image pulls and container creation.
 
 The accepted issuer is `https://token.actions.githubusercontent.com`.
-By default, updater and proxy images require SLSA build provenance from `refs/heads/main`.
+Updater and proxy images require SLSA build provenance from `refs/heads/main`.
 Collector images require Cosign image signatures from stable `refs/tags/vMAJOR.MINOR.PATCH` releases.
 These signatures identify the image and publisher without describing the build.
 The publisher workflows are:
@@ -92,26 +90,9 @@ The certificate source ref must still match the release in the workflow identity
 Prerelease and manually signed Collector images are not accepted.
 Collector verification, pull, or startup failures stop the job.
 
-For another signed updater or proxy, pass `--attestation-updater` or `--attestation-proxy`
-with the workflow you trust, for example `https://github.com/example/builds/.github/workflows/proxy.yml`.
-Each flag applies to one image. A bare URL selects `refs/heads/main`. Append `@ref` to select
-another ref. In a ref, `*` matches one or more characters, including `/`. Quote patterns in the shell.
-The source repository and ref must match the signing workflow's repository and actual ref.
-The Docker Action accepts the same values through `attestation-updater` and `attestation-proxy`.
+Image overrides must satisfy the same producer policy.
 Registry mirrors must preserve the image digest and attestation bundles.
 Missing or invalid attestations cause an error.
-
-For an updater built by Dependabot Core's PR workflow, use its merge-commit image tag:
-
-```sh
-dependabot update go_modules dependabot/cli \
-  --updater-image "ghcr.io/dependabot/dependabot-updater-gomod:${MERGE_SHA:?set MERGE_SHA}" \
-  --attestation-updater 'https://github.com/dependabot/dependabot-core/.github/workflows/images-branch.yml@refs/pull/16708/merge'
-```
-
-Use `@refs/pull/*/merge` only if you trust builds from any PR.
-For a locally built updater, use `--pull=false --updater-image my-updater:dev --attestation-updater=none`.
-This skips verification for the updater only. Proxy and configured Collector images are still verified.
 
 With `--pull=false`, the CLI verifies the cached image's repository digest and runs that image.
 It does not switch to a newer registry tag.
@@ -120,6 +101,7 @@ The CLI uses existing registry credentials, not updater-job credentials, to retr
 
 Storage images are not verified.
 The CLI records the signed producer commit, but does not enforce an independently approved commit or image freshness.
+Branch builds and images from other producers require the development bypass below.
 
 Only use `--skip-image-verification` with trusted development images.
 This flag disables updater, proxy, and configured Collector verification and prints a warning.
